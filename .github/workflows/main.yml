@@ -1,0 +1,49 @@
+name: Project Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get project files
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check Python syntax
+        run: python -m compileall -q .
+
+      - name: Test data evaluation
+        run: |
+          python - <<'PY'
+          from evaluation import evaluate_records
+
+          result = evaluate_records([])
+          assert result["total_records"] == 0
+          assert result["quality_status"] == "no_data"
+
+          records = [
+              {
+                  "file_name": "sample.csv",
+                  "file_type": ".csv",
+                  "file_size_bytes": 10,
+                  "sha256": "abc123",
+                  "collection_method": "test"
+              }
+          ]
+
+          result = evaluate_records(records)
+          assert result["total_records"] == 1
+          assert result["duplicate_records"] == 0
+          assert result["quality_status"] == "passed_basic_checks"
+
+          print("Evaluation tests passed.")
+          PY
