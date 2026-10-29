@@ -32,6 +32,8 @@ def search_youtube_videos(
     opener: Callable[..., Any] | None = None,
 ) -> list[dict[str, Any]]:
     """Search public video metadata through the official API and return source records."""
+    if api_key is not None and not isinstance(api_key, str):
+        raise ValueError("api_key must be a string or null")
     key = (api_key or os.environ.get("YOUTUBE_API_KEY", "")).strip()
     if not key:
         raise ValueError("provide api_key or set YOUTUBE_API_KEY in the environment")
@@ -39,7 +41,7 @@ def search_youtube_videos(
         raise ValueError("query must be a non-empty string of at most 500 characters")
     if not isinstance(max_results, int) or isinstance(max_results, bool) or not 1 <= max_results <= 50:
         raise ValueError("max_results must be an integer from 1 to 50")
-    if order not in _ORDERS:
+    if not isinstance(order, str) or order not in _ORDERS:
         raise ValueError("unsupported YouTube search order")
     if region_code is not None and (
         not isinstance(region_code, str) or not re.fullmatch(r"[A-Za-z]{2}", region_code)
@@ -87,6 +89,8 @@ def search_youtube_videos(
         raise RuntimeError(f"YouTube API returned HTTP {exc.code}.") from None
     except urllib.error.URLError:
         raise RuntimeError("YouTube API connection failed.") from None
+    except TimeoutError:
+        raise RuntimeError("YouTube API request timed out.") from None
     if len(body) > 2_000_000:
         raise RuntimeError("YouTube API response exceeds the 2 MB limit.")
     try:
