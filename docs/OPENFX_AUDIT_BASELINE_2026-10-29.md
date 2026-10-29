@@ -27,17 +27,36 @@ No live trading, MT5 Strategy Tester execution, VPS deployment, or end-to-end so
 
 | Item | Observed state | Implication |
 |---|---|---|
-| `main` | Commit `25c1366097c2ddf3a7951111ca9e9a1e6e4928b6`; 62 tracked tree entries observed | This is the default-branch baseline. |
-| PR #11 `openfx-audit-fixes` | Open, not merged; head `28161cb4622e4bd92ba356508b97409f6149a1af`, base `main` | Adds a broad research/evidence/result-validation feature set and hardens experiment/worker validation, but is not in main. |
-| PR #12 `openfx-transcript-adversarial-checks` | Open, not merged; head `649631de5f3a08be1ca0941ede4ff3646b346063`, base `openfx-audit-fixes` | Adds percentage-symbol fidelity checks on top of PR #11; depends on the earlier branch. |
-| PR #13 mission/state docs | Open, not merged; head `9c360866b744ac83b4f8d720019d964f1b0d85b1`, base `main` | Mission files are on a separate docs branch; merging this alone would not bring in PR #11/#12 code. |
-| PR #14 numeric glyph normalization | Open; head `61047b9a45ea556799a4d4c1c15073dc45e9025e`, base `openfx-transcript-adversarial-checks` | Adds a targeted transcript heuristic fix and regression tests; CI result for this exact head was queued at the last check and must be refreshed. |
+| `main` | Commit `25c1366097c2ddf3a7951111ca9e9a1e6e4928b6`; 62 tracked tree entries observed | This remains the default-branch baseline; none of this audit's PRs has been merged. |
+| PR #11 `openfx-audit-fixes` | Open; head `28161cb4622e4bd92ba356508b97409f6149a1af`; base `main` | Broad research/evidence/result-validation feature set and stricter experiment/worker validation; not in main. |
+| PR #12 `openfx-transcript-adversarial-checks` | Open; head `649631de5f3a08be1ca0941ede4ff3646b346063`; base `openfx-audit-fixes` | Percentage-symbol fidelity checks; depends on PR #11 branch. |
+| PR #13 mission/state/audit docs | Open; current head `6bd0e1b67849ca29aa3fa81071163ea0afbe171e`; base `main` | Holds the mission charter, continuity ledger, and evolving audit report. |
+| PR #14 numeric glyph normalization | Open; head `61047b9a45ea556799a4d4c1c15073dc45e9025e`; base `openfx-transcript-adversarial-checks` | Normalizes equivalent numeric glyphs; exact-head CI passed. |
+| PR #15 schema validation | Open; head `dc3e665efb95c93f0d55fddbd2fb1a7075b60b58`; base `openfx-audit-round1` | Adds executable JSON Schema validation and fixtures; exact-head CI passed. |
+| PR #16 transcript import strictness | Open; head `5b6ad0b910b2501a67293f8fe5b4451a2b89192e`; base `openfx-audit-round1` | Fails closed on malformed subtitle blocks and preserves cue IDs resembling metadata; exact-head CI passed. |
+| PR #17 rights gate | Open; head `5cd514fc3659a381f9070702d30a23c7fa725602`; base `openfx-audit-round1` | Blocks transcript import until rights are explicitly reviewed; exact-head CI passed. |
+| PR #18 local scan scope/provenance | Open; head `29f7fcf061bf8c274bda79787dc3c0eb0749d2ec`; base `main` | Skips symlinks and records root-relative file paths; tests and CodeQL passed. |
+| PR #19 CI least privilege | Open; head `65a76be37f999a7c15fada2cd8f762749efb2441`; base `main` | Adds read-only token permissions and timeouts; tests and CodeQL passed. |
+| PR #20 transcript conditions/units/corpus | Open; current head `2ef5f2a323314164491cec6cdc92303264fd724a`; base `openfx-audit-round1` | Adds condition/unit warnings and a 24-case synthetic corpus; exact-head CI passed. |
+| PR #21 YouTube API-key header | Open; head `822d0881a432548bdb51e3220d5f24984dc2e086`; base `openfx-audit-fixes` | Moves API key out of the URL query; exact-head CI passed. |
+| PR #22 backtest verification-claim labels | Open; head `b4cc92860d3df7a64d4a3cfebb30626e5ab87a8b`; base `openfx-audit-round1` | Separates CLI-verified report parsing from self-declared journal/data/cost/split checks; exact-head CI passed. |
 
-Relevant historical CI evidence observed:
-- PR #11 commit `28161cb4622e4bd92ba356508b97409f6149a1af`: OpenFX CI run `40921215811` success; CodeQL run `40921215571` success.
-- PR #12 commit `649631de5f3a08be1ca0941ede4ff3646b346063`: OpenFX CI run `40921649710` success.
-- PR #13 documentation commit `9c360866b744ac83b4f8d720019d964f1b0d85b1`: OpenFX Unit Tests run `40923717266`, Project Tests run `40923717250`, CodeQL run `40923717315` all reported success.
-- PR #14 head check `123625086035` was queued at the last status query. Do not report it as passing until refreshed.
+### CI evidence for current PR heads
+
+- PR #11: OpenFX CI run `40921215811` and CodeQL run `40921215571` passed.
+- PR #12: OpenFX CI run `40921649710` passed.
+- PR #13: Unit tests run `40926703802` and project tests run `40926703827` passed on the current docs head; CodeQL run `40926711364` was still in progress at the last check.
+- PR #14: CI run `40924158772` passed (109 repository tests, 15 worker tests).
+- PR #15: CI run `40924445011` passed (8 schema-contract tests, 117 repository tests, 15 worker tests).
+- PR #16: current-head CI run `40925335092` passed (112 repository tests, 15 worker tests).
+- PR #17: CI run `40924903871` passed (111 repository tests, 15 worker tests).
+- PR #18: current-head project/unit tests `40925208557` and `40925208133`, plus CodeQL `40925208196`, passed.
+- PR #19: project/unit tests `40925003699` and `40925003750`, plus CodeQL `40925003707`, passed.
+- PR #20: current-head CI run `40925975774` passed (115 repository tests, 15 worker tests, and 24-case corpus evaluation; curated matrix TP=18, FN=0, FP=0, TN=6).
+- PR #21: CI run `40926204432` passed (104 repository tests, 15 worker tests).
+- PR #22: CI run `40926577896` passed (109 repository tests, 15 worker tests).
+
+Intermediate failures were retained rather than hidden: PR #16 run `40925250131` exposed a VTT cue-ID parsing issue; PR #17 run `40924728291` exposed a CLI fixture relying on unknown rights; PR #20 run `40925884008` exposed a corpus-script import-path issue. Each was corrected on its branch and followed by a successful exact-head run. These results validate only the checks named above, not end-to-end research correctness or MT5 execution.
 
 ## 3A. PR dependency and merge-order risk
 
