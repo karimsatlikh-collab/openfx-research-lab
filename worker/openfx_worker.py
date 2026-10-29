@@ -202,7 +202,7 @@ def state_file_lock(path: str):
             "worker state is locked by another or interrupted process; inspect the lock before removing it"
         ) from None
     try:
-        os.write(lock_fd, f"pid={os.getpid()}\\n".encode("ascii"))
+        os.write(lock_fd, f"pid={os.getpid()}\n".encode("ascii"))
         os.close(lock_fd)
         lock_fd = None
         yield
