@@ -157,3 +157,24 @@ def load_manifest(path: str | Path) -> dict[str, Any]:
         raise ValueError("manifest root must be a JSON object")
     validate_manifest(manifest)
     return manifest
+
+
+def artifact_record(path: str | Path, root: str | Path) -> dict[str, Any]:
+    """Describe a file artifact by safe relative path, size, and SHA-256.
+
+    The artifact must resolve to a regular file inside root. This records
+    evidence; it does not imply the artifact itself is a valid MT5 report.
+    """
+    root_path = Path(root).resolve()
+    artifact_path = Path(path).resolve()
+    try:
+        relative_path = artifact_path.relative_to(root_path)
+    except ValueError as exc:
+        raise ValueError("artifact must be inside the configured root") from exc
+    if not artifact_path.is_file():
+        raise ValueError("artifact must be an existing regular file")
+    return {
+        "path": relative_path.as_posix(),
+        "size_bytes": artifact_path.stat().st_size,
+        "sha256": sha256_file(artifact_path),
+    }
