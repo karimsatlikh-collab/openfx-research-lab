@@ -93,10 +93,10 @@
           },
           "label": {
             "enum": [
-              "Verified",
-              "Source claim",
-              "Hypothesis",
-              "Unknown / not tested"
+              "verified",
+              "source_claim",
+              "hypothesis",
+              "unknown_not_tested"
             ]
           },
           "source_refs": {
