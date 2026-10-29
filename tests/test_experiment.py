@@ -156,6 +156,20 @@ class ExperimentTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_manifest(manifest)
 
+    def test_manifest_rejects_unknown_nested_market_fields(self):
+        from openfx.experiment import validate_manifest
+        manifest = sample()
+        manifest["market"]["extra"] = "not allowed"
+        with self.assertRaises(ValueError):
+            validate_manifest(manifest)
+
+    def test_manifest_rejects_unknown_execution_fields(self):
+        from openfx.experiment import validate_manifest
+        manifest = sample()
+        manifest["execution"]["command"] = "not allowed"
+        with self.assertRaises(ValueError):
+            validate_manifest(manifest)
+
 
 if __name__ == "__main__":
     unittest.main()
