@@ -7,8 +7,10 @@
 - [x] Add mock-only worker and lifecycle tests.
 - [x] Add basic CI test workflow.
 - [x] Document secure execution boundaries.
-- [ ] Confirm CI test run is green in GitHub Actions.
-- [ ] Decide and document an open-source license before accepting external code contributions.
+- [x] Confirm CI test run is green in GitHub Actions.
+- [x] Record rights-reserved terms in LICENSE; public visibility does not grant general use rights.
+- [x] Document owner prerequisites and secure AI/MT5 worker architecture.
+- [x] Document Claude as an optional, separately authorized reviewer.
 - [ ] Add source inventory with provenance, license, and review status.
 
 ## Phase 1 — Reproducible local research
@@ -29,7 +31,8 @@
 
 ## Phase 3 — MT5 integration design (not deployed)
 
-- [ ] Complete threat model and private control-plane design.
+- [x] Draft threat model and private control-plane architecture.
+- [ ] Implement and independently review the private control plane.
 - [ ] Define allow-listed job specifications and idempotent queue behavior.
 - [ ] Validate log/report/artifact provenance and hashes.
 - [ ] Review a compatible Windows host and least-privilege account model.
