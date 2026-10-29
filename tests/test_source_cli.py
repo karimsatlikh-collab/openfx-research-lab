@@ -62,11 +62,6 @@ class SourceCliTests(unittest.TestCase):
                 "--url", "https://www.youtube.com/watch?v=AbCdEf12345",
                 "--title", "Existing", "--access-method", "official_api",
             ])[0], 0)
-            existing = make_source_record(
-                source_id="yt-AbCdEf12345", source_type="video",
-                url="https://www.youtube.com/watch?v=AbCdEf12345",
-                title="Existing", access_method="official_api",
-            )
             new = make_source_record(
                 source_id="yt-ZyXwVu98765", source_type="video",
                 url="https://www.youtube.com/watch?v=ZyXwVu98765",
