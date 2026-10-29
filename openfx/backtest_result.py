@@ -1,11 +1,12 @@
 """Strict MT5 Strategy Tester result contract and review-readiness checks."""
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import re
 from datetime import date, datetime
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 _SHA256_RE = re.compile(r"^[a-fA-F0-9]{64}$")
@@ -227,4 +228,63 @@ def validate_backtest_result(result: Any) -> dict[str, Any]:
         "blockers": blockers,
         "warnings": warnings,
         "scope": "schema_and_metadata_validation_not_profitability_verification",
+    }
+
+
+
+def verify_artifact_files(result: dict[str, Any], artifact_root: str | Path) -> dict[str, Any]:
+    """Verify declared artifact file sizes and SHA-256 hashes under a trusted root."""
+    validate_backtest_result(result)
+    try:
+        root = Path(artifact_root).resolve(strict=True)
+    except OSError:
+        return {"status": "artifact_verification_failed", "verified_artifacts": [], "blockers": ["artifact_root_missing"]}
+    if not root.is_dir():
+        return {"status": "artifact_verification_failed", "verified_artifacts": [], "blockers": ["artifact_root_not_directory"]}
+
+    verified = []
+    blockers = []
+    for artifact in result["artifacts"]:
+        relative = PurePosixPath(artifact["path"])
+        candidate = root
+        unsafe_symlink = False
+        for part in relative.parts:
+            candidate = candidate / part
+            if candidate.is_symlink():
+                unsafe_symlink = True
+                break
+        if unsafe_symlink:
+            blockers.append(f"artifact_symlink:{artifact['path']}")
+            continue
+        try:
+            resolved = candidate.resolve(strict=True)
+            resolved.relative_to(root)
+        except (OSError, ValueError):
+            blockers.append(f"artifact_missing_or_outside_root:{artifact['path']}")
+            continue
+        if not resolved.is_file():
+            blockers.append(f"artifact_not_file:{artifact['path']}")
+            continue
+        try:
+            stat = resolved.stat()
+            if stat.st_size != artifact["size_bytes"]:
+                blockers.append(f"artifact_size_mismatch:{artifact['path']}")
+                continue
+            digest = hashlib.sha256()
+            with resolved.open("rb") as stream:
+                for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                    digest.update(chunk)
+        except OSError:
+            blockers.append(f"artifact_read_error:{artifact['path']}")
+            continue
+        if digest.hexdigest().lower() != artifact["sha256"].lower():
+            blockers.append(f"artifact_hash_mismatch:{artifact['path']}")
+            continue
+        verified.append(artifact["path"])
+
+    return {
+        "status": "artifact_bytes_verified" if not blockers else "artifact_verification_failed",
+        "verified_artifacts": verified,
+        "blockers": blockers,
+        "scope": "file_size_and_sha256_only_not_report_semantics_or_profitability",
     }
