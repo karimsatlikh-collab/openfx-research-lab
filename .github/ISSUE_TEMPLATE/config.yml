@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Project documentation
+    url: https://github.com/karimsatlikh-collab/video-research-team/tree/main/docs
+    about: Review project charter, team contracts, and experiment governance before opening a task.
