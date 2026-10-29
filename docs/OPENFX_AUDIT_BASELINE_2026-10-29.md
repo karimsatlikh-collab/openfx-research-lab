@@ -237,6 +237,34 @@ validated strategy rule -> compiled EA -> real MT5 Strategy Tester
 **Action taken:** PR #20 adds a separate `condition_mismatch` flag for selected English/Persian condition and threshold markers and tests the high-similarity case. Exact-head CI run `40925516804` passed: 112 repository tests and 15 worker tests.  
 **Residual limitation:** The marker list is incomplete and can create false positives; it does not understand syntax, scope, synonyms, or semantic entailment. A labelled adversarial corpus and measured false-positive/false-negative rates remain necessary.
 
+### F-15 — Imported transcript provenance does not retain the raw transcript artifact hash
+**Severity:** P1 — research reproducibility gap  
+**Status:** Code-reviewed on PR #11 branch  
+**Evidence:** `openfx/transcript_import.py` reads local transcript bytes as UTF-8 text, normalizes line endings/markup, and records hashes for cleaned segment text. The importer does not record the original file's byte-level SHA-256, size, exact format/encoding, or parser version in a separate import-artifact record; the source record's optional `content_sha256` is not populated by the importer.  
+**Impact:** Later reviewers cannot establish exactly which raw transcript file produced a set of normalized segments. Segment hashes protect the normalized text, not the original file or the transformations applied.  
+**Action:** Add an immutable transcript-import artifact record with raw-byte hash, size, source ID, format, encoding, parser version, import timestamp, and segment-manifest hash. Preserve the original authorized artifact or a controlled content-addressed reference.
+
+### F-16 — The meaning of transcript segment confidence is easy to misinterpret
+**Severity:** P2 — evidence interpretation risk  
+**Status:** Code-reviewed  
+**Evidence:** `openfx/transcript_import.py` sets each segment's `confidence` to `1.0` and comments that this is parser confidence only, not confidence that captions match speech. The field name itself does not encode that distinction.  
+**Impact:** Downstream code or a reviewer could misread 1.0 as confidence in transcript fidelity or source truth, even though no audio comparison or semantic validation occurred.  
+**Action:** Version the segment schema to use an explicit name such as `parser_confidence` or require a `confidence_basis` value; keep ASR/source-fidelity confidence separate and unknown unless measured.
+
+### F-17 — Scheduled health reports are generated but not retained as workflow artifacts
+**Severity:** P2 — operational continuity gap  
+**Status:** Observed in workflow code  
+**Evidence:** `.github/workflows/auto-report.yml` writes `health-report/report.json` and `health-report/report.md` and prints the report, but has no artifact-upload step.  
+**Impact:** The report files disappear when the runner is discarded; only console logs remain, making routine historical comparison less convenient and less durable.  
+**Action:** Upload the generated directory as a workflow artifact with a defined retention period. Do not automatically commit generated reports to the public repository unless explicitly intended.
+
+### F-18 — YouTube API key is included in the request URL query string
+**Severity:** P2 — secret-handling hardening  
+**Status:** Code-reviewed on PR #11 branch  
+**Evidence:** `openfx/youtube_search.py` constructs the official API request URL with the API key as a query parameter. The current error handling avoids echoing the URL, but query strings may be retained by proxies, traces, or diagnostics.  
+**Impact:** A key could leak through infrastructure logs even when application logs are careful.  
+**Action:** Prefer the provider-supported API-key header (for example `x-goog-api-key`) if supported by the endpoint, and test that exceptions/logging never expose the key. Keep the key restricted to the YouTube Data API and rotate it if exposure is suspected.
+
 ## 7. Security and operational observations
 
 - `worker/openfx_worker.py` explicitly avoids command execution and MT5 invocation. This is an appropriate prototype boundary, not production readiness.
