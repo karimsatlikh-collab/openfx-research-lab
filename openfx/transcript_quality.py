@@ -9,7 +9,7 @@ from collections import Counter
 from difflib import SequenceMatcher
 from typing import Any
 
-_TOKEN_RE = re.compile(r"\d+(?:[.,:/-]\d+)*|[^\W\d_]+(?:['’][^\W\d_]+|‌[^\W\d_]+)*", re.UNICODE)
+_TOKEN_RE = re.compile(r"[+-]?\d+(?:[.,:/-]\d+)*|[^\W\d_]+(?:['’][^\W\d_]+|‌[^\W\d_]+)*", re.UNICODE)
 _NEGATIONS = {
     "not", "no", "never", "without", "cannot", "can't", "isn't", "aren't",
     "wasn't", "weren't", "doesn't", "don't", "didn't", "won't", "wouldn't",
