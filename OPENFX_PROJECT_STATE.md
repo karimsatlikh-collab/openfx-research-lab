@@ -222,3 +222,41 @@ Refresh PR #23's current head and Actions after the two commits; add adversarial
 
 ### Next action
 Implement the smallest G0→G1 data contract slice: define and validate a source record with rights basis, immutable content hash, exact locator, extraction method, and explicit provenance state; add fail-closed tests for missing rights/locator/hash and source-content mismatch. Keep the test fixture explicitly synthetic/local and do not ingest third-party media without an established rights basis. Then wire one HypothesisCard to a source-backed atomic claim without promoting hypotheses to verified rules.
+
+
+## 13. G0→G1 provenance vertical slice — 2026-10-30
+
+### Implementation committed on the PR #23 work branch
+
+- Branch: `openfx-foundation-m1-contracts` (PR #23); no changes to `main`.
+- `openfx/source_provenance.py`, commit `23e040fa5517438a0e87bbc17a90509ff120a39d`:
+  - Adds a source record with stable source ID, identity, rights basis, permission evidence, timezone-aware retrieval timestamp, exact locator, capture method, SHA-256 of the raw bytes, and explicit provenance state.
+  - G0 validation fails closed on missing/invalid identity fields, ambiguous or unreviewed rights, unsupported rights basis, malformed timestamps, missing locator/method, malformed hash, and source-byte/hash mismatch.
+  - Explicit-permission records require approval actor, timestamp, and reason fields.
+  - Adds an atomic source-backed claim bound to source ID + exact locator + content hash.
+  - Adds a HypothesisCard bound to source-backed claims and explicitly labelled `hypothesis` with `is_verified_rule=false`.
+- `tests/test_source_provenance.py`, commit `07665dfa145d1634a33014ec93edd99f4ce44c46`:
+  - Adds adversarial tests for missing/ambiguous rights, absent explicit-permission approval, missing locator, malformed/missing hash, content tampering, invalid timestamp/provenance, locator mismatch, unlinked hypotheses, and prevention of hypothesis-to-verified-rule promotion.
+  - The only positive fixture is inline synthetic/local bytes created for the test; no third-party media was ingested.
+
+### Exact-head CI status at checkpoint
+
+For commit `07665dfa145d1634a33014ec93edd99f4ce44c46`, GitHub Actions returned:
+- OpenFX Unit Tests: run `40969729907`, in progress at the time checked.
+- Project Tests: run `40969730036`, in progress at the time checked.
+- CodeQL: run `40969729944`, in progress at the time checked.
+
+These are pending statuses, not passes. Refresh exact-head Actions before describing the implementation as CI-verified.
+
+### Boundaries and unresolved issues
+
+- The code records a rights basis and approval fields; it does not provide legal advice, independently authenticate permission, or decide whether a source's license actually covers the intended use.
+- The current `explicit_permission` approval fields are caller-supplied metadata, not signed/audited reviewer events. Role separation and reviewer identity are not runtime-enforced.
+- Source identity and exact locator are asserted fields; no external source fetcher, immutable capture store, transcript segmenter, or semantic-fidelity verifier is wired into this slice.
+- The provenance state is a controlled vocabulary, not proof that the corresponding activity occurred. In particular, `test_confirmed` is only appropriate where a test actually confirms the relevant assertion.
+- G1 currently binds a claim and hypothesis to a source reference but does not yet implement a claim graph, contradiction tracking, StrategySpec generation, reviewer workflow, or independent review.
+- This is a local contract prototype only. It does not enable external ingestion, market-data evaluation, MT5, broker access, or trading.
+
+### Next action
+
+Refresh exact-head CI for `07665dfa145d1634a33014ec93edd99f4ce44c46`. If green, add schema-level contracts and tamper tests for persisted SourceRecord/Claim/HypothesisCard serialization, then build the synthetic-only end-to-end path (source → claim → hypothesis → frozen trial → two identical synthetic executions → independent hash comparison). Preserve the result as synthetic evidence only.
