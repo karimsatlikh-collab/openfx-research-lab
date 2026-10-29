@@ -84,3 +84,27 @@ Limitations and release blockers:
 - Trial counts supplied to this prototype are caller-provided. A trusted registrar must own monotonic counts before the gate can be relied upon.
 - Structural JSON Schema validation is now exercised in `tests/test_json_schema_validation.py` using Draft 2020-12 validation and format checks. The workflow installs the pinned-major development dependency from `requirements-dev.txt`; this validates schema shape and sample instances, not cross-document consistency or runtime authorization.
 - M2 is not complete until CI is green on the latest commit, semantic contract checks and threat-model tests are expanded, and an independent review accepts these limitations.
+
+
+## Semantic contract validation increment
+
+The branch now includes `openfx/contract_validation.py` and focused tests in
+`tests/test_contract_validation.py`. The checks compare JobSpec references
+against canonical JSON SHA-256 hashes of the referenced StrategySpec,
+DataProfile, CostProfile, and GateConfig; reject a job budget larger than the
+frozen gate-family budget; check RunRecord-to-JobSpec hash/evidence-label
+consistency; require a finish timestamp for `COMPLETED`; and reject illegal
+RunRecord state transitions. A lifecycle status is explicitly not interpreted
+as a performance verdict.
+
+The local registry now exposes a unique-trial count per family and the gate has
+an opt-in helper that reads that count from the registry. Repeated events for
+one trial count once, and failed/non-success trials count. This remains a
+single-host prototype: count reads are not atomic with subsequent appends,
+there is no central authority or signed ledger, and the existing direct gate
+function still accepts a caller-provided count for isolated tests. Production
+use requires a transactional registrar and a gate API that accepts only trusted
+registrar-issued snapshots.
+
+These checks are semantic consistency controls, not engine attestation,
+authorization, statistical correction, or evidence of profitability.
