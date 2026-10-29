@@ -125,8 +125,8 @@ def _validate_datetime(value: Any, field: str) -> None:
 
 def validate_manifest(manifest: dict[str, Any]) -> None:
     """Validate required fields and nested data without optional dependencies."""
-    if not isinstance(manifest, dict):
-        raise ValueError("manifest root must be a JSON object")
+    if not isinstance(manifest, dict) or any(not isinstance(key, str) for key in manifest):
+        raise ValueError("manifest root must be a JSON object with string keys")
     required = {
         "schema_version", "experiment_id", "created_at_utc", "updated_at_utc",
         "status", "hypothesis", "strategy_version", "market", "parameters",
@@ -153,8 +153,8 @@ def validate_manifest(manifest: dict[str, Any]) -> None:
     _validate_datetime(manifest["created_at_utc"], "created_at_utc")
     _validate_datetime(manifest["updated_at_utc"], "updated_at_utc")
     market = manifest["market"]
-    if not isinstance(market, dict):
-        raise ValueError("market must be an object")
+    if not isinstance(market, dict) or any(not isinstance(key, str) for key in market):
+        raise ValueError("market must be an object with string keys")
     if set(market) != {"symbol", "timeframe", "data_start", "data_end"}:
         raise ValueError("market must contain only symbol, timeframe, data_start, and data_end")
     for key in ("symbol", "timeframe"):
@@ -171,8 +171,8 @@ def validate_manifest(manifest: dict[str, Any]) -> None:
     except (TypeError, ValueError):
         raise ValueError("parameters must contain only finite JSON values") from None
     execution = manifest["execution"]
-    if not isinstance(execution, dict):
-        raise ValueError("execution must be an object")
+    if not isinstance(execution, dict) or any(not isinstance(key, str) for key in execution):
+        raise ValueError("execution must be an object with string keys")
     if set(execution) != {"mode", "worker_version", "started_at_utc", "finished_at_utc"}:
         raise ValueError("execution contains missing or unknown fields")
     for key in ("mode", "worker_version", "started_at_utc", "finished_at_utc"):
@@ -207,8 +207,15 @@ def validate_manifest(manifest: dict[str, Any]) -> None:
         raise ValueError("result must be an object or null")
     if manifest["status"] == "COMPLETED" and not manifest["result"]:
         raise ValueError("COMPLETED requires a non-empty structured result")
-    if "error" in manifest and (not isinstance(manifest["error"], str) or len(manifest["error"]) > 2000):
-        raise ValueError("error must be a string of at most 2000 characters")
+    if "error" in manifest and (
+        not isinstance(manifest["error"], str) or not manifest["error"].strip()
+        or len(manifest["error"]) > 2000
+    ):
+        raise ValueError("error must be a non-empty string of at most 2000 characters")
+    if manifest["status"] == "FAILED" and "error" not in manifest:
+        raise ValueError("FAILED experiments require an error explanation")
+    if manifest["status"] != "FAILED" and "error" in manifest:
+        raise ValueError("error is only permitted for FAILED experiments")
     try:
         created = datetime.fromisoformat(manifest["created_at_utc"].replace("Z", "+00:00"))
         updated = datetime.fromisoformat(manifest["updated_at_utc"].replace("Z", "+00:00"))
@@ -249,8 +256,14 @@ def transition(
     """Return a transitioned copy, rejecting illegal state changes."""
     validate_manifest(manifest)
     old_status = manifest["status"]
-    if new_status not in _ALLOWED_TRANSITIONS[old_status]:
+    if not isinstance(new_status, str) or new_status not in _ALLOWED_TRANSITIONS[old_status]:
         raise ValueError(f"illegal experiment transition: {old_status} -> {new_status}")
+    if error is not None and (not isinstance(error, str) or not error.strip()):
+        raise ValueError("error must be a non-empty string")
+    if new_status == "FAILED" and error is None:
+        raise ValueError("FAILED transitions require an error explanation")
+    if new_status != "FAILED" and error is not None:
+        raise ValueError("error may only be supplied when transitioning to FAILED")
     updated = json.loads(json.dumps(manifest))
     now = utc_now()
     updated["status"] = new_status
