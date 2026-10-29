@@ -1,0 +1,1 @@
+"""OpenFX worker prototype package."""
