@@ -20,6 +20,7 @@ The repository now includes:
 - A Python startup/status scaffold.
 - Versioned experiment manifests with strict date/time, state, finite-JSON, and safe-artifact-path validation.
 - A strict MT5 result contract that records tester configuration, costs, chronological development/validation/final-OOS splits, key metrics, and artifact hashes; incomplete evidence blocks independent review.
+- A result CLI that independently checks declared artifact file sizes and SHA-256 hashes against a trusted local artifact directory.
 - A deterministic mock worker for testing the experiment lifecycle without MT5 or market data.
 - A provenance-first source registry that records source type, URL, rights-review status, collection method, and content hashes.
 - An evidence-linked claim register that requires exact quotes from registered transcript segments and separates source-confirmed claims, source claims, interpretations, hypotheses, and unknowns.
