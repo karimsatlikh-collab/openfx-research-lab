@@ -130,9 +130,18 @@ on branch `openfx-mission-state-docs`, commit `09f909f756fbda2afe37b6d96b2f06eba
 - PR #13: runs `40923717266` (OpenFX Unit Tests), `40923717250` (Project Tests), and `40923717315` (CodeQL) success for docs head `9c360866b744ac83b4f8d720019d964f1b0d85b1`.
 - PR #14 exact-head check ID `123625086035` completed successfully in run `40924158772`; logs show 109 repository tests and 15 worker tests passed, JSON syntax validation passed, and worker offline self-test passed.
 
+### Additional audit branches and verified fixes
+- PR #14 `openfx-audit-round1` (base `openfx-transcript-adversarial-checks`): normalizes equivalent Persian/Arabic-Indic digits and common percent/sign glyphs. CI run `40924158772` passed: 109 repository tests and 15 worker tests.
+- PR #15 `openfx-schema-validation` (base `openfx-audit-round1`): adds pinned JSON Schema validation and fixtures. CI run `40924445011` passed: 8 dedicated schema tests, 117 repository tests, 15 worker tests.
+- PR #16 `openfx-transcript-import-strictness` (base `openfx-audit-round1`): rejects malformed subtitle blocks without timestamps instead of silently omitting them. CI run `40924573796` passed: 110 repository tests and 15 worker tests.
+- PR #17 `openfx-rights-gate` (base `openfx-audit-round1`): blocks transcript import unless rights are `reviewed_permitted` or `public_domain` with a reference. After correcting a CLI fixture that still relied on unknown rights, exact-head CI run `40924903871` passed: 111 repository tests and 15 worker tests.
+- PR #18 `openfx-local-scan-boundary` (base `main`): skips symlinks to keep local metadata scans within the selected root. Data/project test run `40924838032` logged 18 passing tests; PR-triggered test runs and CodeQL run `40924853233` also passed.
+- PR #19 `openfx-ci-least-privilege` (base `main`): adds `contents: read` permissions and five-minute timeouts to the two baseline test workflows. Test runs `40925003750` and `40925003699` passed; CodeQL run `40925003707` was still in progress at last inspection.
+- None of PRs #14–#19 has been merged by this work.
+
 ### Audit limitations
 The repository could not be cloned in the local execution container because DNS/network access to GitHub was unavailable. This audit checkpoint uses GitHub connector file/branch/PR/Actions evidence and code review. No local test command, real MT5 run, VPS deployment, or trading backtest is claimed.
 
 ## 9. Latest continuation point
 
-**Next action:** add executable JSON Schema validation and negative fixtures on a feature branch, then verify schema/Python-validator parity. Continue afterward with auditable human-review events for claims, a labelled transcript adversarial corpus, worker failure/recovery and idempotency, and artifact verification/MT5 pilot acceptance criteria. Review the PR #11/#12 dependency chain and the inactive nested workflow, but do not merge any PR without explicit owner approval.
+**Next action:** refresh PR #19 CodeQL status and inspect all open audit PRs for current mergeability/checks. Then continue with auditable human-review events for claims, a labelled transcript adversarial corpus, worker failure/recovery and idempotency, and artifact verification/MT5 pilot acceptance criteria. Review whether root-relative file locators should be added to local metadata, and assess the auto-report artifact retention gap. Review the PR #11/#12 dependency chain and the inactive nested workflow, but do not merge any PR without explicit owner approval.
