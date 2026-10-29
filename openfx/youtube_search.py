@@ -61,7 +61,6 @@ def search_youtube_videos(
         "maxResults": str(max_results),
         "order": order,
         "safeSearch": "moderate",
-        "key": key,
     }
     if region_code:
         params["regionCode"] = region_code.upper()
@@ -70,7 +69,11 @@ def search_youtube_videos(
     url = _ENDPOINT + "?" + urllib.parse.urlencode(params)
     request = urllib.request.Request(
         url,
-        headers={"Accept": "application/json", "User-Agent": "OpenFX-Source-Registry/1.0"},
+        headers={
+            "Accept": "application/json",
+            "User-Agent": "OpenFX-Source-Registry/1.0",
+            "X-Goog-Api-Key": key,
+        },
         method="GET",
     )
     open_url = opener or urllib.request.urlopen
@@ -85,7 +88,7 @@ def search_youtube_videos(
                     raise RuntimeError("YouTube API response is not JSON.")
             body = response.read(2_000_001)
     except urllib.error.HTTPError as exc:
-        # Never echo the request URL; it contains the API key query parameter.
+        # Never echo request details; the API key is sent in a header.
         raise RuntimeError(f"YouTube API returned HTTP {exc.code}.") from None
     except urllib.error.URLError:
         raise RuntimeError("YouTube API connection failed.") from None
