@@ -111,9 +111,9 @@ At the end of each meaningful work cycle, add:
 
 ## 8. Audit checkpoint — 2026-10-29
 
-The first evidence-backed baseline report is saved at:
+The evolving evidence-backed baseline report is saved at:
 `docs/OPENFX_AUDIT_BASELINE_2026-10-29.md`
-on branch `openfx-mission-state-docs`, commit `09f909f756fbda2afe37b6d96b2f06ebaeb52a0e`.
+on branch `openfx-mission-state-docs`, latest report commit `a9d4a8093fcda7e4803319678d6f88333bbafe7a`.
 
 ### Findings established so far
 - Main is at `25c1366097c2ddf3a7951111ca9e9a1e6e4928b6`; research/evidence modules introduced by PR #11/#12 are not in main.
@@ -139,6 +139,7 @@ on branch `openfx-mission-state-docs`, commit `09f909f756fbda2afe37b6d96b2f06eba
 - PR #19 `openfx-ci-least-privilege` (base `main`): adds `contents: read` permissions and five-minute timeouts to the two baseline test workflows. Test runs `40925003750` and `40925003699`, CodeQL `40925003707`, and Gemini review `40925001639` all passed.
 - PR #20 `openfx-transcript-critical-conditions` (base `openfx-audit-round1`): adds condition/unit markers and a 24-case synthetic labelled transcript corpus with a confusion-matrix script. Exact-head CI run `40925975774` passed: 115 repository tests, 15 worker tests, and corpus evaluation. Curated matrix TP=18, FN=0, FP=0, TN=6; these 24 hand-selected synthetic cases do not estimate real-world transcript accuracy. Intermediate run `40925884008` failed because the evaluator script lacked the repository root on `sys.path`; fixed in the current head and preserved in history.
 - PR #21 `openfx-youtube-key-header` (base `openfx-audit-fixes`): moves the YouTube Data API key from the query string to the `X-Goog-Api-Key` header. Exact-head CI run `40926204432` passed: 104 repository tests and 15 worker tests.
+- PR dependency caution: #14 follows #12; #15, #16, #17, and #20 are based on #14's branch; #21 is based on #11. PRs #16 and #17 touch the same transcript-import files and may conflict when sequenced even though each is currently mergeable against its own base.
 - None of PRs #14–#21 has been merged by this work.
 
 ### Audit limitations
@@ -146,4 +147,4 @@ The repository could not be cloned in the local execution container because DNS/
 
 ## 9. Latest continuation point
 
-**Next action:** refresh current head CI and mergeability of PRs #14–#21, and confirm all checks for this docs PR. The 24-case synthetic transcript corpus is in PR #20; expand it with independently labelled real-world examples and measure error rates. Then address auditable human-review events, raw transcript artifact provenance, confidence-field semantics, worker failure/recovery and idempotency, artifact verification/MT5 pilot acceptance criteria, and auto-report artifact retention. Review whether to consolidate duplicate workflows. Do not merge any PR without explicit owner approval. Review the PR #11/#12 dependency chain and the inactive nested workflow, but do not merge any PR without explicit owner approval.
+**Next action:** refresh current head CI and mergeability of PRs #14–#21, including the latest docs PR checks for head `a9d4a8093fcda7e4803319678d6f88333bbafe7a`. The 24-case synthetic transcript corpus is in PR #20; expand it with independently labelled real-world examples and measure error rates. Then address auditable human-review events, raw transcript artifact provenance, confidence-field semantics, worker failure/recovery and idempotency, artifact verification/MT5 pilot acceptance criteria, and auto-report artifact retention. Review whether to consolidate duplicate workflows. Do not merge any PR without explicit owner approval. Review the PR #11/#12 dependency chain and the inactive nested workflow, but do not merge any PR without explicit owner approval.
