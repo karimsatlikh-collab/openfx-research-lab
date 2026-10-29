@@ -2,9 +2,13 @@
 
 **Short name:** OpenFX  
 **Tagline:** *Research. Test. Validate. Improve.*  
-**Project type:** Open, evidence-driven research and engineering for Forex trading strategies.
+**Project type:** Publicly visible, rights-reserved research and engineering repository for Forex trading strategies.
 
 > **OpenFX is a research project, not a promise of trading profits.** A backtest or optimization result alone does not establish a durable trading edge.
+
+## Copyright and use permission
+
+This repository is public for viewing and project transparency, but its original materials are **not offered under an open-source license**. The root `LICENSE` file reserves all rights. Public visibility does not grant general permission to copy, modify, redistribute, or commercially use the project's original code. Third-party components, if any, remain subject to their own licenses. External code contributions are not accepted for incorporation unless the project owner first establishes written contribution terms and grants the necessary permission.
 
 ## Mission
 
@@ -37,7 +41,7 @@ Claims should be labelled as:
 1. **Strategy research and validation:** precise hypotheses, MQL5/MT5 implementation, cost-aware backtests, out-of-sample validation, walk-forward analysis, robustness checks.
 2. **Source discovery:** permitted videos, transcripts, papers, documentation, datasets, and public code; preserve provenance and licensing information.
 3. **Backtest operations:** experiment IDs, frozen manifests, queue state, logs, artifact hashes, and future unattended Strategy Tester runs on a compatible Windows host.
-4. **Open-source collaboration:** Python, MQL5, testing, data quality, methodology, documentation, and security.
+4. **Project collaboration:** Python, MQL5, testing, data quality, methodology, documentation, and security, subject to the rights-reserved notice and explicit written permission.
 
 ## Experiment states
 
