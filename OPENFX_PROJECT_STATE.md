@@ -260,3 +260,10 @@ These are pending statuses, not passes. Refresh exact-head Actions before descri
 ### Next action
 
 Refresh exact-head CI for `07665dfa145d1634a33014ec93edd99f4ce44c46`. If green, add schema-level contracts and tamper tests for persisted SourceRecord/Claim/HypothesisCard serialization, then build the synthetic-only end-to-end path (source → claim → hypothesis → frozen trial → two identical synthetic executions → independent hash comparison). Preserve the result as synthetic evidence only.
+
+
+### CI correction — 2026-10-30
+
+- The first exact-head attempt exposed a syntax error in the new test module's optional `__main__` guard (`if __ __name__`); both OpenFX Unit Tests run `40969729907` and Project Tests run `40969730036` failed during `compileall` for that same reason. This is a real failed check and is retained in the history.
+- Corrected the guard in `tests/test_source_provenance.py`, commit `d707b2a46b947431379b47f788c247c4005f3964`.
+- The workflow lookup immediately after that commit returned no runs yet. The corrected head is therefore pending CI evidence; do not describe the G0/G1 slice as passing CI until new exact-head runs are available.
