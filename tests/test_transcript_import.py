@@ -112,6 +112,17 @@ First.
         with self.assertRaisesRegex(ValueError, "already exist"):
             import_transcript_into_registry(updated, "source-001", "A rule.", "txt")
 
+
+    def test_restricted_source_cannot_be_imported(self):
+        registry = make_registry()
+        registry["sources"][0]["license_status"] = "restricted"
+        with self.assertRaisesRegex(ValueError, "rights status"):
+            import_transcript_into_registry(registry, "source-001", "Text.", "txt")
+
+    def test_transcript_content_size_is_bounded(self):
+        with self.assertRaisesRegex(ValueError, "10 MiB"):
+            parse_transcript_text("x" * (10 * 1024 * 1024 + 1), "source-001", "txt")
+
     def test_imports_local_file_with_size_limit_contract(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "sample.srt"
