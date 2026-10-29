@@ -113,6 +113,49 @@ class ExperimentTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_manifest(manifest)
 
+    def test_constructor_rejects_non_object_parameters(self):
+        with self.assertRaises(ValueError):
+            new_experiment("test-params", "h", "v1", "EURUSD", "M15",
+                           "2024-01-01", "2024-02-01", parameters=["unsafe"])
+
+    def test_constructor_rejects_non_finite_parameter(self):
+        with self.assertRaises(ValueError):
+            new_experiment("test-nan", "h", "v1", "EURUSD", "M15",
+                           "2024-01-01", "2024-02-01", parameters={"x": float("nan")})
+
+    def test_manifest_rejects_unknown_root_fields(self):
+        from openfx.experiment import validate_manifest
+        manifest = sample()
+        manifest["unexpected"] = True
+        with self.assertRaises(ValueError):
+            validate_manifest(manifest)
+
+    def test_manifest_rejects_artifact_path_traversal(self):
+        from openfx.experiment import validate_manifest
+        manifest = sample()
+        manifest["artifacts"] = [{
+            "path": "../secret.txt",
+            "size_bytes": 1,
+            "sha256": "a" * 64,
+        }]
+        with self.assertRaises(ValueError):
+            validate_manifest(manifest)
+
+    def test_running_manifest_requires_start_timestamp(self):
+        from openfx.experiment import validate_manifest
+        manifest = sample()
+        manifest["status"] = "RUNNING"
+        with self.assertRaises(ValueError):
+            validate_manifest(manifest)
+
+    def test_completed_manifest_requires_finished_timestamp(self):
+        from openfx.experiment import validate_manifest
+        manifest = sample()
+        manifest["status"] = "COMPLETED"
+        manifest["result"] = {"kind": "mock"}
+        with self.assertRaises(ValueError):
+            validate_manifest(manifest)
+
 
 if __name__ == "__main__":
     unittest.main()
