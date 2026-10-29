@@ -30,6 +30,7 @@ jobs:
           python -m json.tool schemas/experiment-v1.schema.json > /dev/null
           python -m json.tool schemas/source-registry-v1.schema.json > /dev/null
           python -m json.tool schemas/claim-register-v1.schema.json > /dev/null
+          python -m json.tool schemas/backtest-result-v1.schema.json > /dev/null
           python -m json.tool data/source_registry.example.json > /dev/null
           python -m json.tool data/claim_register.example.json > /dev/null
           python -m json.tool worker/worker_config.example.json > /dev/null
