@@ -2,6 +2,7 @@
 from __future__ import annotations
 import hashlib
 import random
+from datetime import datetime
 from typing import Any
 
 
@@ -39,3 +40,23 @@ def summarize_returns(returns: list[float]) -> dict[str, Any]:
 def run_synthetic(*, seed: int, n: int, edge: float = 0.0, noise: float = 1.0) -> dict[str, Any]:
     returns = seeded_returns(seed=seed, n=n, edge=edge, noise=noise)
     return {"seed": seed, **summarize_returns(returns)}
+
+
+
+def validate_feature_timing(feature_name: str, feature_timestamp: str,
+                            decision_timestamp: str) -> bool:
+    """Reject a feature timestamp later than the simulated decision time.
+
+    This catches explicit timestamp leakage in fixtures; it cannot detect all
+    forms of look-ahead, revised data, or leakage hidden inside feature values.
+    """
+    try:
+        feature_time = datetime.fromisoformat(feature_timestamp.replace("Z", "+00:00"))
+        decision_time = datetime.fromisoformat(decision_timestamp.replace("Z", "+00:00"))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("feature and decision timestamps must be ISO-8601") from exc
+    if feature_time.tzinfo is None or decision_time.tzinfo is None:
+        raise ValueError("timestamps must include a timezone")
+    if feature_time > decision_time:
+        raise ValueError(f"look-ahead detected for feature {feature_name!r}")
+    return True
