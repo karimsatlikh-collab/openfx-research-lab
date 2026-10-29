@@ -1,0 +1,110 @@
+name: OpenFX Automated Health Report
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check Python syntax
+        id: syntax
+        run: python -m compileall -q .
+
+      - name: Run unit tests
+        id: tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Run application smoke test
+        id: smoke
+        run: python main.py
+
+      - name: Build health report
+        if: always()
+        env:
+          SYNTAX_RESULT: ${{ steps.syntax.outcome }}
+          TESTS_RESULT: ${{ steps.tests.outcome }}
+          SMOKE_RESULT: ${{ steps.smoke.outcome }}
+          COMMIT_SHA: ${{ github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+          RUN_NUMBER: ${{ github.run_number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          report_dir = Path("health-report")
+          report_dir.mkdir(exist_ok=True)
+
+          checks = {
+              "python_syntax": os.getenv("SYNTAX_RESULT", "not_run"),
+              "unit_tests": os.getenv("TESTS_RESULT", "not_run"),
+              "application_smoke_test": os.getenv("SMOKE_RESULT", "not_run"),
+          }
+          overall = "passed" if all(value == "success" for value in checks.values()) else "needs_attention"
+          report = {
+              "project": "OpenFX Research Lab",
+              "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+              "overall_status": overall,
+              "checks": checks,
+              "commit": os.getenv("COMMIT_SHA", ""),
+              "trigger": os.getenv("EVENT_NAME", ""),
+              "run_number": os.getenv("RUN_NUMBER", ""),
+              "run_url": os.getenv("RUN_URL", ""),
+              "limitations": [
+                  "A passing health check does not mean all planned research features are implemented.",
+                  "This workflow checks syntax, existing unit tests, and basic application startup only.",
+                  "It does not verify 24/7 uptime, video extraction quality, or trading-strategy performance."
+              ],
+          }
+
+          (report_dir / "report.json").write_text(
+              json.dumps(report, indent=2, ensure_ascii=False) + "\n",
+              encoding="utf-8",
+          )
+
+          lines = [
+              "# OpenFX Automated Health Report",
+              "",
+              f"- Overall status: **{overall}**",
+              f"- Generated (UTC): {report['generated_at_utc']}",
+              f"- Commit: `{report['commit']}`",
+              f"- Trigger: `{report['trigger']}`",
+              f"- Workflow run: {report['run_url']}",
+              "",
+              "## Checks",
+              "",
+          ]
+          lines.extend(f"- {name}: **{result}**" for name, result in checks.items())
+          lines.extend(["", "## Scope and limitations", ""])
+          lines.extend(f"- {item}" for item in report["limitations"])
+          (report_dir / "report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+          print("\n".join(lines))
+          PY
+
+      - name: Upload report files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: automated-health-report
+          path: health-report/
+          if-no-files-found: warn
+          retention-days: 30
