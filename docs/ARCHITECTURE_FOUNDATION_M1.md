@@ -51,7 +51,7 @@ JobSpec binds immutable references and SHA-256 digests for StrategySpec, impleme
 
 ## Explicitly not implemented by M1
 
-No production database, append-only ledger, signature/key infrastructure, actual proposer/validator agents, synthetic engine, statistical calculations, MT5 bridge, VPS, broker connectivity, paid API, or live trading. The schemas are contracts only. Full JSON Schema validation in CI, semantic state-machine enforcement, trusted engine attestation, and server-side trial registration are follow-up tasks.
+No production database, append-only ledger, signature/key infrastructure, actual proposer/validator agents, synthetic engine, statistical calculations, MT5 bridge, VPS, broker connectivity, paid API, or live trading. The schemas are contracts only. At the initial M1 commit, full JSON Schema validation in CI, semantic state-machine enforcement, trusted engine attestation, and server-side trial registration were follow-up tasks. The current branch adds structural JSON Schema validation tests; semantic state-machine enforcement, trusted engine attestation, and server-side trial registration remain follow-up tasks.
 
 ## Schema index
 
@@ -82,4 +82,5 @@ Limitations and release blockers:
 - The timestamp guard catches only explicit timestamp violations in fixtures; it cannot detect every form of look-ahead, revised data, target leakage, or contaminated feature computation.
 - The descriptive gate does not implement DSR, PBO, familywise error control, or statistical power analysis. The config records a pre-registered method, but the prototype does not calculate that method. It must not be described as a production statistical validator.
 - Trial counts supplied to this prototype are caller-provided. A trusted registrar must own monotonic counts before the gate can be relied upon.
-- M2 is not complete until CI is green on the latest commit, JSON Schema validation is implemented or explicitly scoped, threat-model tests are expanded, and an independent review accepts these limitations.
+- Structural JSON Schema validation is now exercised in `tests/test_json_schema_validation.py` using Draft 2020-12 validation and format checks. The workflow installs the pinned-major development dependency from `requirements-dev.txt`; this validates schema shape and sample instances, not cross-document consistency or runtime authorization.
+- M2 is not complete until CI is green on the latest commit, semantic contract checks and threat-model tests are expanded, and an independent review accepts these limitations.
