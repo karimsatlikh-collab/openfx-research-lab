@@ -151,6 +151,8 @@ def validate_manifest(manifest: dict[str, Any]) -> None:
     market = manifest["market"]
     if not isinstance(market, dict):
         raise ValueError("market must be an object")
+    if set(market) != {"symbol", "timeframe", "data_start", "data_end"}:
+        raise ValueError("market must contain only symbol, timeframe, data_start, and data_end")
     for key in ("symbol", "timeframe"):
         if not isinstance(market.get(key), str) or not market[key].strip():
             raise ValueError(f"market.{key} must be a non-empty string")
@@ -167,6 +169,8 @@ def validate_manifest(manifest: dict[str, Any]) -> None:
     execution = manifest["execution"]
     if not isinstance(execution, dict):
         raise ValueError("execution must be an object")
+    if set(execution) != {"mode", "worker_version", "started_at_utc", "finished_at_utc"}:
+        raise ValueError("execution contains missing or unknown fields")
     for key in ("mode", "worker_version", "started_at_utc", "finished_at_utc"):
         if key not in execution:
             raise ValueError(f"execution missing required field: {key}")
