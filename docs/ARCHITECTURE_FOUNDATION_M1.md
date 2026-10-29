@@ -66,3 +66,20 @@ No production database, append-only ledger, signature/key infrastructure, actual
 - `gate-verdict-v1.schema.json`: separate, versioned gate result and recorded trial count.
 
 These JSON Schemas are initial contracts and require review/versioning before they are treated as a production API.
+
+
+## M2 prototype additions (not production-ready)
+
+The current branch now includes:
+- `openfx/trial_registry.py`: a local JSONL event ledger prototype with event hashes, a hash chain, idempotency-key checks, family sequence numbers, a lock file, and tamper detection tests.
+- `openfx/synthetic_engine.py`: deterministic seeded synthetic returns and summary metrics; explicit evidence label `synthetic`; a timestamp-level look-ahead guard for controlled fixtures.
+- `openfx/statistical_gate.py`: a small frozen-config descriptive threshold gate with trial-budget checks. It explicitly reports that no multiple-testing correction was calculated.
+- `tests/test_m2_research_controls.py`: repeatability, no-edge false-positive calibration, planted-edge detection, explicit future-timestamp rejection, trial-budget enforcement, idempotency, and tamper-detection tests.
+
+Limitations and release blockers:
+- The local registry is not a trusted central registrar, not cryptographically signed, and not resilient to a privileged actor rewriting the entire ledger. The lock file can become stale after a hard crash and requires operator review; do not automatically delete it.
+- The synthetic generator is an abstract return-stream fixture, not a market simulator, not representative market data, and not evidence of strategy edge.
+- The timestamp guard catches only explicit timestamp violations in fixtures; it cannot detect every form of look-ahead, revised data, target leakage, or contaminated feature computation.
+- The descriptive gate does not implement DSR, PBO, familywise error control, or statistical power analysis. The config records a pre-registered method, but the prototype does not calculate that method. It must not be described as a production statistical validator.
+- Trial counts supplied to this prototype are caller-provided. A trusted registrar must own monotonic counts before the gate can be relied upon.
+- M2 is not complete until CI is green on the latest commit, JSON Schema validation is implemented or explicitly scoped, threat-model tests are expanded, and an independent review accepts these limitations.
