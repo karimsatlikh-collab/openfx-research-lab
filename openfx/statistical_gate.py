@@ -56,3 +56,24 @@ def evaluate_synthetic_summary(summary: dict[str, Any], config: dict[str, Any],
             "Passing thresholds does not establish profitability or predictive validity.",
         ],
     }
+
+
+def evaluate_registered_synthetic_summary(summary: dict[str, Any], config: dict[str, Any],
+                                           *, registry: Any, family_id: str) -> dict[str, Any]:
+    """Evaluate using a trial count read from the registry, not caller-supplied.
+
+    The local registry is a prototype; this helper does not make it a trusted
+    central registrar or protect against a privileged full-ledger rewrite.
+    """
+    if not hasattr(registry, "trial_count"):
+        raise GateConfigError("registry must provide registrar-owned trial_count(family_id)")
+    count = registry.trial_count(family_id)
+    if count < 1:
+        raise GateConfigError("cannot evaluate a family with no registered trials")
+    verdict = evaluate_synthetic_summary(summary, config, trial_count=count)
+    verdict["trial_count_source"] = "local_registry"
+    verdict["trial_family_id"] = family_id
+    verdict["limitations"] = list(verdict.get("limitations", [])) + [
+        "Trial count is read from a local prototype ledger, not a trusted central registrar."
+    ]
+    return verdict
