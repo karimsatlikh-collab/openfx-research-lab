@@ -18,6 +18,31 @@ _NEGATIONS = {
     "بدون", "نمی‌شود", "نمیشود", "نمی‌کند", "نمیکند", "نخواهد", "نشود",
 }
 
+# Changes to these condition/threshold words can reverse or materially narrow a
+# trading rule even when overall token similarity remains high.
+_CONDITION_MARKERS = {
+    "only", "unless", "except", "until", "if", "when", "while",
+    "before", "after", "above", "below", "over", "under", "between",
+    "within", "outside", "least", "most", "minimum", "maximum",
+    "greater", "less", "equal", "equals", "later", "earlier", "prior",
+    "following", "exactly", "strictly", "inclusive", "exclusive",
+    "فقط", "مگر", "جز", "به‌جز", "تا", "قبل", "پیش", "بعد",
+    "بالا", "پایین", "بالاتر", "پایین‌تر", "حداقل", "حداکثر",
+    "بیشتر", "کمتر", "برابر", "اگر", "وقتی", "باید", "لازم",
+    "مجاز", "غیرمجاز",
+}
+
+_UNIT_MARKERS = {
+    "atr", "pip", "pips", "point", "points", "lot", "lots",
+    "percent", "percentage", "minute", "minutes", "second", "seconds",
+    "hour", "hours", "day", "days", "week", "weeks", "month", "months",
+    "year", "years", "candle", "candles", "bar", "bars", "tick", "ticks",
+    "usd", "eur", "gbp", "jpy",
+    "پیپ", "پیپ‌ها", "پوینت", "پوینت‌ها", "درصد", "کندل", "کندل‌ها",
+    "دقیقه", "ثانیه", "ساعت", "روز", "هفته", "ماه", "سال", "لات",
+    "دلار", "یورو",
+}
+
 
 _DIGIT_AND_SYMBOL_TRANSLATION = str.maketrans({
     **dict(zip("۰۱۲۳۴۵۶۷۸۹", "0123456789")),
@@ -54,6 +79,10 @@ def compare_transcript_fidelity(reference_text: Any, extracted_text: Any, *, min
     unexpected_numbers = list((extracted_numbers - reference_numbers).elements())
     reference_negations = [token for token in reference_tokens if token in _NEGATIONS]
     extracted_negations = [token for token in extracted_tokens if token in _NEGATIONS]
+    reference_conditions = [token for token in reference_tokens if token in _CONDITION_MARKERS]
+    extracted_conditions = [token for token in extracted_tokens if token in _CONDITION_MARKERS]
+    reference_units = [token for token in reference_tokens if token in _UNIT_MARKERS]
+    extracted_units = [token for token in extracted_tokens if token in _UNIT_MARKERS]
     similarity = SequenceMatcher(a=reference_tokens, b=extracted_tokens, autojunk=False).ratio()
     flags = []
     if missing_numbers:
@@ -62,6 +91,10 @@ def compare_transcript_fidelity(reference_text: Any, extracted_text: Any, *, min
         flags.append("unexpected_numbers")
     if reference_negations != extracted_negations:
         flags.append("negation_mismatch")
+    if reference_conditions != extracted_conditions:
+        flags.append("condition_mismatch")
+    if reference_units != extracted_units:
+        flags.append("unit_mismatch")
     if similarity < min_similarity:
         flags.append("low_token_similarity")
 
