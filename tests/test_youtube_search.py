@@ -43,6 +43,7 @@ class YouTubeSearchTests(unittest.TestCase):
 
         def opener(request, timeout):
             seen["url"] = request.full_url
+            seen["headers"] = dict(request.header_items())
             seen["timeout"] = timeout
             return FakeResponse(payload())
 
@@ -59,7 +60,11 @@ class YouTubeSearchTests(unittest.TestCase):
         self.assertEqual(record["published_date"], "2025-02-03")
         self.assertEqual(seen["timeout"], 20)
         params = parse_qs(urlparse(seen["url"]).query)
-        self.assertEqual(params["key"], ["test-api-key"])
+        self.assertNotIn("key", params)
+        self.assertEqual(
+            next(value for name, value in seen["headers"].items() if name.lower() == "x-goog-api-key"),
+            "test-api-key",
+        )
         self.assertEqual(params["q"], ["forex pivots"])
         self.assertEqual(params["regionCode"], ["GB"])
 
