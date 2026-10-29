@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -35,9 +36,15 @@ def main(argv: list[str] | None = None) -> int:
         else:
             report_path = Path(args.artifact_root).resolve() / tester_reports[0]["path"]
             try:
-                if report_path.stat().st_size > 5 * 1024 * 1024:
+                report_limit = 5 * 1024 * 1024
+                with report_path.open("rb") as stream:
+                    report_bytes = stream.read(report_limit + 1)
+                if len(report_bytes) > report_limit:
                     raise ValueError("tester report exceeds the 5 MiB parser limit")
-                report_text = report_path.read_text(encoding="utf-8-sig")
+                if (len(report_bytes) != tester_reports[0]["size_bytes"]
+                        or hashlib.sha256(report_bytes).hexdigest().lower() != tester_reports[0]["sha256"].lower()):
+                    raise ValueError("tester report changed after artifact verification")
+                report_text = report_bytes.decode("utf-8-sig")
                 report_parsing = parse_mt5_report_html(report_text)
                 report_parsing["status"] = "parsed"
                 metric_comparison = compare_report_metrics(report_parsing, result)
