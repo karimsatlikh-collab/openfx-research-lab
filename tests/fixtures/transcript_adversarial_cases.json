@@ -1,0 +1,174 @@
+{
+  "schema_version": 1,
+  "scope": "Synthetic curated regression fixtures; not a statistically representative sample of real transcripts.",
+  "cases": [
+    {
+      "id": "equiv-exact",
+      "label": "equivalent",
+      "reference": "Pivot is confirmed.",
+      "extracted": "Pivot is confirmed.",
+      "expected_status": "pass_selected_checks"
+    },
+    {
+      "id": "equiv-case-punctuation",
+      "label": "equivalent",
+      "reference": "Pivot is confirmed.",
+      "extracted": "pivot is confirmed!",
+      "expected_status": "pass_selected_checks"
+    },
+    {
+      "id": "equiv-persian-digits-percent",
+      "label": "equivalent",
+      "reference": "Risk limit is 5%.",
+      "extracted": "Risk limit is ۵٪.",
+      "expected_status": "pass_selected_checks"
+    },
+    {
+      "id": "equiv-unicode-minus",
+      "label": "equivalent",
+      "reference": "Use −5 points.",
+      "extracted": "Use -5 points.",
+      "expected_status": "pass_selected_checks"
+    },
+    {
+      "id": "equiv-spacing",
+      "label": "equivalent",
+      "reference": "Enter only after close.",
+      "extracted": "Enter  only after close!",
+      "expected_status": "pass_selected_checks"
+    },
+    {
+      "id": "equiv-unit-case",
+      "label": "equivalent",
+      "reference": "Use 1.5 ATR.",
+      "extracted": "Use 1.5 atr.",
+      "expected_status": "pass_selected_checks"
+    },
+    {
+      "id": "change-dropped-negation",
+      "label": "meaning_change",
+      "reference": "Do not enter before close.",
+      "extracted": "Do enter before close.",
+      "expected_status": "needs_human_review"
+    },
+    {
+      "id": "change-number",
+      "label": "meaning_change",
+      "reference": "Use 1.5 ATR.",
+      "extracted": "Use 2.5 ATR.",
+      "expected_status": "needs_human_review"
+    },
+    {
+      "id": "change-dropped-percent",
+      "label": "meaning_change",
+      "reference": "Risk is 5%.",
+      "extracted": "Risk is 5.",
+      "expected_status": "needs_human_review"
+    },
+    {
+      "id": "change-sign",
+      "label": "meaning_change",
+      "reference": "Use -5 points.",
+      "extracted": "Use 5 points.",
+      "expected_status": "needs_human_review"
+    },
+    {
+      "id": "change-before-after",
+      "label": "meaning_change",
+      "reference": "Enter before close.",
+      "extracted": "Enter after close.",
+      "expected_status": "needs_human_review"
+    },
+    {
+      "id": "change-dropped-only",
+      "label": "meaning_change",
+      "reference": "Buy only above 1.5 ATR.",
+      "extracted": "Buy above 1.5 ATR.",
+      "expected_status": "needs_human_review"
+    },
+    {
+      "id": "change-unless-if",
+      "label": "meaning_change",
+      "reference": "Enter unless the level breaks.",
+      "extracted": "Enter if the level breaks.",
+      "expected_status": "needs_human_review"
+    },
+    {
+      "id": "change-above-below",
+      "label": "meaning_change",
+      "reference": "Use stop above the level.",
+      "extracted": "Use stop below the level.",
+      "expected_status": "needs_human_review"
+    },
+    {
+      "id": "change-unit-atr-pips",
+      "label": "meaning_change",
+      "reference": "Use 1.5 ATR as the confirmed pivot threshold before entering on the next candle.",
+      "extracted": "Use 1.5 pips as the confirmed pivot threshold before entering on the next candle.",
+      "expected_status": "needs_human_review"
+    },
+    {
+      "id": "change-persian-only",
+      "label": "meaning_change",
+      "reference": "فقط بعد از بسته شدن کندل وارد شو",
+      "extracted": "بعد از بسته شدن کندل وارد شو",
+      "expected_status": "needs_human_review"
+    },
+    {
+      "id": "change-persian-negation",
+      "label": "meaning_change",
+      "reference": "این سطح معتبر نیست",
+      "extracted": "این سطح معتبر است",
+      "expected_status": "needs_human_review"
+    },
+    {
+      "id": "change-persian-min-max",
+      "label": "meaning_change",
+      "reference": "حداقل 1.5 ATR",
+      "extracted": "حداکثر 1.5 ATR",
+      "expected_status": "needs_human_review"
+    },
+    {
+      "id": "change-date",
+      "label": "meaning_change",
+      "reference": "Rule starts on 2024-01-15.",
+      "extracted": "Rule starts on 2024-01-16.",
+      "expected_status": "needs_human_review"
+    },
+    {
+      "id": "change-timeframe",
+      "label": "meaning_change",
+      "reference": "Use H1 for entry.",
+      "extracted": "Use H4 for entry.",
+      "expected_status": "needs_human_review"
+    },
+    {
+      "id": "change-time-unit",
+      "label": "meaning_change",
+      "reference": "Wait 5 minutes before entry.",
+      "extracted": "Wait 5 hours before entry.",
+      "expected_status": "needs_human_review"
+    },
+    {
+      "id": "change-can-cannot",
+      "label": "meaning_change",
+      "reference": "You can enter after confirmation.",
+      "extracted": "You cannot enter after confirmation.",
+      "expected_status": "needs_human_review"
+    },
+    {
+      "id": "change-pips-points",
+      "label": "meaning_change",
+      "reference": "Stop loss is 20 pips.",
+      "extracted": "Stop loss is 20 points.",
+      "expected_status": "needs_human_review"
+    },
+    {
+      "id": "change-least-most",
+      "label": "meaning_change",
+      "reference": "Use at least 2 bars.",
+      "extracted": "Use at most 2 bars.",
+      "expected_status": "needs_human_review"
+    }
+  ]
+}
