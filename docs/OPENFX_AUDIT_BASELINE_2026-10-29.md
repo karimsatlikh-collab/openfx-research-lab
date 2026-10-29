@@ -198,12 +198,19 @@ validated strategy rule -> compiled EA -> real MT5 Strategy Tester
 **Impact:** The field can assert that review occurred without a durable record of who reviewed what and when; source fidelity and logical entailment remain outside the validator's proof.  
 **Action:** Add an auditable review record/event and explicitly label provenance validation separately from source truth and rule interpretation.
 
-### F-07 — Backtest metadata validation is not artifact or result verification
+### F-07 — Artifact integrity checks exist, but do not prove the authenticity of an MT5 run
 **Severity:** P1 — financial-research integrity gap  
 **Status:** Code-reviewed on PR #11 branch  
-**Evidence:** `openfx/backtest_result.py` explicitly states it does not verify artifact bytes, parse reports, or prove profitability; `openfx/mt5_report_parser.py` is a limited English HTML summary parser and labels its scope accordingly.  
-**Impact:** Correctly shaped hashes/metrics can still refer to absent, changed, unrelated, or fabricated artifacts unless actual files and provenance are independently checked. A parseable report is not proof of a genuine tester run.  
-**Action:** Require file-backed size/hash verification under a trusted root, cross-check parsed report metrics, preserve raw tester/journal artifacts, and independently reproduce selected runs.
+**Evidence:** `openfx/backtest_result.py` contains `verify_artifact_files` for declared file sizes and SHA-256; `openfx/result_cli.py` calls it, parses a verified tester HTML artifact, and compares selected metrics. `openfx/mt5_report_parser.py` is a limited English HTML summary parser and states that its scope is not profitability verification.  
+**Impact:** These checks are stronger than metadata-only validation, but file hashes prove integrity only relative to the supplied manifest. They do not prove the files came from a genuine MT5 terminal run, that the EA/data were actually used by that run, or that journal/data coverage and cost/split assertions are true.  
+**Action:** Preserve raw artifacts and hashes, but derive each verification flag from an evidence-specific checker or auditable human-review event. Bind run identity, terminal build, EA/data hashes, configuration, logs, and report to one manifest, then independently reproduce selected runs.
+
+### F-19 — Backtest verification flags can be self-asserted in the result JSON
+**Severity:** P1 — research result integrity  
+**Status:** Code-reviewed on PR #11 branch  
+**Evidence:** `validate_backtest_result` accepts `journal_complete`, `data_coverage_verified`, `costs_recorded`, and `split_boundaries_verified` when their input values are simply `true`. The CLI independently sets `tester_report_parsed` after parsing, but does not independently derive the other flags from journal/data artifacts or an auditable reviewer record.  
+**Impact:** A result can be labelled `ready_for_independent_review` while some important verification statements are only assertions in the JSON. The status means review readiness, not proven verification, but the field names can overstate what the tool checked.  
+**Action:** Separate declared checks from machine-verified checks and human review events. For each flag, store the validator/reviewer, evidence artifact, timestamp, and outcome; leave it unverified until that evidence is checked. Do not silently trust user-supplied `true` values as verification evidence.
 
 ### F-08 — Gemini workflow can finish successfully when the AI review did not run
 **Severity:** P2 — status interpretation risk  
