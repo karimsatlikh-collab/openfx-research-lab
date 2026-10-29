@@ -31,6 +31,8 @@ class SourceCliTests(unittest.TestCase):
                 "add-source", "--registry", str(registry),
                 "--source-id", "video-001", "--type", "video",
                 "--url", "https://example.com/video", "--title", "Synthetic video",
+                "--license-status", "reviewed_permitted",
+                "--license-reference", "synthetic test permission record",
             ])
             self.assertEqual((code, err), (0, ""))
             code, out, err = self.invoke([
