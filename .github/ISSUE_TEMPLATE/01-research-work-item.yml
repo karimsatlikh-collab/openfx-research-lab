@@ -1,0 +1,131 @@
+name: Research Work Item
+description: Register a traceable research, engineering, data, or infrastructure task.
+title: "[WORK] "
+labels:
+  - research-work
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use one issue for one decision or deliverable. Do not mark work complete without evidence. Never include passwords, API keys, broker credentials, or personal data.
+  - type: input
+    id: work_id
+    attributes:
+      label: Work ID
+      description: Stable identifier, e.g. WORK-2026-001. If not assigned yet, write TBA.
+      placeholder: WORK-YYYY-NNN
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: Question or objective
+      description: What uncertainty or decision will this task resolve?
+      placeholder: State one clear objective.
+    validations:
+      required: true
+  - type: dropdown
+    id: owner_team
+    attributes:
+      label: Responsible functional team
+      options:
+        - Central Research Orchestration
+        - Source Discovery and Collection
+        - Extraction and Knowledge Engineering
+        - Strategy Research
+        - Strategy Engineering
+        - Backtest and Optimization Operations
+        - Independent Validation / Watchdog
+        - Data and Experiment Governance
+        - Platform / DevOps / Reliability
+        - Risk and Research Governance
+    validations:
+      required: true
+  - type: dropdown
+    id: status
+    attributes:
+      label: Initial status
+      options:
+        - proposed
+        - ready
+        - blocked
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - P0 - critical prerequisite
+        - P1 - high
+        - P2 - normal
+        - P3 - later
+    validations:
+      required: true
+  - type: textarea
+    id: inputs
+    attributes:
+      label: Inputs and dependencies
+      description: Include repository paths, source IDs, dataset versions, code commits, and dependent work items.
+    validations:
+      required: true
+  - type: textarea
+    id: outputs
+    attributes:
+      label: Expected outputs
+      description: Name the files, report, measurements, or decision expected.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance tests
+      description: Write observable pass/fail checks. Avoid vague criteria such as "works well".
+    validations:
+      required: true
+  - type: textarea
+    id: assumptions
+    attributes:
+      label: Assumptions and uncertainty
+      description: Separate user-confirmed rules, source-supported facts, engineering choices, and unverified hypotheses.
+    validations:
+      required: true
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Risk class
+      options:
+        - low
+        - medium
+        - high
+        - critical
+    validations:
+      required: true
+  - type: dropdown
+    id: paid_resources
+    attributes:
+      label: Does this task incur paid services or external charges?
+      options:
+        - No
+        - Possibly - approval required before use
+        - Yes - explicit approval already recorded in the issue
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Completion evidence (fill when work is done)
+      description: Commit SHA, test output, report path, logs, source references, and limitations. If not run, say not run.
+    validations:
+      required: false
+  - type: checkboxes
+    id: safeguards
+    attributes:
+      label: Required safeguards
+      options:
+        - label: I will preserve failed/negative results and relevant prior versions.
+          required: true
+        - label: I will not claim a compile, backtest, deployment, or extraction occurred without evidence.
+          required: true
+        - label: I will not initiate paid services, purchases, or live trading without explicit user approval.
+          required: true
