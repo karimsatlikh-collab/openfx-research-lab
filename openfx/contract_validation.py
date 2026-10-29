@@ -68,7 +68,7 @@ def validate_job_bundle(
     _require(isinstance(policy, dict), "gate trial_family_policy is required")
     _require(policy.get("count_failures_and_abandoned") is True,
              "gate policy must count failures and abandoned trials")
-    _require(isinstance(policy.get("max_trials"), int) and policy["max_trials"] >= 1,
+    _require(isinstance(policy.get("max_trials"), int) and not isinstance(policy.get("max_trials"), bool) and policy["max_trials"] >= 1,
              "gate max_trials must be a positive integer")
     _require(budget["max_trials"] <= policy["max_trials"],
              "job trial budget exceeds the frozen gate family budget")
