@@ -1,8 +1,6 @@
 """
-Universal Data Collection and Research Team
-Initial project entry point.
+OpenFX Research Lab entry point.
 """
-
 import json
 import logging
 import platform
@@ -24,33 +22,32 @@ logging.basicConfig(
         logging.FileHandler(LOG_DIR / "research.log", encoding="utf-8"),
     ],
 )
-
-logger = logging.getLogger("research_team")
+logger = logging.getLogger("openfx")
 
 
 def get_system_status():
     """Return basic runtime and project information."""
     return {
-        "project": "Universal Data Collection and Research Team",
-        "status": "initializing",
+        "project": "OpenFX Research Lab",
+        "short_name": "OpenFX",
+        "status": "research_scaffold",
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "python_version": platform.python_version(),
         "data_directory": str(DATA_DIR),
         "log_directory": str(LOG_DIR),
+        "mt5_available": False,
+        "trading_enabled": False,
     }
 
 
 def main():
     status = get_system_status()
-
-    logger.info("Research system startup")
+    logger.info("OpenFX startup")
     logger.info("Project status: %s", status["status"])
-
     print(json.dumps(status, indent=2, ensure_ascii=False))
-
     logger.info(
-        "Initial setup loaded. Data collection and research modules "
-        "have not been implemented yet."
+        "Research scaffold loaded. No MT5 terminal, broker connection, "
+        "market-data pipeline, or backtest has been started."
     )
 
 
