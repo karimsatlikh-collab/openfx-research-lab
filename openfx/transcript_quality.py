@@ -19,8 +19,22 @@ _NEGATIONS = {
 }
 
 
+_DIGIT_AND_SYMBOL_TRANSLATION = str.maketrans({
+    **dict(zip("۰۱۲۳۴۵۶۷۸۹", "0123456789")),
+    **dict(zip("٠١٢٣٤٥٦٧٨٩", "0123456789")),
+    "٪": "%",
+    "−": "-",
+    "－": "-",
+    "＋": "+",
+})
+
+
 def _tokens(text: str) -> list[str]:
-    return [token.casefold() for token in _TOKEN_RE.findall(text)]
+    # Normalize equivalent digit and sign glyphs before comparing. Keep the
+    # sign and percent marker attached to numeric tokens so meaningful changes
+    # such as -5 -> 5 and 5% -> 5 remain detectable.
+    normalized = text.translate(_DIGIT_AND_SYMBOL_TRANSLATION)
+    return [token.casefold() for token in _TOKEN_RE.findall(normalized)]
 
 
 def compare_transcript_fidelity(reference_text: Any, extracted_text: Any, *, min_similarity: float = 0.85) -> dict:

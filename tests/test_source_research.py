@@ -168,6 +168,25 @@ class TranscriptFidelityTests(unittest.TestCase):
         self.assertIn("missing_or_changed_numbers", result["flags"])
         self.assertIn("unexpected_numbers", result["flags"])
 
+    def test_equivalent_persian_and_latin_digits_do_not_flag_numeric_change(self):
+        result = compare_transcript_fidelity("Risk limit is 5%.", "Risk limit is ۵%.")
+        self.assertEqual(result["status"], "pass_selected_checks")
+        self.assertNotIn("missing_or_changed_numbers", result["flags"])
+        self.assertNotIn("unexpected_numbers", result["flags"])
+
+    def test_equivalent_persian_percent_and_latin_percent_are_normalized(self):
+        result = compare_transcript_fidelity("ریسک ۵٪ است", "ریسک 5% است")
+        self.assertEqual(result["status"], "pass_selected_checks")
+        self.assertNotIn("missing_or_changed_numbers", result["flags"])
+        self.assertNotIn("unexpected_numbers", result["flags"])
+
+    def test_unicode_minus_is_equivalent_but_negative_sign_is_preserved(self):
+        equivalent = compare_transcript_fidelity("Use −5 points.", "Use -5 points.")
+        self.assertEqual(equivalent["status"], "pass_selected_checks")
+        changed = compare_transcript_fidelity("Use −5 points.", "Use 5 points.")
+        self.assertIn("missing_or_changed_numbers", changed["flags"])
+        self.assertIn("unexpected_numbers", changed["flags"])
+
     def test_empty_text_is_rejected(self):
         with self.assertRaises(ValueError):
             compare_transcript_fidelity("source words", "   ")
