@@ -133,10 +133,10 @@ on branch `openfx-mission-state-docs`, commit `09f909f756fbda2afe37b6d96b2f06eba
 ### Additional audit branches and verified fixes
 - PR #14 `openfx-audit-round1` (base `openfx-transcript-adversarial-checks`): normalizes equivalent Persian/Arabic-Indic digits and common percent/sign glyphs. CI run `40924158772` passed: 109 repository tests and 15 worker tests.
 - PR #15 `openfx-schema-validation` (base `openfx-audit-round1`): adds pinned JSON Schema validation and fixtures. CI run `40924445011` passed: 8 dedicated schema tests, 117 repository tests, 15 worker tests.
-- PR #16 `openfx-transcript-import-strictness` (base `openfx-audit-round1`): rejects malformed subtitle blocks without timestamps instead of silently omitting them. CI run `40924573796` passed: 110 repository tests and 15 worker tests.
+- PR #16 `openfx-transcript-import-strictness` (base `openfx-audit-round1`): rejects malformed subtitle blocks without timestamps and distinguishes valid cue IDs such as `NOTE`/`STYLE` from metadata. Exact-head CI run `40925335092` passed: 112 repository tests and 15 worker tests. An intermediate failed run `40925250131` exposed the cue-ID bug; it was corrected and the failure remains in GitHub history.
 - PR #17 `openfx-rights-gate` (base `openfx-audit-round1`): blocks transcript import unless rights are `reviewed_permitted` or `public_domain` with a reference. After correcting a CLI fixture that still relied on unknown rights, exact-head CI run `40924903871` passed: 111 repository tests and 15 worker tests.
-- PR #18 `openfx-local-scan-boundary` (base `main`): skips symlinks to keep local metadata scans within the selected root. Data/project test run `40924838032` logged 18 passing tests; PR-triggered test runs and CodeQL run `40924853233` also passed.
-- PR #19 `openfx-ci-least-privilege` (base `main`): adds `contents: read` permissions and five-minute timeouts to the two baseline test workflows. Test runs `40925003750` and `40925003699` passed; CodeQL run `40925003707` was still in progress at last inspection.
+- PR #18 `openfx-local-scan-boundary` (base `main`): skips symlinks and records root-relative paths to disambiguate same-named files. Current-head Project Tests `40925208557`, OpenFX Unit Tests `40925208133`, and CodeQL `40925208196` all passed.
+- PR #19 `openfx-ci-least-privilege` (base `main`): adds `contents: read` permissions and five-minute timeouts to the two baseline test workflows. Test runs `40925003750` and `40925003699`, CodeQL `40925003707`, and Gemini review `40925001639` all passed.
 - None of PRs #14–#19 has been merged by this work.
 
 ### Audit limitations
@@ -144,4 +144,4 @@ The repository could not be cloned in the local execution container because DNS/
 
 ## 9. Latest continuation point
 
-**Next action:** refresh PR #19 CodeQL status and inspect all open audit PRs for current mergeability/checks. Then continue with auditable human-review events for claims, a labelled transcript adversarial corpus, worker failure/recovery and idempotency, and artifact verification/MT5 pilot acceptance criteria. Review whether root-relative file locators should be added to local metadata, and assess the auto-report artifact retention gap. Review the PR #11/#12 dependency chain and the inactive nested workflow, but do not merge any PR without explicit owner approval.
+**Next action:** refresh the current head CI and mergeability of PRs #14–#19, and check the latest CI status for this docs PR. Then continue with auditable human-review events for claims, a labelled transcript adversarial corpus, worker failure/recovery and idempotency, and artifact verification/MT5 pilot acceptance criteria. Review the auto-report artifact-retention gap and whether to consolidate duplicate workflows. Do not merge any PR without explicit owner approval. Review the PR #11/#12 dependency chain and the inactive nested workflow, but do not merge any PR without explicit owner approval.
