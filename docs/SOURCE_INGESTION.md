@@ -3,7 +3,7 @@
 ## Implemented foundation
 
 - `openfx/source_registry.py` validates stable source IDs, HTTPS URLs, source type, author/date metadata, rights-review status, access method, collection timestamp, and optional SHA-256 content hash. It can validate and atomically save/load a local registry.
-- `openfx/transcript_import.py` imports authorized local VTT, SRT, and plain-text files; it preserves timestamps when present, strips subtitle markup, creates deterministic segment IDs, and hashes the exact imported text. It rejects malformed or out-of-order subtitle cues, caps content at 10 MiB, and blocks sources marked `restricted` or `permission_required`.
+- `openfx/transcript_import.py` imports authorized local VTT, SRT, and plain-text files; it preserves timestamps when present, strips subtitle markup, creates deterministic segment IDs, and hashes the exact imported text. It rejects malformed or out-of-order subtitle cues, caps content at 10 MiB, and permits ingestion only when rights are explicitly marked `reviewed_permitted` or `public_domain` with a rights reference. `unknown`, `restricted`, and `permission_required` sources are blocked.
 - `openfx/youtube_search.py` searches public video metadata through the official YouTube Data API v3; it does not download videos or captions.
 - `python -m openfx.source_cli` provides local commands to initialize a registry, register source metadata, import an authorized transcript, and search YouTube metadata. The search command requires `YOUTUBE_API_KEY` in the environment; restrict that key to the YouTube Data API v3 in Google Cloud and never commit it.
 
@@ -17,7 +17,7 @@
 
 These modules validate records and import local transcript files. The official API connector discovers video metadata only; it does **not** download media, obtain captions, run speech recognition, or prove that a transcript is correct. The transcript fidelity checker is a heuristic triage tool, not a semantic verifier. Human review against the original source remains necessary for important rules, numbers, dates, negation, speaker attribution, and timestamps.
 
-A public URL does not automatically grant permission to download, copy, transcribe, or redistribute its content. Keep the rights status as `unknown` until reviewed. Use only authorized source methods and respect site terms, copyright, access controls, and rate limits.
+A public URL does not automatically grant permission to download, copy, transcribe, or redistribute its content. Keep the rights status as `unknown` until reviewed. Transcript import refuses unknown rights; after reviewing a permission/license, update the record to `reviewed_permitted` or `public_domain` with a meaningful reference. Use only authorized source methods and respect site terms, copyright, access controls, and rate limits.
 
 ## Example local workflow
 
