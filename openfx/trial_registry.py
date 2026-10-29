@@ -82,6 +82,8 @@ class LocalTrialRegistry:
                 raise TrialRegistryError(f"trial_id crosses families at ledger line {line_number}")
             if prior_trial and prior_trial[-1]["outcome"] != "pending":
                 raise TrialRegistryError(f"event follows terminal trial outcome at ledger line {line_number}")
+            if prior_trial and row["outcome"] == "pending":
+                raise TrialRegistryError(f"pending trial cannot repeat pending outcome at ledger line {line_number}")
             expected_family_sequence = 1 + sum(item["family_id"] == row["family_id"] for item in rows)
             if isinstance(row["family_sequence"], bool) or row["family_sequence"] != expected_family_sequence:
                 raise TrialRegistryError(f"invalid family_sequence at ledger line {line_number}")
