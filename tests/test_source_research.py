@@ -82,6 +82,10 @@ class SourceRegistryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_transcript_segment(segment, {"source-001"})
 
+    def test_malformed_source_type_is_rejected_cleanly(self):
+        with self.assertRaises(ValueError):
+            validate_source_record(source_record(source_type=[]))
+
 
 class TranscriptFidelityTests(unittest.TestCase):
     def test_exact_transcript_passes_selected_checks(self):
@@ -98,6 +102,12 @@ class TranscriptFidelityTests(unittest.TestCase):
         self.assertIn("missing_or_changed_numbers", result["flags"])
         self.assertIn("unexpected_numbers", result["flags"])
         self.assertEqual(result["status"], "needs_human_review")
+
+
+    def test_signed_number_change_is_flagged(self):
+        result = compare_transcript_fidelity("Use -5 points.", "Use 5 points.")
+        self.assertIn("missing_or_changed_numbers", result["flags"])
+        self.assertIn("unexpected_numbers", result["flags"])
 
     def test_empty_text_is_rejected(self):
         with self.assertRaises(ValueError):
