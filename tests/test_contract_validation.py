@@ -5,7 +5,7 @@ from pathlib import Path
 
 from openfx.contract_validation import (
     ContractValidationError, canonical_sha256, validate_job_bundle,
-    validate_run_against_job, validate_run_transition,
+    validate_run_against_job, validate_attested_run, validate_run_transition,
 )
 from openfx.statistical_gate import evaluate_registered_synthetic_summary, GateConfigError
 from openfx.trial_registry import LocalTrialRegistry, TrialRegistryError
@@ -88,6 +88,75 @@ class SemanticContractTests(unittest.TestCase):
         run["evidence_level"] = "mt5-demo"
         with self.assertRaisesRegex(ContractValidationError, "evidence_level"):
             validate_run_against_job(run, job)
+
+    def test_attested_run_fails_closed_without_trusted_verifier(self):
+        job, *_ = bundle()
+        run = {
+            "job_id": "job-1", "run_id": "run-1", "status": "COMPLETED",
+            "evidence_level": "synthetic",
+            "timestamps": {"finished_at_utc": "2026-01-01T00:01:00Z"},
+            "inputs": {
+                "implementation_sha256": job["implementation"]["build_sha256"],
+                "strategy_spec_sha256": job["strategy_spec_ref"]["sha256"],
+                "data_profile_sha256": job["data_profile_ref"]["sha256"],
+                "cost_profile_sha256": job["cost_profile_ref"]["sha256"],
+                "gate_config_sha256": job["gate_config_ref"]["sha256"],
+            },
+        }
+        with self.assertRaisesRegex(ContractValidationError, "attestation verifier is required"):
+            validate_attested_run(run, job, attestation=None)
+
+    def test_attested_run_rejects_claims_not_bound_to_job(self):
+        job, *_ = bundle()
+        run = {
+            "job_id": "job-1", "run_id": "run-1", "status": "COMPLETED",
+            "evidence_level": "synthetic",
+            "timestamps": {"finished_at_utc": "2026-01-01T00:01:00Z"},
+            "inputs": {
+                "implementation_sha256": job["implementation"]["build_sha256"],
+                "strategy_spec_sha256": job["strategy_spec_ref"]["sha256"],
+                "data_profile_sha256": job["data_profile_ref"]["sha256"],
+                "cost_profile_sha256": job["cost_profile_ref"]["sha256"],
+                "gate_config_sha256": job["gate_config_ref"]["sha256"],
+            },
+        }
+        attestation = {
+            "executor_id": "executor-1", "job_id": "job-1", "run_id": "run-1",
+            "engine": "synthetic", "implementation_sha256": "f" * 64,
+            "issued_at_utc": "2026-01-01T00:02:00Z", "signature": "opaque-signature",
+        }
+        with self.assertRaisesRegex(ContractValidationError, "implementation_sha256"):
+            validate_attested_run(run, job, attestation=attestation,
+                                  attestation_verifier=lambda *_: True)
+
+    def test_attested_run_requires_external_verifier_acceptance(self):
+        job, *_ = bundle()
+        run = {
+            "job_id": "job-1", "run_id": "run-1", "status": "COMPLETED",
+            "evidence_level": "synthetic",
+            "timestamps": {"finished_at_utc": "2026-01-01T00:01:00Z"},
+            "inputs": {
+                "implementation_sha256": job["implementation"]["build_sha256"],
+                "strategy_spec_sha256": job["strategy_spec_ref"]["sha256"],
+                "data_profile_sha256": job["data_profile_ref"]["sha256"],
+                "cost_profile_sha256": job["cost_profile_ref"]["sha256"],
+                "gate_config_sha256": job["gate_config_ref"]["sha256"],
+            },
+        }
+        attestation = {
+            "executor_id": "executor-1", "job_id": "job-1", "run_id": "run-1",
+            "engine": "synthetic",
+            "implementation_sha256": job["implementation"]["build_sha256"],
+            "issued_at_utc": "2026-01-01T00:02:00Z", "signature": "opaque-signature",
+        }
+        with self.assertRaisesRegex(ContractValidationError, "verification failed"):
+            validate_attested_run(run, job, attestation=attestation,
+                                  attestation_verifier=lambda *_: False)
+        result = validate_attested_run(
+            run, job, attestation=attestation,
+            attestation_verifier=lambda a, r, j: a["signature"] == "opaque-signature"
+        )
+        self.assertEqual(result["attestation_status"], "verified_by_external_trust_policy")
 
     def test_completed_requires_finish_timestamp_but_not_profitability(self):
         job, *_ = bundle()
