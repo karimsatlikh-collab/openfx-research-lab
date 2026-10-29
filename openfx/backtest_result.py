@@ -147,6 +147,8 @@ def validate_backtest_result(result: Any) -> dict[str, Any]:
         raise ValueError("artifacts must be a list")
     artifact_kinds = set()
     artifact_paths = set()
+    artifacts_by_kind: dict[str, list[dict[str, Any]]] = {}
+    empty_required_artifacts = set()
     for index, artifact in enumerate(artifacts):
         required = {"kind", "path", "size_bytes", "sha256"}
         if not isinstance(artifact, dict) or set(artifact) != required:
@@ -170,6 +172,9 @@ def validate_backtest_result(result: Any) -> dict[str, Any]:
         if not isinstance(artifact["sha256"], str) or not _SHA256_RE.fullmatch(artifact["sha256"]):
             raise ValueError(f"artifacts[{index}].sha256 must be a SHA-256 digest")
         artifact_kinds.add(artifact["kind"])
+        artifacts_by_kind.setdefault(artifact["kind"], []).append(artifact)
+        if artifact["kind"] in _REQUIRED_ARTIFACTS and size == 0:
+            empty_required_artifacts.add(artifact["kind"])
 
     verification = result["verification"]
     if not isinstance(verification, dict) or set(verification) != _VERIFICATION_FIELDS:
@@ -182,6 +187,18 @@ def validate_backtest_result(result: Any) -> dict[str, Any]:
     missing_artifacts = _REQUIRED_ARTIFACTS - artifact_kinds
     if missing_artifacts:
         blockers.append("missing_required_artifacts:" + ",".join(sorted(missing_artifacts)))
+    if empty_required_artifacts:
+        blockers.append("empty_required_artifacts:" + ",".join(sorted(empty_required_artifacts)))
+    if "ea_binary" in artifacts_by_kind and not any(
+        artifact["sha256"].lower() == execution["ea_sha256"].lower()
+        for artifact in artifacts_by_kind["ea_binary"]
+    ):
+        blockers.append("ea_binary_hash_mismatch")
+    if "data_manifest" in artifacts_by_kind and not any(
+        artifact["sha256"].lower() == execution["data_sha256"].lower()
+        for artifact in artifacts_by_kind["data_manifest"]
+    ):
+        blockers.append("data_manifest_hash_mismatch")
     for field, value in verification.items():
         if not value:
             blockers.append("verification_incomplete:" + field)
@@ -193,7 +210,9 @@ def validate_backtest_result(result: Any) -> dict[str, Any]:
         if not math.isclose(expected_payoff, derived_payoff, rel_tol=0.05, abs_tol=0.05):
             warnings.append("expected_payoff_differs_from_net_profit_per_trade")
     gross_loss = metrics["gross_loss"]
-    if gross_loss > 0 and profit_factor is not None:
+    if gross_loss > 0 and profit_factor is None:
+        warnings.append("profit_factor_missing_despite_gross_loss")
+    elif gross_loss > 0 and profit_factor is not None:
         derived_pf = metrics["gross_profit"] / gross_loss
         if not math.isclose(profit_factor, derived_pf, rel_tol=0.05, abs_tol=0.05):
             warnings.append("profit_factor_differs_from_gross_profit_over_gross_loss")
