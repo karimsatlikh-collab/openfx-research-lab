@@ -267,3 +267,50 @@ Refresh exact-head CI for `07665dfa145d1634a33014ec93edd99f4ce44c46`. If green, 
 - The first exact-head attempt exposed a syntax error in the new test module's optional `__main__` guard (`if __ __name__`); both OpenFX Unit Tests run `40969729907` and Project Tests run `40969730036` failed during `compileall` for that same reason. This is a real failed check and is retained in the history.
 - Corrected the guard in `tests/test_source_provenance.py`, commit `d707b2a46b947431379b47f788c247c4005f3964`.
 - The workflow lookup immediately after that commit returned no runs yet. The corrected head is therefore pending CI evidence; do not describe the G0/G1 slice as passing CI until new exact-head runs are available.
+
+
+## 14. Synthetic-only G0→G2 end-to-end replay prototype — 2026-10-30
+
+### G0/G1 corrected-head CI refresh
+
+For source head `d707b2a46b947431379b47f788c247c4005f3964`:
+- Project Tests run `40969808391`: success.
+- OpenFX Unit Tests run `40969808424`: success.
+- CodeQL run `40969808460`: success.
+
+The earlier failed compile runs `40969729907` and `40969730036` remain preserved; the correction was committed as `d707b2a46b947431379b47f788c247c4005f3964`.
+
+### New G0→G2 implementation on PR #23 branch
+
+- `openfx/synthetic_e2e.py`, commit `101f77665a5d007de87df18c4301529ec03c535d`:
+  - Freezes the source reference, claim ID, hypothesis ID/status, synthetic engine parameters, trial/family IDs, and gate configuration into a canonical SHA-256-bound trial specification.
+  - Validates source bytes and claim/source binding before freezing.
+  - Registers the trial as pending before execution in the local hash-chained trial registry.
+  - Executes the same frozen synthetic input twice in separate workspace directories and stores canonical raw run-record JSON bytes.
+  - Compares both run-record and artifact hashes; records a terminal registry event; evaluates the descriptive gate using the registry-derived trial count.
+  - Rejects altered frozen inputs before trial registration and accepts synthetic evidence only.
+- `tests/test_synthetic_e2e.py`, commit `69107bc606ae18bce8fe91f073696dd5ac05a644`:
+  - Tests identical replay hashes, registration lifecycle and trial count, frozen-input tampering rejection, and refusal to relabel a hypothesis as a verified rule.
+  - Fixtures are locally authored synthetic bytes and deterministic synthetic returns only.
+
+### Exact-head CI status
+
+For PR #23 head `69107bc606ae18bce8fe91f073696dd5ac05a644`, Actions runs were created:
+- OpenFX Unit Tests: `40973530989` — queued at last check.
+- CodeQL: `40973531033` — queued at last check.
+- Project Tests: `40973531157` — queued at last check.
+
+No pass is claimed yet. Refresh these exact-head runs before treating this slice as CI-verified.
+
+### What this demonstrates — and what it does not
+
+- It is a runnable code path intended to connect local synthetic G0 provenance, G1 claim/hypothesis binding, frozen synthetic inputs, pre-registration, two deterministic replays, artifact hash comparison, and a registry-derived descriptive gate.
+- The two replays are performed by the same code in one process; they are not independent human/code reproductions or a clean-room G4 replication.
+- The registry is a local prototype and can be rewritten by a privileged actor; it is not a trusted central registrar.
+- The descriptive gate does not calculate DSR/PBO/familywise correction; `multiple_testing_correction_applied=false` remains explicit.
+- The runner is synthetic-only and does not invoke market data, MT5, broker, VPS, paid APIs, or trading.
+- A passing synthetic replay is not evidence of market validity, strategy edge, or profitability.
+
+### Next action
+
+Refresh all three exact-head Actions runs for `69107bc606ae18bce8fe91f073696dd5ac05a644`; inspect any failures and correct them on the same PR branch. If green, add persisted JSON Schema contracts and artifact re-read/hash verification, then review the complete two-mission audit and cross-PR integration risks. Do not merge PRs.
