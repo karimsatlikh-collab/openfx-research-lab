@@ -53,7 +53,7 @@ The current worker is mock-only. A future MT5 worker must record verifiable test
 - Keep real remote execution disabled until a private, least-privilege control plane and threat model are reviewed.
 - Live trading is outside the default scope and requires separate explicit authorization.
 
-Start with [docs/QUICKSTART.md](docs/QUICKSTART.md). See [CONTRIBUTING.md](CONTRIBUTING.md), [docs/EXPERIMENT_MANIFEST.md](docs/EXPERIMENT_MANIFEST.md), and [docs/SECURE_EXECUTION.md](docs/SECURE_EXECUTION.md).
+Start with [docs/QUICKSTART.md](docs/QUICKSTART.md). See [CONTRIBUTING.md](CONTRIBUTING.md), [docs/EXPERIMENT_MANIFEST.md](docs/EXPERIMENT_MANIFEST.md), [docs/SECURE_EXECUTION.md](docs/SECURE_EXECUTION.md), and [docs/OPEN_DECISIONS.md](docs/OPEN_DECISIONS.md).
 
 ## Status and next boundary
 
