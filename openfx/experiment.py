@@ -7,6 +7,8 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import tempfile
+import os
 from datetime import date, datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -136,12 +138,14 @@ def validate_manifest(manifest: dict[str, Any]) -> None:
     unknown = set(manifest) - required - {"error"}
     if unknown:
         raise ValueError(f"unknown manifest fields: {', '.join(sorted(unknown))}")
-    if manifest.get("schema_version") != SCHEMA_VERSION:
+    if (not isinstance(manifest.get("schema_version"), int)
+            or isinstance(manifest.get("schema_version"), bool)
+            or manifest.get("schema_version") != SCHEMA_VERSION):
         raise ValueError("unsupported or missing schema_version")
     experiment_id = manifest.get("experiment_id")
     if not isinstance(experiment_id, str) or not _ID_RE.fullmatch(experiment_id):
         raise ValueError("invalid experiment_id")
-    if manifest.get("status") not in STATES:
+    if not isinstance(manifest.get("status"), str) or manifest.get("status") not in STATES:
         raise ValueError("invalid status")
     for key in ("hypothesis", "strategy_version", "notes"):
         if not isinstance(manifest[key], str) or (key != "notes" and not manifest[key].strip()):
@@ -268,16 +272,25 @@ def transition(
 
 
 def save_manifest(manifest: dict[str, Any], path: str | Path) -> None:
-    """Validate and atomically write a JSON manifest."""
+    """Validate and atomically write a JSON manifest using a unique temp file."""
     validate_manifest(manifest)
     destination = Path(path)
     destination.parent.mkdir(parents=True, exist_ok=True)
-    temporary = destination.with_suffix(destination.suffix + ".tmp")
-    temporary.write_text(
-        json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
-    temporary.replace(destination)
+    temp_name = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=destination.parent,
+            prefix=f".{destination.name}.", suffix=".tmp", delete=False,
+        ) as stream:
+            temp_name = stream.name
+            stream.write(json.dumps(manifest, indent=2, ensure_ascii=False, allow_nan=False) + "\\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        Path(temp_name).replace(destination)
+    except Exception:
+        if temp_name:
+            Path(temp_name).unlink(missing_ok=True)
+        raise
 
 
 def load_manifest(path: str | Path) -> dict[str, Any]:
