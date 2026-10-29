@@ -4,6 +4,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from .source_registry import validate_source_registry
+
 CLAIM_CLASSES = {"source_confirmed", "source_claim", "interpretation", "hypothesis", "unknown"}
 REVIEW_STATUSES = {"draft", "human_verified", "needs_review", "rejected"}
 CLAIM_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
@@ -22,9 +24,8 @@ def validate_claim_register(register: Any, source_registry: dict[str, Any]) -> d
     if not isinstance(register["claims"], list):
         raise ValueError("claims must be a list")
 
-    if not isinstance(source_registry, dict):
-        raise ValueError("source_registry must be a validated registry object")
-    sources = {item["source_id"]: item for item in source_registry.get("sources", [])}
+    source_registry = validate_source_registry(source_registry)
+    sources = {item["source_id"]: item for item in source_registry["sources"]}
     segments = {item["segment_id"]: item for item in source_registry.get("transcript_segments", [])}
     claim_ids = set()
     contradiction_groups: dict[str, list[str]] = {}
@@ -45,9 +46,9 @@ def validate_claim_register(register: Any, source_registry: dict[str, Any]) -> d
         for field in ("claim_text", "rationale"):
             if not isinstance(claim[field], str) or not claim[field].strip():
                 raise ValueError(f"{field} must be a non-empty string")
-        if claim["classification"] not in CLAIM_CLASSES:
+        if not isinstance(claim["classification"], str) or claim["classification"] not in CLAIM_CLASSES:
             raise ValueError("unsupported claim classification")
-        if claim["review_status"] not in REVIEW_STATUSES:
+        if not isinstance(claim["review_status"], str) or claim["review_status"] not in REVIEW_STATUSES:
             raise ValueError("unsupported claim review_status")
         if not isinstance(claim["evidence"], list):
             raise ValueError("evidence must be a list")
