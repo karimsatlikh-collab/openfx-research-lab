@@ -72,6 +72,23 @@ invalid
         with self.assertRaisesRegex(ValueError, "out-of-range"):
             parse_transcript_text(content, "source-001", "srt")
 
+
+    def test_rejects_out_of_order_subtitle_cues(self):
+        content = """1
+00:00:03,000 --> 00:00:04,000
+Second.
+
+2
+00:00:01,000 --> 00:00:02,000
+First.
+"""
+        with self.assertRaisesRegex(ValueError, "ordered"):
+            parse_transcript_text(content, "source-001", "srt")
+
+    def test_rejects_non_string_format_argument(self):
+        with self.assertRaisesRegex(ValueError, "format must be a string"):
+            parse_transcript_text("content", "source-001", None)
+
     def test_rejects_empty_or_unsupported_transcripts(self):
         with self.assertRaises(ValueError):
             parse_transcript_text("  ", "source-001", "txt")
