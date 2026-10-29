@@ -74,7 +74,7 @@ class ExperimentTests(unittest.TestCase):
             self.assertEqual(record["path"], "report.txt")
             self.assertEqual(record["size_bytes"], len("reproducible artifact"))
             self.assertEqual(len(record["sha256"]), 64)
-            outside = root.parent / "outside-openfx-test.txt"
+            outside = root.parent / f"{root.name}-outside-openfx-test.txt"
             try:
                 outside.write_text("outside", encoding="utf-8")
                 with self.assertRaises(ValueError):
