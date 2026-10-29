@@ -32,6 +32,17 @@ _CONDITION_MARKERS = {
     "مجاز", "غیرمجاز",
 }
 
+_UNIT_MARKERS = {
+    "atr", "pip", "pips", "point", "points", "lot", "lots",
+    "percent", "percentage", "minute", "minutes", "second", "seconds",
+    "hour", "hours", "day", "days", "week", "weeks", "month", "months",
+    "year", "years", "candle", "candles", "bar", "bars", "tick", "ticks",
+    "usd", "eur", "gbp", "jpy",
+    "پیپ", "پیپ‌ها", "پوینت", "پوینت‌ها", "درصد", "کندل", "کندل‌ها",
+    "دقیقه", "ثانیه", "ساعت", "روز", "هفته", "ماه", "سال", "لات",
+    "دلار", "یورو",
+}
+
 
 _DIGIT_AND_SYMBOL_TRANSLATION = str.maketrans({
     **dict(zip("۰۱۲۳۴۵۶۷۸۹", "0123456789")),
@@ -70,6 +81,8 @@ def compare_transcript_fidelity(reference_text: Any, extracted_text: Any, *, min
     extracted_negations = [token for token in extracted_tokens if token in _NEGATIONS]
     reference_conditions = [token for token in reference_tokens if token in _CONDITION_MARKERS]
     extracted_conditions = [token for token in extracted_tokens if token in _CONDITION_MARKERS]
+    reference_units = [token for token in reference_tokens if token in _UNIT_MARKERS]
+    extracted_units = [token for token in extracted_tokens if token in _UNIT_MARKERS]
     similarity = SequenceMatcher(a=reference_tokens, b=extracted_tokens, autojunk=False).ratio()
     flags = []
     if missing_numbers:
@@ -80,6 +93,8 @@ def compare_transcript_fidelity(reference_text: Any, extracted_text: Any, *, min
         flags.append("negation_mismatch")
     if reference_conditions != extracted_conditions:
         flags.append("condition_mismatch")
+    if reference_units != extracted_units:
+        flags.append("unit_mismatch")
     if similarity < min_similarity:
         flags.append("low_token_similarity")
 
