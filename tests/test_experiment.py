@@ -83,6 +83,36 @@ class ExperimentTests(unittest.TestCase):
                 outside.unlink(missing_ok=True)
 
 
+    def test_rejects_impossible_calendar_dates(self):
+        with self.assertRaises(ValueError):
+            new_experiment("test-date", "h", "v1", "EURUSD", "M15", "2024-99-99", "2024-12-31")
+
+    def test_rejects_non_iso_date_shape(self):
+        with self.assertRaises(ValueError):
+            new_experiment("test-date", "h", "v1", "EURUSD", "M15", "20240101", "2024-12-31")
+
+    def test_completed_requires_non_empty_structured_result(self):
+        queued = sample()
+        running = transition(queued, "RUNNING")
+        with self.assertRaises(ValueError):
+            transition(running, "COMPLETED")
+        with self.assertRaises(ValueError):
+            transition(running, "COMPLETED", result={})
+
+    def test_manifest_rejects_invalid_nested_dates(self):
+        from openfx.experiment import validate_manifest
+        manifest = sample()
+        manifest["market"]["data_start"] = "2024-99-99"
+        with self.assertRaises(ValueError):
+            validate_manifest(manifest)
+
+    def test_manifest_rejects_timezone_free_timestamp(self):
+        from openfx.experiment import validate_manifest
+        manifest = sample()
+        manifest["created_at_utc"] = "2024-01-01T00:00:00"
+        with self.assertRaises(ValueError):
+            validate_manifest(manifest)
+
 
 if __name__ == "__main__":
     unittest.main()
