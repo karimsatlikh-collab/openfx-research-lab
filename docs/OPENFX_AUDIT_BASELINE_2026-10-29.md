@@ -234,8 +234,8 @@ validated strategy rule -> compiled EA -> real MT5 Strategy Tester
 **Status:** Code-reviewed; conservative fix CI-confirmed on PR #20  
 **Evidence:** Before PR #20, `compare_transcript_fidelity("Buy only above 1.5 ATR.", "Buy above 1.5 ATR.")` could pass the selected checks because token similarity remained above 0.85 and the number/negation lists were unchanged.  
 **Impact:** Dropping a limiting word such as `only`, changing `unless` to `if`, or changing a temporal/threshold marker can alter a trading rule without necessarily tripping the previous checks.  
-**Action taken:** PR #20 adds a separate `condition_mismatch` flag for selected English/Persian condition and threshold markers and tests the high-similarity case. Exact-head CI run `40925516804` passed: 112 repository tests and 15 worker tests.  
-**Residual limitation:** The marker list is incomplete and can create false positives; it does not understand syntax, scope, synonyms, or semantic entailment. A labelled adversarial corpus and measured false-positive/false-negative rates remain necessary.
+**Action taken:** PR #20 adds `condition_mismatch` and `unit_mismatch` flags for selected English/Persian condition, threshold, and unit markers. A 24-case labelled synthetic corpus and confusion-matrix script were added. An intermediate CI run `40925884008` failed because the script could not import the package when invoked by file path; the import path was corrected. Exact-head CI run `40925975774` passed: 115 repository tests, 15 worker tests, and the corpus evaluator. On the 24 curated cases, the observed confusion matrix was TP=18, FN=0, FP=0, TN=6.  
+**Residual limitation:** The zero FP/FN result applies only to 24 small synthetic cases selected to exercise these exact rules; it is not an estimate of real-world performance. The marker list is incomplete and can create false positives; the checker does not understand syntax, scope, synonyms, or semantic entailment. A broader independently labelled corpus is still required.
 
 ### F-15 — Imported transcript provenance does not retain the raw transcript artifact hash
 **Severity:** P1 — research reproducibility gap  
@@ -285,7 +285,7 @@ validated strategy rule -> compiled EA -> real MT5 Strategy Tester
 - PR #17 exact-head CI passed with 111 repository tests and 15 worker tests.
 - PR #18 exact-head CI passed on commit `29f7fcf061bf8c274bda79787dc3c0eb0749d2ec`; project/unit tests and CodeQL completed successfully.
 - PR #19 test workflows and CodeQL all passed.
-- PR #20 exact-head CI run `40925516804` passed with 112 repository tests and 15 worker tests.
+- PR #20 exact-head CI run `40925975774` passed with 115 repository tests, 15 worker tests, and the 24-case synthetic corpus. Curated matrix: TP=18, FN=0, FP=0, TN=6; no real-world accuracy claim is implied. Earlier failure `40925884008` exposed a script import-path problem, which was fixed and preserved in history.
 - No MT5 execution occurred.
 
 ### Not performed / not established
