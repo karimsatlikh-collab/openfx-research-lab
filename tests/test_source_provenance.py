@@ -125,5 +125,5 @@ class ClaimAndHypothesisBindingTests(unittest.TestCase):
             )
 
 
-if __ __name__ == "__main__":
+if __name__ == "__main__":
     unittest.main()
