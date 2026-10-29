@@ -4,6 +4,7 @@
 
 - `openfx/source_registry.py` validates stable source IDs, HTTPS URLs, source type, author/date metadata, rights-review status, access method, collection timestamp, and optional SHA-256 content hash. It can validate and atomically save/load a local registry.
 - `openfx/transcript_import.py` imports authorized local VTT, SRT, and plain-text files; it preserves timestamps when present, strips subtitle markup, creates deterministic segment IDs, and hashes the exact imported text. It rejects malformed or out-of-order subtitle cues, caps content at 10 MiB, and blocks sources marked `restricted` or `permission_required`.
+- `python -m openfx.source_cli` provides local commands to initialize a registry, register source metadata, and import an authorized transcript without a crawler or external API.
 - A source marked `reviewed_permitted` must include a reference explaining the permission/license decision.
 - Transcript segments must reference a registered source and record extraction method, optional timestamps, confidence, and a SHA-256 hash of the exact text.
 - `openfx/transcript_quality.py` compares a reference transcript with extracted text and flags missing/changed numeric tokens, changed negation tokens, and low token similarity.
@@ -15,6 +16,18 @@
 These modules validate records and import local transcript files; they do **not** discover videos, download media, obtain captions, run speech recognition, or prove that a transcript is correct. The transcript fidelity checker is a heuristic triage tool, not a semantic verifier. Human review against the original source remains necessary for important rules, numbers, dates, negation, speaker attribution, and timestamps.
 
 A public URL does not automatically grant permission to download, copy, transcribe, or redistribute its content. Keep the rights status as `unknown` until reviewed. Use only authorized source methods and respect site terms, copyright, access controls, and rate limits.
+
+## Example local workflow
+
+Run these commands from the repository root. Use an authorized transcript file you already possess; the example URL is a placeholder, not a discovered source.
+
+```bash
+python -m openfx.source_cli init --output data/private/source_registry.json
+python -m openfx.source_cli add-source --registry data/private/source_registry.json --source-id sample-video-001 --type video --url https://example.com/video --title "Synthetic example video" --license-status unknown --access-method user_provided
+python -m openfx.source_cli import-transcript --registry data/private/source_registry.json --source-id sample-video-001 --input /path/to/authorized-captions.vtt
+```
+
+The local registry is stored under the ignored `data/private/` directory. Do not commit transcript text, personal data, credentials, or material you are not authorized to redistribute.
 
 ## Recommended record workflow
 
