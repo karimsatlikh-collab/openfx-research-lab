@@ -203,7 +203,7 @@ validated strategy rule -> compiled EA -> real MT5 Strategy Tester
 **Status:** Code-reviewed; fix CI-confirmed on PR #16  
 **Evidence:** Before PR #16, `openfx/transcript_import.py` skipped any subtitle block with no timestamp line. If a valid cue existed elsewhere in the file, import could still succeed while silently dropping the malformed block.  
 **Impact:** Lost text could include a negation, number, threshold, or condition, while the importer returns a seemingly valid partial transcript.  
-**Action taken:** PR #16 changes this path to fail closed for non-header/non-metadata blocks without timestamps and adds a regression fixture. CI run `40924573796` passed (110 repository tests and 15 worker tests).  
+**Action taken:** PR #16 changes this path to fail closed for non-header/non-metadata blocks without timestamps, distinguishes valid cue identifiers such as `NOTE`/`STYLE` from metadata blocks, and adds regression fixtures. An intermediate test-only commit failed when the new fixture exposed the prefix-matching bug (run `40925250131`); the parser was corrected and exact-head CI run `40925335092` passed (112 repository tests and 15 worker tests). The failed run remains in GitHub history.  
 **Residual limitation:** A timestamped subtitle file can still contain incorrect captions or audio/transcript mismatches; this parser does not validate speech.
 
 ### F-11 — Unknown rights status was not a hard ingestion gate
@@ -211,7 +211,7 @@ validated strategy rule -> compiled EA -> real MT5 Strategy Tester
 **Status:** Code-reviewed; fix CI-confirmed on PR #17  
 **Evidence:** The prior importer blocked only `restricted` and `permission_required`, so `unknown` rights could still be imported despite docs saying unknown rights must remain unapproved until reviewed.  
 **Impact:** The application could process transcript material without a recorded rights decision, weakening the project's authorized-source boundary.  
-**Action taken:** PR #17 now permits ingestion only for `reviewed_permitted` or `public_domain` records with a rights reference; unknown/restricted/permission-required are rejected. Documentation and tests were updated. Exact-head CI run `40924903871` passed (111 repository tests and 15 worker tests).  
+**Action taken:** PR #17 now permits ingestion only for `reviewed_permitted` or `public_domain` records with a rights reference; unknown/restricted/permission-required are rejected. Its first CI run failed because an existing CLI fixture still relied on unknown rights (run `40924728291`); the fixture was corrected to record explicit synthetic permission, and exact-head CI run `40924903871` passed (111 repository tests and 15 worker tests). The failed run remains in GitHub history.  
 **Residual limitation:** The software checks the recorded status/reference, not the legal validity of the permission itself.
 
 ### F-12 — Local file scanning followed symlinks outside the selected root
@@ -219,7 +219,7 @@ validated strategy rule -> compiled EA -> real MT5 Strategy Tester
 **Status:** Code-reviewed; tests and CodeQL CI-confirmed on PR #18  
 **Evidence:** In main's `data_collection.py`, `Path.is_file()` follows symlinks, and the collector hashed any supported target reachable through a link inside the selected directory.  
 **Impact:** A scan could read/hash a file outside the directory the user selected. The content is not uploaded, but the scan scope was wider than expected.  
-**Action taken:** PR #18 skips symbolic links and adds an external-target regression test. Run `40924838032` passed with 18 data/project tests; CodeQL run `40924853233` also passed. PR #18 remains open and is not in main.  
+**Action taken:** PR #18 skips symbolic links, adds a root-relative path to disambiguate same-named files, and tests both an external symlink and duplicate basenames. On the current head `29f7fcf061bf8c274bda79787dc3c0eb0749d2ec`, Project Tests run `40925208557`, OpenFX Unit Tests run `40925208133`, and CodeQL run `40925208196` all passed. PR #18 remains open and is not in main.  
 **Residual limitation:** This check does not establish a sandbox for other file-processing components.
 
 ### F-13 — Local collection records omit a root-relative file locator
