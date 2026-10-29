@@ -6,6 +6,7 @@ bypass access controls, or infer permission from public availability.
 from __future__ import annotations
 
 import hashlib
+import math
 import re
 import urllib.parse
 from datetime import date, datetime, timezone
@@ -40,7 +41,7 @@ def validate_source_record(record: Any) -> dict[str, Any]:
         raise ValueError(f"source fields mismatch (missing={sorted(missing)}, unknown={sorted(unknown)})")
     if not isinstance(record["source_id"], str) or not SOURCE_ID_RE.fullmatch(record["source_id"]):
         raise ValueError("source_id must be a safe stable identifier")
-    if record["source_type"] not in SOURCE_TYPES:
+    if not isinstance(record["source_type"], str) or record["source_type"] not in SOURCE_TYPES:
         raise ValueError("unsupported source_type")
     _nonempty(record["url"], "url")
     parsed = urllib.parse.urlsplit(record["url"])
@@ -65,14 +66,14 @@ def validate_source_record(record: Any) -> dict[str, Any]:
             date.fromisoformat(published)
         except ValueError:
             raise ValueError("published_date must be a real YYYY-MM-DD date") from None
-    if record["license_status"] not in LICENSE_STATUSES:
+    if not isinstance(record["license_status"], str) or record["license_status"] not in LICENSE_STATUSES:
         raise ValueError("unsupported license_status")
     _nonempty(record["license_reference"], "license_reference", optional=True)
     if record["license_reference"] is not None and not isinstance(record["license_reference"], str):
         raise ValueError("license_reference must be a string or null")
     if record["license_status"] == "reviewed_permitted" and not record["license_reference"]:
         raise ValueError("reviewed_permitted requires a license_reference")
-    if record["access_method"] not in ACCESS_METHODS:
+    if not isinstance(record["access_method"], str) or record["access_method"] not in ACCESS_METHODS:
         raise ValueError("unsupported access_method")
     _nonempty(record["collected_at_utc"], "collected_at_utc")
     try:
@@ -123,19 +124,19 @@ def validate_transcript_segment(segment: Any, known_source_ids: set[str]) -> dic
         raise ValueError("transcript segment has missing or unknown fields")
     if not isinstance(segment["segment_id"], str) or not SOURCE_ID_RE.fullmatch(segment["segment_id"]):
         raise ValueError("invalid segment_id")
-    if segment["source_id"] not in known_source_ids:
+    if not isinstance(segment["source_id"], str) or segment["source_id"] not in known_source_ids:
         raise ValueError("segment source_id is not registered")
     start, end = segment["start_seconds"], segment["end_seconds"]
-    if start is not None and (not isinstance(start, (int, float)) or isinstance(start, bool) or start < 0):
-        raise ValueError("start_seconds must be a non-negative number or null")
-    if end is not None and (not isinstance(end, (int, float)) or isinstance(end, bool) or end < 0):
-        raise ValueError("end_seconds must be a non-negative number or null")
+    if start is not None and (not isinstance(start, (int, float)) or isinstance(start, bool) or not math.isfinite(start) or start < 0):
+        raise ValueError("start_seconds must be a finite non-negative number or null")
+    if end is not None and (not isinstance(end, (int, float)) or isinstance(end, bool) or not math.isfinite(end) or end < 0):
+        raise ValueError("end_seconds must be a finite non-negative number or null")
     if start is not None and end is not None and end <= start:
         raise ValueError("end_seconds must be after start_seconds")
     _nonempty(segment["text"], "text")
     _nonempty(segment["extraction_method"], "extraction_method")
     confidence = segment["confidence"]
-    if not isinstance(confidence, (int, float)) or isinstance(confidence, bool) or not 0 <= confidence <= 1:
+    if not isinstance(confidence, (int, float)) or isinstance(confidence, bool) or not math.isfinite(confidence) or not 0 <= confidence <= 1:
         raise ValueError("confidence must be between 0 and 1")
     digest = hashlib.sha256(segment["text"].encode("utf-8")).hexdigest()
     if segment["text_sha256"] != digest:
