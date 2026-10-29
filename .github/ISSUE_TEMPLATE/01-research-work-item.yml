@@ -1,8 +1,6 @@
 name: Research Work Item
 description: Register a traceable research, engineering, data, or infrastructure task.
 title: "[WORK] "
-labels:
-  - research-work
 body:
   - type: markdown
     attributes:
