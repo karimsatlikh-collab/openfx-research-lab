@@ -18,7 +18,8 @@
 
 - [x] Enforce strict manifest dates, timezone-aware timestamps, state invariants, finite JSON values, and safe artifact paths.
 - [x] Add SHA-256 artifact records and atomic manifest/registry writes.
-- [ ] Add immutable run records and independent verification of artifact bytes.
+- [x] Add a CLI that independently verifies artifact file sizes and SHA-256 hashes under a trusted local root.
+- [ ] Add immutable run records and independently parse actual MT5 reports/logs.
 - [ ] Add synthetic fixtures for costs, order timing, gaps, and look-ahead edge cases.
 - [x] Add a strict result schema with metrics, tester configuration, costs, and artifact references.
 - [x] Add explicit development / validation / final out-of-sample metadata and reject overlapping splits.
