@@ -56,6 +56,12 @@ class SourceCliTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             registry = Path(directory) / "sources.json"
             self.invoke(["init", "--output", str(registry)])
+            self.assertEqual(self.invoke([
+                "add-source", "--registry", str(registry),
+                "--source-id", "yt-AbCdEf12345", "--type", "video",
+                "--url", "https://www.youtube.com/watch?v=AbCdEf12345",
+                "--title", "Existing", "--access-method", "official_api",
+            ])[0], 0)
             existing = make_source_record(
                 source_id="yt-AbCdEf12345", source_type="video",
                 url="https://www.youtube.com/watch?v=AbCdEf12345",
@@ -74,7 +80,7 @@ class SourceCliTests(unittest.TestCase):
             self.assertEqual((code, error), (0, ""))
             self.assertIn("Discovered 3 videos; added 1 new source records", output)
             ids = [item["source_id"] for item in load_source_registry(registry)["sources"]]
-            self.assertEqual(ids, ["yt-ZyXwVu98765"])
+            self.assertEqual(ids, ["yt-AbCdEf12345", "yt-ZyXwVu98765"])
 
     def test_cli_blocks_import_from_restricted_source(self):
         with tempfile.TemporaryDirectory() as directory:
