@@ -30,7 +30,8 @@
 - [ ] Add an authorized source connector for source discovery and transcript acquisition; current registry does not crawl or download.
 - [x] Add heuristic extraction-quality checks for dropped/changed numbers and dates, changed negation, and low token similarity.
 - [ ] Expand multilingual/ASR-specific fixtures and add human-reviewed reference transcripts; heuristics cannot prove semantic equivalence.
-- [ ] Separate source-confirmed rules from interpretations and hypotheses.
+- [x] Add claim classifications and exact-quote evidence links to separate source-confirmed claims, source claims, interpretations, hypotheses, and unknowns.
+- [ ] Add human-reviewed conflict resolution and semantic contradiction analysis; current contradiction groups are manually assigned for review.
 
 ## Phase 3 — MT5 integration design (not deployed)
 
