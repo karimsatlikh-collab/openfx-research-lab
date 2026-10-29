@@ -195,6 +195,26 @@ class TranscriptFidelityTests(unittest.TestCase):
         result = compare_transcript_fidelity("این سطح معتبر نیست", "این سطح معتبر است")
         self.assertIn("negation_mismatch", result["flags"])
 
+    def test_dropped_only_condition_is_flagged_even_when_similarity_is_high(self):
+        result = compare_transcript_fidelity("Buy only above 1.5 ATR.", "Buy above 1.5 ATR.")
+        self.assertGreaterEqual(result["similarity"], 0.85)
+        self.assertIn("condition_mismatch", result["flags"])
+        self.assertEqual(result["status"], "needs_human_review")
+
+    def test_changed_conditional_marker_is_flagged(self):
+        result = compare_transcript_fidelity(
+            "Enter unless the level breaks.",
+            "Enter if the level breaks.",
+        )
+        self.assertIn("condition_mismatch", result["flags"])
+
+    def test_dropped_persian_only_condition_is_flagged(self):
+        result = compare_transcript_fidelity(
+            "فقط بعد از بسته شدن کندل وارد شو",
+            "بعد از بسته شدن کندل وارد شو",
+        )
+        self.assertIn("condition_mismatch", result["flags"])
+
 class EvidenceTraceabilityTests(unittest.TestCase):
     def make_registry(self):
         source = source_record()
