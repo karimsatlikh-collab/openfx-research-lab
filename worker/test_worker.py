@@ -2,7 +2,7 @@
 import hashlib
 import unittest
 
-from openfx_worker import (
+from worker.openfx_worker import (
     JobValidationError,
     WorkerConfig,
     process_job,
