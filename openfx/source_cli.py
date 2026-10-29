@@ -16,6 +16,7 @@ from .source_registry import (
     save_source_registry,
 )
 from .transcript_import import import_transcript_file_into_registry
+from .youtube_search import search_youtube_videos
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -43,6 +44,14 @@ def build_parser() -> argparse.ArgumentParser:
     ingest.add_argument("--source-id", required=True)
     ingest.add_argument("--input", required=True, help="local transcript file")
     ingest.add_argument("--format", choices=["vtt", "srt", "txt"])
+
+    search = commands.add_parser("search-youtube", help="discover public video metadata through the official API")
+    search.add_argument("--registry", required=True)
+    search.add_argument("--query", required=True)
+    search.add_argument("--max-results", type=int, default=10)
+    search.add_argument("--order", choices=sorted({"date", "rating", "relevance", "title", "videoCount", "viewCount"}), default="relevance")
+    search.add_argument("--region-code")
+    search.add_argument("--relevance-language")
 
     return parser
 
@@ -89,8 +98,25 @@ def main(argv: list[str] | None = None) -> int:
             print("Parser confidence describes file parsing, not transcript accuracy.")
             return 0
 
+        if args.command == "search-youtube":
+            registry = load_source_registry(args.registry)
+            records = search_youtube_videos(
+                args.query,
+                max_results=args.max_results,
+                order=args.order,
+                region_code=args.region_code,
+                relevance_language=args.relevance_language,
+            )
+            known_ids = {source["source_id"] for source in registry["sources"]}
+            new_records = [record for record in records if record["source_id"] not in known_ids]
+            registry["sources"].extend(new_records)
+            save_source_registry(registry, args.registry)
+            print(f"Discovered {len(records)} videos; added {len(new_records)} new source records.")
+            print("Rights status remains unknown until each source is reviewed.")
+            return 0
+
         parser.error("unknown command")
-    except (OSError, ValueError, json.JSONDecodeError, UnicodeError) as exc:
+    except (OSError, ValueError, RuntimeError, json.JSONDecodeError, UnicodeError) as exc:
         print(f"OpenFX source ingestion error: {exc}", file=sys.stderr)
         return 2
     return 0
