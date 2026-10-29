@@ -39,6 +39,27 @@ Relevant historical CI evidence observed:
 - PR #13 documentation commit `9c360866b744ac83b4f8d720019d964f1b0d85b1`: OpenFX Unit Tests run `40923717266`, Project Tests run `40923717250`, CodeQL run `40923717315` all reported success.
 - PR #14 head check `123625086035` was queued at the last status query. Do not report it as passing until refreshed.
 
+## 3A. PR dependency and merge-order risk
+
+The open PRs do not form one flat queue. Their declared bases are:
+
+```text
+main
+├── PR #11 (openfx-audit-fixes)
+│   ├── PR #12 (openfx-transcript-adversarial-checks)
+│   │   └── PR #14 (openfx-audit-round1)
+│   │       ├── PR #15 (schema validation)
+│   │       ├── PR #16 (transcript import strictness)
+│   │       ├── PR #17 (rights gate)
+│   │       └── PR #20 (condition/unit fidelity + corpus)
+│   └── PR #21 (YouTube API key header)
+├── PR #13 (mission/state/audit docs)
+├── PR #18 (local scan scope/provenance)
+└── PR #19 (CI least privilege)
+```
+
+This graph is based on the current declared PR base branches, not a merge recommendation. PR #16 and PR #17 both change `openfx/transcript_import.py` and `tests/test_transcript_import.py`; each currently reports mergeable against its own base, but that does **not** prove they can be merged one after another without conflicts. PR #15 and PR #20 also depend on PR #14's branch contents. Before any owner-approved merge, consolidate overlapping transcript-import changes or rebase/retarget them in a deliberate sequence. No PR has been merged by this audit.
+
 ## 4. Architecture map
 
 ### Default branch (`main`)
