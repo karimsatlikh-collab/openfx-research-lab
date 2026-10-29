@@ -63,5 +63,26 @@ class ExperimentTests(unittest.TestCase):
                 run_mock(path)
 
 
+    def test_artifact_record_hashes_file_and_rejects_escape(self):
+        from openfx.experiment import artifact_record
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            artifact = root / "report.txt"
+            artifact.write_text("reproducible artifact", encoding="utf-8")
+            record = artifact_record(artifact, root)
+            self.assertEqual(record["path"], "report.txt")
+            self.assertEqual(record["size_bytes"], len("reproducible artifact"))
+            self.assertEqual(len(record["sha256"]), 64)
+            outside = root.parent / "outside-openfx-test.txt"
+            try:
+                outside.write_text("outside", encoding="utf-8")
+                with self.assertRaises(ValueError):
+                    artifact_record(outside, root)
+            finally:
+                outside.unlink(missing_ok=True)
+
+
+
 if __name__ == "__main__":
     unittest.main()
