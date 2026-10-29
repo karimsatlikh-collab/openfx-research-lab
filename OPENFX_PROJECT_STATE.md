@@ -180,3 +180,32 @@ Neither mission replaces the other. Infrastructure is only useful insofar as it 
 2. For mission 1, prioritize the trust boundary and artifact/manifest integrity audit: atomic writes, symlink/TOCTOU behavior, provenance and hashes, forged result assertions, and mandatory verifier integration.
 3. For mission 2, review the current research-team operating contract and gate design against the actual code; identify which G0–G5 controls are enforced versus merely documented, and define a small end-to-end acceptance path from authorized source to reviewed hypothesis and reproducible result.
 4. Refresh this ledger after meaningful work with exact branch/head, test outcomes, remaining risks, and the next action. No PR merge, paid service, VPS deployment, broker access, or live trading without explicit owner approval.
+
+
+## 11. Continuation work — 2026-10-30 (artifact integrity + gate reality check)
+
+### Verified repository observations
+- Refreshed the PR list: 18 open PRs were returned, including #23; the list is not a merge queue and no PR was merged.
+- On PR #23's previously recorded head `9323341e1a4dfa4e76d87d6315f4875c8d997494`, the three exact-head runs were confirmed complete and successful: OpenFX Unit Tests `40958813257`, Project Tests `40958813294`, and CodeQL `40958813182`.
+- Reviewed `openfx/experiment.py`, `tests/test_experiment.py`, `openfx/statistical_gate.py`, and `docs/RESEARCH_TEAM_OPERATING_CONTRACT.md` from PR #23's branch.
+
+### Bounded code changes on the PR #23 branch
+- Commit `8077f6c007d249aa09b53d48e49f1dc224003f39`: replaced the predictable shared manifest temp filename with a unique same-directory temporary file; flushes and fsyncs file content before atomic `os.replace`; attempts best-effort directory fsync; cleans up temporary files.
+- The same commit changes artifact hashing to open the artifact once, reject a final-component symlink where `O_NOFOLLOW` is supported, require a regular file, hash through that descriptor, and reject changes detected by before/after device/inode/size/mtime checks.
+- Commit `51d3e5a1c247f622d1980eb971ac9d0c3137ca63`: adds a regression test proving the old predictable `.tmp` path is not overwritten by manifest saving.
+- These changes are committed to the existing PR #23 head branch, not main. The new head's Actions runs were not yet returned by the immediate workflow lookup; therefore the new changes are **not yet CI-verified**. Do not transfer the earlier head's green checks to this new head.
+
+### Important remaining technical limitations
+- Unique temp names eliminate the shared predictable-temp collision/symlink issue and support atomic replacement, but simultaneous writers to the same destination remain last-writer-wins; no compare-and-swap/version precondition is implemented.
+- Artifact path containment still uses resolved paths before opening. The final-component no-follow check does not eliminate all ancestor-directory replacement/TOCTOU races on hostile writable filesystems. On platforms without `O_NOFOLLOW`, that protection is unavailable. The before/after metadata check is a race detector, not a cryptographic snapshot guarantee.
+- Directory fsync is best-effort and intentionally swallowed when unsupported; power-loss durability is not guaranteed on every platform/filesystem.
+
+### Research-team G0–G5 control reality check
+- The operating contract explicitly defines roles, evidence chain, trial accounting/OOS protection, staged M1–M5 releases, and independence requirements. It labels itself a proposed control-plane policy.
+- Runtime evidence reviewed confirms only partial controls: local JSONL registry lifecycle/budget/idempotency checks, synthetic harness, descriptive gate, schema/contract checks, and a fail-closed attestation callback boundary.
+- Not runtime-enforced or not established: role permissions/separation, independent proposer/implementer/replicator identities, source authorization and complete source-to-claim traceability, controlled access to final-OOS metrics, trusted central trial-family assignment, production cryptographic executor identity, mandatory attestation wiring, and independent reproduction.
+- The current gate accepts a caller-supplied summary and a registry-derived trial count helper, but it does not calculate DSR/PBO/familywise correction or establish market validity. Therefore a gate verdict is only a descriptive prototype verdict, not a research acceptance decision.
+- G0–G5 should be treated as policy/design gates until each has a specific runtime-enforced control and adversarial acceptance test. The next design task is a control matrix mapping each gate to: required input, enforcing component, negative test, immutable evidence output, and human authorization boundary.
+
+### Next action
+Refresh PR #23's current head and Actions after the two commits; add adversarial artifact tests (symlink rejection where supported, file mutation during hashing, and concurrent manifest writers), then define the G0–G5 enforcement matrix and identify the smallest end-to-end path that can honestly reach a reproducible synthetic result. No merge, paid service, VPS, broker, MT5 demo, or live trading without explicit approval.
