@@ -53,6 +53,15 @@ class SourceRegistryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_source_record(source_record(license_status="reviewed_permitted"))
 
+
+    def test_public_domain_status_requires_rights_reference(self):
+        with self.assertRaisesRegex(ValueError, "license_reference"):
+            validate_source_record(source_record(license_status="public_domain"))
+
+    def test_url_whitespace_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "whitespace"):
+            validate_source_record(source_record(url="https://example.com/video "))
+
     def test_content_hash_is_reproducible(self):
         record = make_source_record(
             source_id="source-002", source_type="transcript",
