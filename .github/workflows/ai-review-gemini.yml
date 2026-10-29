@@ -33,7 +33,6 @@ jobs:
           GH_EVENT_NAME: ${{ github.event_name }}
           GH_PR_NUMBER: ${{ github.event.pull_request.number }}
           RESEARCH_QUESTION: ${{ inputs.research_question }}
-          GITHUB_STEP_SUMMARY: ${{ github.step_summary }}
         run: |
           python - <<'PY'
           import json
