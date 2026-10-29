@@ -51,12 +51,16 @@ JobSpec binds immutable references and SHA-256 digests for StrategySpec, impleme
 
 ## Explicitly not implemented by M1
 
-No production database, append-only ledger, signature/key infrastructure, actual proposer/validator agents, synthetic engine, statistical calculations, MT5 bridge, VPS, broker connectivity, paid API, or live trading. The schemas are contracts only. Schema validation in CI and semantic state-machine enforcement are follow-up tasks.
+No production database, append-only ledger, signature/key infrastructure, actual proposer/validator agents, synthetic engine, statistical calculations, MT5 bridge, VPS, broker connectivity, paid API, or live trading. The schemas are contracts only. Full JSON Schema validation in CI, semantic state-machine enforcement, trusted engine attestation, and server-side trial registration are follow-up tasks.
 
 ## Schema index
 
 - `strategy-spec-v1.schema.json`: explicit rules and claim provenance.
-- `job-spec-v1.schema.json`: immutable references, implementation digest, frozen parameters, finite budgets, and engine evidence class.
+- `job-spec-v1.schema.json`: immutable references to strategy, data, cost, and frozen gate configuration; implementation digest, frozen parameters, finite budgets, and engine evidence class.
+- `data-profile-v1.schema.json`: versioned source, symbol/timeframe, date range, data mode, and dataset digest.
+- `cost-profile-v1.schema.json`: versioned spread, commission, slippage, swap, and symbol specifications.
+- `gate-config-v1.schema.json`: pre-frozen thresholds, trial-family budget, data splits, multiple-testing method, and cost sensitivity.
+- `docs/RESEARCH_TEAM_OPERATING_CONTRACT.md`: role permissions, evidence chain, trial accounting, OOS protection, threat boundaries, and release gates.
 - `run-record-v1.schema.json`: state, evidence level, bound input digests, and output artifact digests.
 - `trial-registry-entry-v1.schema.json`: records trial-family membership and failed/non-completed outcomes.
 - `gate-verdict-v1.schema.json`: separate, versioned gate result and recorded trial count.
