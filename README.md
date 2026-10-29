@@ -18,13 +18,15 @@ Build an AI-assisted platform that can discover research sources, formalize trad
 
 The repository now includes:
 - A Python startup/status scaffold.
-- Versioned experiment manifests with basic validation and state transitions.
+- Versioned experiment manifests with strict date/time, state, finite-JSON, and safe-artifact-path validation.
 - A deterministic mock worker for testing the experiment lifecycle without MT5 or market data.
-- Unit tests for manifest validation, legal transitions, persistence, and mock-worker behavior.
-- A GitHub Actions workflow for running the standard-library test suite.
+- A provenance-first source registry that records source type, URL, rights-review status, collection method, and content hashes.
+- Transcript fidelity checks for numeric/date changes, dropped negation, and large text drift; these are heuristic warnings, not proof of semantic correctness.
+- Unit tests for manifest validation, safe local file collection, source provenance, transcript fidelity, and mock-worker behavior.
+- A consolidated GitHub Actions CI workflow for repository tests, worker regression tests, JSON syntax, and offline worker self-test.
 - Documentation for experiment evidence requirements and the future secure execution boundary.
 
-The mock worker does **not** run a backtest, test a trading strategy, connect to a broker, or place trades. Do not treat its successful lifecycle as trading evidence. CI execution should be checked in the Actions tab before describing the tests as passed.
+The source registry does not yet discover or download videos automatically; it validates records for sources supplied by a user or a future authorized connector. Transcript fidelity checks do not replace human review. The mock worker does **not** run a backtest, test a trading strategy, connect to a broker, or place trades. Do not treat its successful lifecycle as trading evidence. CI execution should be checked in the Actions tab before describing the tests as passed.
 
 ## Research lifecycle
 
