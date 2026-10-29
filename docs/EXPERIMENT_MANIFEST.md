@@ -19,4 +19,4 @@ A future MT5 executor must record the Git commit, EA source/binary hash, termina
 
 ## Current limitation
 
-The manifest helper and mock worker implement only validation and lifecycle smoke testing. They do not run or emulate market trades. The mock worker's output must never be interpreted as evidence of strategy performance.
+The manifest helper validates strict calendar dates, timezone-aware timestamps, state/timestamp consistency, finite JSON values, and safe relative artifact paths. The mock worker implements only lifecycle smoke testing. They do not run or emulate market trades. The mock worker's output must never be interpreted as evidence of strategy performance.
