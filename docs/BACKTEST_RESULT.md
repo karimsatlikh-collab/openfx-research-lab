@@ -22,6 +22,14 @@ review = validate_backtest_result(result_dict)
 print(review)
 ```
 
+To validate a saved result and verify the actual bytes of every declared artifact under a trusted directory:
+
+```bash
+python -m openfx.result_cli validate --result results/run-001.json --artifact-root artifacts/run-001
+```
+
+The command exits non-zero if metadata is incomplete or any required artifact is missing, unsafe, has the wrong size, or has the wrong SHA-256 hash.
+
 - `ready_for_independent_review` means only that required metadata/artifact declarations and verification attestations are present and internally consistent.
 - `incomplete` includes blockers such as missing artifacts or unverified costs/logs.
 - Warnings identify selected metric inconsistencies, such as profit factor not matching gross profit divided by gross loss.
