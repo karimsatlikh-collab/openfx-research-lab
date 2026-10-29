@@ -27,6 +27,7 @@
 
 - [ ] Source registry for videos, transcripts, papers, datasets, and code.
 - [x] Define source URL, author/date, rights status, collection method, content hash, transcript timestamps, extraction method, confidence, and text hash fields.
+- [x] Add local VTT/SRT/plain-text transcript import with timestamps, deterministic segment IDs, and content hashes.
 - [ ] Add an authorized source connector for source discovery and transcript acquisition; current registry does not crawl or download.
 - [x] Add heuristic extraction-quality checks for dropped/changed numbers and dates, changed negation, and low token similarity.
 - [ ] Expand multilingual/ASR-specific fixtures and add human-reviewed reference transcripts; heuristics cannot prove semantic equivalence.
