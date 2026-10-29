@@ -122,17 +122,17 @@ on branch `openfx-mission-state-docs`, commit `09f909f756fbda2afe37b6d96b2f06eba
 - The nested path `.github/workflows/.github/workflows/.github/workflows/test.yml` is an inactive duplicate candidate because it is not directly under `.github/workflows`.
 - Feature-branch source-confirmed claims record a `human_verified` status but do not preserve an auditable reviewer identity/time event.
 - JSON syntax checks are not JSON Schema validation; main's experiment schema is looser than the strict feature-branch Python validator.
-- Transcript numeric glyph normalization has been implemented on `openfx-audit-round1`, PR #14, with regression tests for Persian/Arabic-Indic digits, percent glyphs, and Unicode signs. At the last status check, the exact-head test check was queued, not passed.
+- Transcript numeric glyph normalization has been implemented on `openfx-audit-round1`, PR #14, with regression tests for Persian/Arabic-Indic digits, percent glyphs, and Unicode signs. Exact-head OpenFX CI run `40924158772` completed successfully: 109 repository tests and 15 worker regression tests passed; JSON syntax validation and worker offline self-test also passed. This does not establish semantic equivalence.
 
 ### Actions evidence refreshed
 - PR #11: run `40921215811` (OpenFX CI) success; run `40921215571` (CodeQL) success for head `28161cb4622e4bd92ba356508b97409f6149a1af`.
 - PR #12: run `40921649710` (OpenFX CI) success for head `649631de5f3a08be1ca0941ede4ff3646b346063`.
 - PR #13: runs `40923717266` (OpenFX Unit Tests), `40923717250` (Project Tests), and `40923717315` (CodeQL) success for docs head `9c360866b744ac83b4f8d720019d964f1b0d85b1`.
-- PR #14 exact-head check ID `123625086035` was queued when last inspected. Refresh before reporting the result.
+- PR #14 exact-head check ID `123625086035` completed successfully in run `40924158772`; logs show 109 repository tests and 15 worker tests passed, JSON syntax validation passed, and worker offline self-test passed.
 
 ### Audit limitations
 The repository could not be cloned in the local execution container because DNS/network access to GitHub was unavailable. This audit checkpoint uses GitHub connector file/branch/PR/Actions evidence and code review. No local test command, real MT5 run, VPS deployment, or trading backtest is claimed.
 
 ## 9. Latest continuation point
 
-**Next action:** refresh the exact-head CI status and logs for PR #14. If successful, record the confirmed outcome; if failed, inspect logs and correct the regression. Then continue the broader audit in this order: (1) schema-validation parity and strict fixtures, (2) auditable human-review events for claims, (3) labelled transcript adversarial corpus, (4) worker failure/recovery and idempotency, (5) artifact verification and MT5 pilot acceptance criteria. Review the PR #11/#12 dependency chain and the inactive nested workflow, but do not merge any PR without explicit owner approval.
+**Next action:** add executable JSON Schema validation and negative fixtures on a feature branch, then verify schema/Python-validator parity. Continue afterward with auditable human-review events for claims, a labelled transcript adversarial corpus, worker failure/recovery and idempotency, and artifact verification/MT5 pilot acceptance criteria. Review the PR #11/#12 dependency chain and the inactive nested workflow, but do not merge any PR without explicit owner approval.
