@@ -283,7 +283,7 @@ def save_manifest(manifest: dict[str, Any], path: str | Path) -> None:
             prefix=f".{destination.name}.", suffix=".tmp", delete=False,
         ) as stream:
             temp_name = stream.name
-            stream.write(json.dumps(manifest, indent=2, ensure_ascii=False, allow_nan=False) + "\\n")
+            stream.write(json.dumps(manifest, indent=2, ensure_ascii=False, allow_nan=False) + "\n")
             stream.flush()
             os.fsync(stream.fileno())
         Path(temp_name).replace(destination)
