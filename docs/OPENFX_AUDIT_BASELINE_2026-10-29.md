@@ -150,7 +150,7 @@ validated strategy rule -> compiled EA -> real MT5 Strategy Tester
 
 ### F-03 — Transcript numeric token comparison has equivalent-glyph false positives
 **Severity:** P2 — quality issue with research consequences  
-**Status:** Code-reviewed; fix submitted for CI  
+**Status:** Code-reviewed and CI-confirmed for the exact PR #14 head  
 **Evidence:** Before PR #14, `openfx/transcript_quality.py` compared token strings without normalizing Persian/Arabic-Indic digits, Persian percent glyph, or Unicode minus/plus variants.  
 **Impact:** Equivalent numeric expressions may be flagged as changed; that can inflate review burden and reduce consistency. Conversely, this heuristic still cannot detect all semantic changes.  
 **Action taken:** PR #14 normalizes equivalent digit/sign/percent glyphs and adds regression tests while retaining tests for missing percent and sign changes. Exact-head CI status must be refreshed before calling this fix test-confirmed.  
@@ -212,7 +212,7 @@ validated strategy rule -> compiled EA -> real MT5 Strategy Tester
 - GitHub Actions reported successful syntax/unit-test/worker checks for PR #11 at run `40921215811`.
 - GitHub Actions reported successful CI for PR #12 at run `40921649710`.
 - GitHub Actions reported successful unit/project test workflows and CodeQL for PR #13 at runs `40923717266`, `40923717250`, and `40923717315`.
-- PR #14 exact-head check was queued at the last query; outcome not yet established.
+- PR #14 exact-head check completed successfully; 109 repository tests and 15 worker tests passed in the logged run. No MT5 execution occurred.
 
 ### Not performed / not established
 - No local test execution in this environment (network DNS prevented cloning the repository).
