@@ -97,14 +97,22 @@ consistency; require a finish timestamp for `COMPLETED`; and reject illegal
 RunRecord state transitions. A lifecycle status is explicitly not interpreted
 as a performance verdict.
 
-The local registry now exposes a unique-trial count per family and the gate has
-an opt-in helper that reads that count from the registry. Repeated events for
-one trial count once, and failed/non-success trials count. This remains a
-single-host prototype: count reads are not atomic with subsequent appends,
-there is no central authority or signed ledger, and the existing direct gate
-function still accepts a caller-provided count for isolated tests. Production
-use requires a transactional registrar and a gate API that accepts only trusted
-registrar-issued snapshots.
+The local registry exposes a unique-trial count per family and an opt-in gate
+helper that reads that count. Registry append now optionally enforces a
+family's positive-integer trial budget while holding the same exclusive lock
+used to read and append the ledger. New trials consume budget on their first
+event regardless of outcome; an idempotent retry is checked before budget
+enforcement. The event lifecycle rejects contradictory follow-up events:
+a pending trial may transition once to a terminal outcome, and a terminal trial
+cannot later be changed to a different outcome. Legacy/imported trials may
+still be recorded directly with a terminal outcome, but then are immutable at
+the event-lifecycle level.
+
+This remains a single-host prototype: the standalone count read and gate
+evaluation are not a transaction, there is no central authority or signed
+ledger, and the direct gate function still accepts a caller-provided count for
+isolated tests. Production use requires a trusted transactional registrar and a
+gate API that accepts only registrar-issued snapshots.
 
 These checks are semantic consistency controls, not engine attestation,
 authorization, statistical correction, or evidence of profitability.
