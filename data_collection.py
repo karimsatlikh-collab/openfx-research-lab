@@ -34,7 +34,9 @@ def collect_local_metadata(source_directory: str) -> list[dict]:
     Discover supported files in a user-provided local directory.
 
     This function records metadata only. It does not upload files,
-    access remote systems, or extract private information.
+    access remote systems, or extract file contents. Records include a
+    root-relative path (not an absolute local path); review path names before
+    sharing the resulting metadata.
     """
     root = Path(source_directory).expanduser().resolve()
 
@@ -47,6 +49,10 @@ def collect_local_metadata(source_directory: str) -> list[dict]:
     records = []
 
     for file_path in root.rglob("*"):
+        # Do not follow file symlinks: a link inside the selected directory can
+        # point outside it and cause metadata/hash collection from an unintended path.
+        if file_path.is_symlink():
+            continue
         if not file_path.is_file():
             continue
 
@@ -57,6 +63,7 @@ def collect_local_metadata(source_directory: str) -> list[dict]:
             stat = file_path.stat()
 
             record = {
+                "relative_path": file_path.relative_to(root).as_posix(),
                 "file_name": file_path.name,
                 "file_type": file_path.suffix.lower(),
                 "file_size_bytes": stat.st_size,

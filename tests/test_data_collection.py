@@ -18,6 +18,7 @@ class DataCollectionTests(unittest.TestCase):
 
             self.assertEqual(len(records), 1)
             self.assertEqual(records[0]["file_name"], "sample.txt")
+            self.assertEqual(records[0]["relative_path"], "sample.txt")
             self.assertEqual(records[0]["collection_method"], "authorized_local_file_scan")
             self.assertFalse(records[0]["content_extracted"])
             self.assertEqual(len(records[0]["sha256"]), 64)
@@ -27,6 +28,34 @@ class DataCollectionTests(unittest.TestCase):
             missing = Path(directory) / "does-not-exist"
             with self.assertRaises(FileNotFoundError):
                 collect_local_metadata(str(missing))
+
+    def test_root_relative_paths_disambiguate_duplicate_basenames(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "first").mkdir()
+            (root / "second").mkdir()
+            (root / "first" / "notes.txt").write_text("one", encoding="utf-8")
+            (root / "second" / "notes.txt").write_text("two", encoding="utf-8")
+
+            records = collect_local_metadata(str(root))
+            paths = {record["relative_path"] for record in records}
+            self.assertEqual(paths, {"first/notes.txt", "second/notes.txt"})
+
+    def test_symlink_to_file_outside_selected_root_is_not_scanned(self):
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            root = parent / "selected"
+            root.mkdir()
+            outside = parent / "outside.txt"
+            outside.write_text("outside the selected root", encoding="utf-8")
+            link = root / "linked.txt"
+            try:
+                link.symlink_to(outside)
+            except (OSError, NotImplementedError):
+                self.skipTest("symlinks are not supported by this environment")
+
+            records = collect_local_metadata(str(root))
+            self.assertEqual(records, [])
 
     def test_metadata_can_be_saved_and_evaluated(self):
         with tempfile.TemporaryDirectory() as directory:
