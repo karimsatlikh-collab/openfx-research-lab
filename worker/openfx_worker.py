@@ -44,6 +44,7 @@ class WorkerConfig:
     request_timeout_seconds: int
     max_jobs_per_poll: int
     allowed_ea_ids: tuple[str, ...]
+    allowed_control_plane_hosts: tuple[str, ...]
     max_backtest_days: int
     max_runtime_seconds: int
     local_state_file: str
@@ -54,7 +55,7 @@ class WorkerConfig:
         required = {
             "control_plane_url", "poll_interval_seconds",
             "request_timeout_seconds", "max_jobs_per_poll",
-            "allowed_ea_ids", "max_backtest_days", "max_runtime_seconds",
+            "allowed_ea_ids", "allowed_control_plane_hosts", "max_backtest_days", "max_runtime_seconds",
             "local_state_file", "execution_enabled"
         }
         if set(data) != required:
@@ -63,13 +64,24 @@ class WorkerConfig:
         if not isinstance(url, str):
             raise ValueError("control_plane_url must be a string.")
         parsed = urllib.parse.urlparse(url)
-        if (parsed.scheme != "https" or not parsed.netloc or parsed.hostname is None
+        try:
+            hostname = parsed.hostname.lower().rstrip(".") if parsed.hostname else None
+            port = parsed.port
+        except ValueError:
+            raise ValueError("control_plane_url has an invalid host or port.") from None
+        if (parsed.scheme != "https" or not parsed.netloc or hostname is None
                 or parsed.username is not None or parsed.password is not None
-                or parsed.query or parsed.fragment):
+                or parsed.query or parsed.fragment or port == 0):
             raise ValueError("control_plane_url must be a clean HTTPS URL without credentials, query, or fragment.")
-        if parsed.hostname.endswith(".invalid") or "PLACEHOLDER" in url:
-            # Allowed only for local validation; network calls will be refused.
-            pass
+        allowed_hosts = data["allowed_control_plane_hosts"]
+        if (not isinstance(allowed_hosts, list) or not allowed_hosts
+                or any(not isinstance(host, str) or host != host.lower().rstrip(".")
+                       or not re.fullmatch(r"[a-z0-9.-]{1,253}", host)
+                       or ".." in host or host.startswith(".") or host.endswith(".")
+                       for host in allowed_hosts)):
+            raise ValueError("allowed_control_plane_hosts must be a non-empty list of normalized hostnames.")
+        if hostname not in allowed_hosts:
+            raise ValueError("control_plane_url hostname is not on the explicit allow-list.")
         for key, low, high in (
             ("poll_interval_seconds", 5, 3600),
             ("request_timeout_seconds", 3, 120),
@@ -96,6 +108,7 @@ class WorkerConfig:
             request_timeout_seconds=data["request_timeout_seconds"],
             max_jobs_per_poll=data["max_jobs_per_poll"],
             allowed_ea_ids=tuple(data["allowed_ea_ids"]),
+            allowed_control_plane_hosts=tuple(allowed_hosts),
             max_backtest_days=data["max_backtest_days"],
             max_runtime_seconds=data["max_runtime_seconds"],
             local_state_file=data["local_state_file"],
@@ -197,7 +210,10 @@ def record_event(state: dict[str, Any], job_id: str, status: str, detail: str) -
 def safe_poll(config: WorkerConfig, token: str) -> list[dict[str, Any]]:
     """Poll a future control plane; never follow redirects or call non-HTTPS URLs."""
     parsed = urllib.parse.urlparse(config.control_plane_url)
-    if parsed.hostname is None or parsed.hostname.endswith(".invalid") or "PLACEHOLDER" in config.control_plane_url:
+    hostname = parsed.hostname.lower().rstrip(".") if parsed.hostname else None
+    if hostname is None or hostname not in config.allowed_control_plane_hosts:
+        raise RuntimeError("Control-plane hostname is not on the configured allow-list.")
+    if hostname.endswith(".invalid") or "PLACEHOLDER" in config.control_plane_url:
         raise RuntimeError("Control-plane URL is a placeholder; network polling is disabled.")
     if not token or len(token) < 24:
         raise RuntimeError("OPENFX_WORKER_TOKEN is missing or too short.")
@@ -271,6 +287,7 @@ def self_test() -> int:
         "request_timeout_seconds": 15,
         "max_jobs_per_poll": 1,
         "allowed_ea_ids": ["openfx-demo-ea"],
+        "allowed_control_plane_hosts": ["control-plane-placeholder.invalid"],
         "max_backtest_days": 365,
         "max_runtime_seconds": 1800,
         "local_state_file": "worker_state.json",
