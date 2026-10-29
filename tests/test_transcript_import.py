@@ -20,7 +20,8 @@ def make_registry():
         url="https://example.com/captions",
         title="Synthetic caption fixture",
         author="Example",
-        license_status="unknown",
+        license_status="reviewed_permitted",
+        license_reference="synthetic test fixture permission record",
         access_method="user_provided",
     ))
     return registry
@@ -112,6 +113,20 @@ First.
         with self.assertRaisesRegex(ValueError, "already exist"):
             import_transcript_into_registry(updated, "source-001", "A rule.", "txt")
 
+
+    def test_unknown_rights_cannot_be_imported(self):
+        registry = make_registry()
+        registry["sources"][0]["license_status"] = "unknown"
+        registry["sources"][0]["license_reference"] = None
+        with self.assertRaisesRegex(ValueError, "requires reviewed_permitted or public_domain"):
+            import_transcript_into_registry(registry, "source-001", "Text.", "txt")
+
+    def test_permission_required_source_cannot_be_imported(self):
+        registry = make_registry()
+        registry["sources"][0]["license_status"] = "permission_required"
+        registry["sources"][0]["license_reference"] = None
+        with self.assertRaisesRegex(ValueError, "requires reviewed_permitted or public_domain"):
+            import_transcript_into_registry(registry, "source-001", "Text.", "txt")
 
     def test_restricted_source_cannot_be_imported(self):
         registry = make_registry()
