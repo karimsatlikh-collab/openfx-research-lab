@@ -61,7 +61,26 @@ class LocalTrialRegistry:
     def verify(self) -> dict[str, Any]:
         rows = self._read_and_verify()
         return {"valid": True, "event_count": len(rows),
+                "trial_count": len({(row["family_id"], row["trial_id"]) for row in rows}),
                 "last_event_sha256": rows[-1]["event_sha256"] if rows else GENESIS}
+
+    def trial_count(self, family_id: str) -> int:
+        """Return the registrar-derived count of unique trials in a family.
+
+        Every unique trial counts regardless of outcome, including failed,
+        timed-out, interrupted, rejected, and cancelled trials.
+        """
+        if not isinstance(family_id, str) or not family_id.strip():
+            raise TrialRegistryError("family_id must be non-empty")
+        rows = self._read_and_verify()
+        return len({row["trial_id"] for row in rows if row["family_id"] == family_id})
+
+    def next_trial_index(self, family_id: str) -> int:
+        """Return the next one-based index for a family; callers must still append under lock."""
+        if not isinstance(family_id, str) or not family_id.strip():
+            raise TrialRegistryError("family_id must be non-empty")
+        rows = self._read_and_verify()
+        return len({row["trial_id"] for row in rows if row["family_id"] == family_id}) + 1
 
     def append(self, *, event_id: str, family_id: str, trial_id: str,
                outcome: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -91,10 +110,17 @@ class LocalTrialRegistry:
                     if comparable != desired:
                         raise TrialRegistryError("idempotency key reused with different event content")
                     return old
+            same_trial = [x for x in rows if x["trial_id"] == trial_id]
+            if same_trial and any(x["family_id"] != family_id for x in same_trial):
+                raise TrialRegistryError("trial_id cannot be reused across trial families")
             family_rows = [x for x in rows if x["family_id"] == family_id]
+            family_trial_ids = list(dict.fromkeys(x["trial_id"] for x in family_rows))
+            trial_index = (same_trial[0].get("trial_index") if same_trial
+                           else len(family_trial_ids) + 1)
             event = {
                 "schema_version": 1, "sequence": len(rows) + 1,
                 "family_sequence": len(family_rows) + 1,
+                "trial_index": trial_index,
                 "event_id": event_id, "family_id": family_id, "trial_id": trial_id,
                 "outcome": outcome, "payload": payload or {},
                 "previous_event_sha256": rows[-1]["event_sha256"] if rows else GENESIS,
