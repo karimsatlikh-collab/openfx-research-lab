@@ -1,0 +1,25 @@
+name: OpenFX Python tests
+
+on:
+  push:
+    branches: ["main", "test/**", "fix/**"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  python-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile Python modules
+        run: python -m compileall -q .
+      - name: Worker offline self-test
+        run: python worker/openfx_worker.py --self-test
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
