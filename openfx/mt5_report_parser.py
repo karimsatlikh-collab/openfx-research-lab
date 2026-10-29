@@ -194,7 +194,7 @@ def compare_report_metrics(parsed_report: dict[str, Any], result_manifest: dict[
         elif field == "trade_count":
             if not isinstance(actual, int) or isinstance(actual, bool) or actual != declared:
                 mismatches.append(field)
-        elif not math.isclose(float(actual), float(declared), rel_tol=0.01, abs_tol=0.05):
+        elif not math.isclose(float(actual), float(declared), rel_tol=0.0, abs_tol=0.05):
             mismatches.append(field)
     return {
         "status": "matched" if not mismatches else "mismatch",
