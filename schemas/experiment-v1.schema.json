@@ -57,5 +57,11 @@
     "artifacts": { "type": "array" },
     "notes": { "type": "string" },
     "error": { "type": "string", "maxLength": 2000 }
-  }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "COMPLETED" } }, "required": ["status"] },
+      "then": { "properties": { "result": { "type": "object", "minProperties": 1 } } }
+    }
+  ]
 }
