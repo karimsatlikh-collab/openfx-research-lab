@@ -61,13 +61,19 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "seed",
         "sample_size",
         "mean_return",
-        "std_return",
-        "sharpe_like",
-        "total_return"
+        "positive_fraction",
+        "max_drawdown_units",
+        "returns_sha256",
+        "evidence_level",
+        "is_market_backtest"
       ],
       "properties": {
+        "seed": {
+          "type": "integer"
+        },
         "sample_size": {
           "type": "integer",
           "minimum": 1
@@ -75,14 +81,24 @@
         "mean_return": {
           "type": "number"
         },
-        "std_return": {
-          "type": "number"
+        "positive_fraction": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
         },
-        "sharpe_like": {
-          "type": "number"
+        "max_drawdown_units": {
+          "type": "number",
+          "minimum": 0
         },
-        "total_return": {
-          "type": "number"
+        "returns_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "evidence_level": {
+          "const": "synthetic"
+        },
+        "is_market_backtest": {
+          "const": false
         }
       }
     }
