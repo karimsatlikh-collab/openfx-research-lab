@@ -43,6 +43,9 @@ class LocalTrialRegistry:
             return []
         rows = []
         previous = GENESIS
+        seen_event_ids: set[str] = set()
+        trial_rows: dict[str, list[dict[str, Any]]] = {}
+        family_trials: dict[str, list[str]] = {}
         for line_number, line in enumerate(self.path.read_text(encoding="utf-8").splitlines(), 1):
             if not line.strip():
                 raise TrialRegistryError(f"blank line at ledger line {line_number}")
@@ -50,14 +53,47 @@ class LocalTrialRegistry:
                 row = json.loads(line)
             except json.JSONDecodeError as exc:
                 raise TrialRegistryError(f"invalid JSON at ledger line {line_number}") from exc
+            if not isinstance(row, dict):
+                raise TrialRegistryError(f"event must be an object at ledger line {line_number}")
             supplied_hash = row.pop("event_sha256", None)
             if row.get("previous_event_sha256") != previous:
                 raise TrialRegistryError(f"broken previous hash at ledger line {line_number}")
             expected = _event_hash(row)
             if supplied_hash != expected:
                 raise TrialRegistryError(f"event hash mismatch at ledger line {line_number}")
+            required = ("sequence", "family_sequence", "trial_index", "event_id",
+                        "family_id", "trial_id", "outcome", "payload")
+            if any(key not in row for key in required):
+                raise TrialRegistryError(f"missing required event field at ledger line {line_number}")
+            for key in ("event_id", "family_id", "trial_id"):
+                if not isinstance(row[key], str) or not row[key].strip():
+                    raise TrialRegistryError(f"invalid {key} at ledger line {line_number}")
+            if isinstance(row["sequence"], bool) or row["sequence"] != len(rows) + 1:
+                raise TrialRegistryError(f"invalid sequence at ledger line {line_number}")
+            if row["outcome"] not in TRIAL_OUTCOMES:
+                raise TrialRegistryError(f"invalid outcome at ledger line {line_number}")
+            if not isinstance(row["payload"], dict):
+                raise TrialRegistryError(f"invalid payload at ledger line {line_number}")
+            if row["event_id"] in seen_event_ids:
+                raise TrialRegistryError(f"duplicate event_id at ledger line {line_number}")
+            seen_event_ids.add(row["event_id"])
+            prior_trial = trial_rows.get(row["trial_id"], [])
+            if prior_trial and any(item["family_id"] != row["family_id"] for item in prior_trial):
+                raise TrialRegistryError(f"trial_id crosses families at ledger line {line_number}")
+            if prior_trial and prior_trial[-1]["outcome"] != "pending":
+                raise TrialRegistryError(f"event follows terminal trial outcome at ledger line {line_number}")
+            expected_family_sequence = 1 + sum(item["family_id"] == row["family_id"] for item in rows)
+            if isinstance(row["family_sequence"], bool) or row["family_sequence"] != expected_family_sequence:
+                raise TrialRegistryError(f"invalid family_sequence at ledger line {line_number}")
+            known_family_trials = family_trials.setdefault(row["family_id"], [])
+            if row["trial_id"] not in known_family_trials:
+                known_family_trials.append(row["trial_id"])
+            expected_trial_index = known_family_trials.index(row["trial_id"]) + 1
+            if isinstance(row["trial_index"], bool) or row["trial_index"] != expected_trial_index:
+                raise TrialRegistryError(f"invalid trial_index at ledger line {line_number}")
             row["event_sha256"] = supplied_hash
             rows.append(row)
+            trial_rows.setdefault(row["trial_id"], []).append(row)
             previous = supplied_hash
         return rows
 
@@ -98,7 +134,7 @@ class LocalTrialRegistry:
         for key, value in (("event_id", event_id), ("family_id", family_id), ("trial_id", trial_id)):
             if not isinstance(value, str) or not value.strip():
                 raise TrialRegistryError(f"{key} must be non-empty")
-        if outcome not in TRIAL_OUTCOMES:
+        if not isinstance(outcome, str) or outcome not in TRIAL_OUTCOMES:
             raise TrialRegistryError("unsupported trial outcome")
         if max_trials is not None and (isinstance(max_trials, bool) or not isinstance(max_trials, int) or max_trials < 1):
             raise TrialRegistryError("max_trials must be a positive integer when provided")
