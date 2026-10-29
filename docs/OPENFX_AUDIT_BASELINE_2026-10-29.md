@@ -165,10 +165,10 @@ validated strategy rule -> compiled EA -> real MT5 Strategy Tester
 
 ### F-05 — CI validates JSON syntax but does not consistently validate JSON Schema conformance
 **Severity:** P2 — validation coverage gap  
-**Status:** Code-reviewed  
-**Evidence:** Root-level workflows include JSON syntax checks, but syntax checks alone do not validate sample manifests/records against their JSON Schemas. Main's `schemas/experiment-v1.schema.json` also uses permissive root `additionalProperties: true`, while PR #11's Python manifest validator rejects unknown fields and its feature-branch schema uses stricter rules.  
+**Status:** Code-reviewed; a feature-branch fix is CI-confirmed, but not merged to main  
+**Evidence:** Root-level workflows previously checked JSON syntax only. Main's `schemas/experiment-v1.schema.json` uses permissive root `additionalProperties: true`, while PR #11's Python manifest validator rejects unknown fields and its feature-branch schema uses stricter rules.  
 **Impact:** A JSON file can parse successfully while violating the intended contract; schema and Python behavior may drift.  
-**Action:** Add a pinned schema-validation dependency or a controlled validator step and positive/negative schema fixtures. Define one canonical contract and test parity with Python validation.
+**Action taken:** PR #15 adds pinned `jsonschema==4.25.1`, Draft 2020-12 schema checks, positive/negative fixtures, and selected parity tests against Python validation. Exact-head CI run `40924445011` passed (8 dedicated schema tests; 117 repository tests; 15 worker tests). This branch is still open and based on the PR #14 feature branch; main remains unchanged.
 
 ### F-06 — Human verification is represented as a status, not an auditable review event
 **Severity:** P1/P2 — evidence governance gap  
@@ -198,6 +198,30 @@ validated strategy rule -> compiled EA -> real MT5 Strategy Tester
 **Impact:** Passing hand-selected unit tests does not show how reliably transcript checks behave on realistic Persian/English transcripts, ASR errors, units, dates, paraphrases, or clause changes.  
 **Action:** Build a small, versioned, human-labelled adversarial fixture set; report confusion matrix and known blind spots before expanding automation claims.
 
+### F-10 — Malformed subtitle blocks can be silently omitted
+**Severity:** P1/P2 — silent research-data loss  
+**Status:** Code-reviewed; fix CI-confirmed on PR #16  
+**Evidence:** Before PR #16, `openfx/transcript_import.py` skipped any subtitle block with no timestamp line. If a valid cue existed elsewhere in the file, import could still succeed while silently dropping the malformed block.  
+**Impact:** Lost text could include a negation, number, threshold, or condition, while the importer returns a seemingly valid partial transcript.  
+**Action taken:** PR #16 changes this path to fail closed for non-header/non-metadata blocks without timestamps and adds a regression fixture. CI run `40924573796` passed (110 repository tests and 15 worker tests).  
+**Residual limitation:** A timestamped subtitle file can still contain incorrect captions or audio/transcript mismatches; this parser does not validate speech.
+
+### F-11 — Unknown rights status was not a hard ingestion gate
+**Severity:** P1/P2 — compliance and provenance risk  
+**Status:** Code-reviewed; fix CI-confirmed on PR #17  
+**Evidence:** The prior importer blocked only `restricted` and `permission_required`, so `unknown` rights could still be imported despite docs saying unknown rights must remain unapproved until reviewed.  
+**Impact:** The application could process transcript material without a recorded rights decision, weakening the project's authorized-source boundary.  
+**Action taken:** PR #17 now permits ingestion only for `reviewed_permitted` or `public_domain` records with a rights reference; unknown/restricted/permission-required are rejected. Documentation and tests were updated. Exact-head CI run `40924903871` passed (111 repository tests and 15 worker tests).  
+**Residual limitation:** The software checks the recorded status/reference, not the legal validity of the permission itself.
+
+### F-12 — Local file scanning followed symlinks outside the selected root
+**Severity:** P2 — local privacy/scope boundary  
+**Status:** Code-reviewed; tests and CodeQL CI-confirmed on PR #18  
+**Evidence:** In main's `data_collection.py`, `Path.is_file()` follows symlinks, and the collector hashed any supported target reachable through a link inside the selected directory.  
+**Impact:** A scan could read/hash a file outside the directory the user selected. The content is not uploaded, but the scan scope was wider than expected.  
+**Action taken:** PR #18 skips symbolic links and adds an external-target regression test. Run `40924838032` passed with 18 data/project tests; CodeQL run `40924853233` also passed. PR #18 remains open and is not in main.  
+**Residual limitation:** This check does not establish a sandbox for other file-processing components.
+
 ## 7. Security and operational observations
 
 - `worker/openfx_worker.py` explicitly avoids command execution and MT5 invocation. This is an appropriate prototype boundary, not production readiness.
@@ -212,7 +236,12 @@ validated strategy rule -> compiled EA -> real MT5 Strategy Tester
 - GitHub Actions reported successful syntax/unit-test/worker checks for PR #11 at run `40921215811`.
 - GitHub Actions reported successful CI for PR #12 at run `40921649710`.
 - GitHub Actions reported successful unit/project test workflows and CodeQL for PR #13 at runs `40923717266`, `40923717250`, and `40923717315`.
-- PR #14 exact-head check completed successfully; 109 repository tests and 15 worker tests passed in the logged run. No MT5 execution occurred.
+- PR #14 exact-head check completed successfully; 109 repository tests and 15 worker tests passed.
+- PR #15 exact-head schema contract checks passed; 8 dedicated schema tests, 117 repository tests, and 15 worker tests passed.
+- PR #16 exact-head CI passed with 110 repository tests and 15 worker tests.
+- PR #17 exact-head CI passed with 111 repository tests and 15 worker tests.
+- PR #18 exact-head CI passed; its data/project test run logged 18 tests and CodeQL completed successfully.
+- PR #19 CI was still running at the last check; no result is claimed yet. No MT5 execution occurred.
 
 ### Not performed / not established
 - No local test execution in this environment (network DNS prevented cloning the repository).
