@@ -1,0 +1,244 @@
+# OpenFX Independent Audit — Baseline and Initial Findings
+
+**Date:** 2026-10-29  
+**Status:** Initial evidence-backed baseline; full audit remains in progress  
+**Repository:** `karimsatlikh-collab/openfx-research-lab`  
+**Default branch inspected:** `main` at `25c1366097c2ddf3a7951111ca9e9a1e6e4928b6`  
+**Method:** GitHub repository/branch/PR/file inspection plus review of recorded GitHub Actions run statuses. No local clone was possible in this execution environment, so no local Python test command is claimed to have run.
+
+## 1. Executive summary
+
+**OpenFX is currently a research/engineering scaffold, not an end-to-end autonomous research system and not a trading validation platform.** The default `main` branch contains local-file metadata collection, basic metadata checks, an experiment scaffold, a mock worker, schemas, documentation, and CI. It does not contain the source/evidence research modules currently present in the open PR branch chain, and it has no real MT5 execution adapter.
+
+A substantial feature set exists on non-main branches: source registry validation, transcript import and heuristic quality checks, evidence-linked claims, YouTube metadata search, MT5 HTML summary parsing, and stricter experiment/worker validation. These are meaningful prototypes, but they are not part of `main` and do not establish autonomous video extraction, semantic verification, real Strategy Tester execution, or profitable strategy performance.
+
+The most important immediate risk is **branch/release ambiguity**: several capabilities described in the feature-branch roadmap and tests are not yet in the default branch. A report or user must identify the exact branch and commit for every capability claim.
+
+## 2. Evidence and confidence labels
+
+- **Observed:** directly read from the current repository tree, file, branch, PR metadata, or Actions API response.
+- **CI-confirmed:** a named GitHub Actions run completed successfully for the stated commit. This confirms only the checks that workflow actually executes.
+- **Code-reviewed:** inferred from inspected source code; no separate runtime test was performed here.
+- **Not established:** no evidence was found in the inspected repository/status to support the capability.
+
+No live trading, MT5 Strategy Tester execution, VPS deployment, or end-to-end source-to-experiment run is established by this audit.
+
+## 3. Branch and pull-request baseline
+
+| Item | Observed state | Implication |
+|---|---|---|
+| `main` | Commit `25c1366097c2ddf3a7951111ca9e9a1e6e4928b6`; 62 tracked tree entries observed | This is the default-branch baseline. |
+| PR #11 `openfx-audit-fixes` | Open, not merged; head `28161cb4622e4bd92ba356508b97409f6149a1af`, base `main` | Adds a broad research/evidence/result-validation feature set and hardens experiment/worker validation, but is not in main. |
+| PR #12 `openfx-transcript-adversarial-checks` | Open, not merged; head `649631de5f3a08be1ca0941ede4ff3646b346063`, base `openfx-audit-fixes` | Adds percentage-symbol fidelity checks on top of PR #11; depends on the earlier branch. |
+| PR #13 mission/state docs | Open, not merged; head `9c360866b744ac83b4f8d720019d964f1b0d85b1`, base `main` | Mission files are on a separate docs branch; merging this alone would not bring in PR #11/#12 code. |
+| PR #14 numeric glyph normalization | Open; head `61047b9a45ea556799a4d4c1c15073dc45e9025e`, base `openfx-transcript-adversarial-checks` | Adds a targeted transcript heuristic fix and regression tests; CI result for this exact head was queued at the last check and must be refreshed. |
+
+Relevant historical CI evidence observed:
+- PR #11 commit `28161cb4622e4bd92ba356508b97409f6149a1af`: OpenFX CI run `40921215811` success; CodeQL run `40921215571` success.
+- PR #12 commit `649631de5f3a08be1ca0941ede4ff3646b346063`: OpenFX CI run `40921649710` success.
+- PR #13 documentation commit `9c360866b744ac83b4f8d720019d964f1b0d85b1`: OpenFX Unit Tests run `40923717266`, Project Tests run `40923717250`, CodeQL run `40923717315` all reported success.
+- PR #14 head check `123625086035` was queued at the last status query. Do not report it as passing until refreshed.
+
+## 4. Architecture map
+
+### Default branch (`main`)
+
+```text
+local files/directories
+        |
+        v
+data_collection.py
+  - authorized local file discovery
+  - metadata + SHA-256
+        |
+        v
+evaluation.py
+  - basic metadata/duplicate checks
+        |
+        +----> main.py (environment/startup summary)
+        |
+        +----> create_experiment.py / openfx/experiment.py
+                     |
+                     v
+               openfx/mock_worker.py
+               - simulated lifecycle only
+                     |
+                     v
+               experiment JSON manifest
+
+worker/openfx_worker.py
+  - validates declarative worker jobs
+  - local audit/state prototype
+  - does NOT invoke MT5 or execute a strategy
+
+schemas/ + tests/ + .github/workflows/
+  - structural validation and automated checks
+```
+
+### Feature branch chain (PR #11 and PR #12; not merged to main)
+
+```official YouTube Data API
+        |
+        v
+openfx/youtube_search.py
+  - metadata search only; rights remain unknown
+        |
+        v
+openfx/source_registry.py
+  - source metadata, rights status, segment timestamps, text hashes
+        |
+        v
+openfx/transcript_import.py
+  - local VTT/SRT/plain-text parsing
+        |
+        v
+openfx/transcript_quality.py
+  - selected numeric/negation/token-similarity heuristics
+        |
+        v
+openfx/evidence.py
+  - quote-to-segment/source linkage and claim classification
+        |
+        v
+rule/claim records (manual review still needed)
+
+experiment/result side:
+openfx/experiment.py -> mock lifecycle / artifact metadata
+openfx/backtest_result.py -> result metadata validation
+openfx/mt5_report_parser.py -> limited English MT5 HTML summary parsing
+openfx/result_cli.py -> local artifact/result checks
+
+Missing end-to-end link:
+validated strategy rule -> compiled EA -> real MT5 Strategy Tester
+-> raw report/journal/data artifacts -> independent reproduction.
+```
+
+## 5. Capability matrix
+
+| Capability | Evidence and location | Assessment |
+|---|---|---|
+| Local file discovery and metadata | `data_collection.py` on main | Implemented at a basic level; not video ingestion. |
+| Basic duplicate/metadata evaluation | `evaluation.py` on main | Implemented; not scientific quality assessment. |
+| Experiment manifest and state transitions | `openfx/experiment.py` on PR #11 branch; earlier scaffold on main | Prototype; strict validation exists on feature branch. |
+| Mock lifecycle worker | `openfx/mock_worker.py` | Implemented simulation only; no market/backtest evidence. |
+| Worker job validation/audit | `worker/openfx_worker.py` on main/PR branch | Validation prototype; explicitly does not execute MT5. |
+| YouTube discovery | `openfx/youtube_search.py` on PR #11 branch | Official API metadata search; requires API key and does not download/transcribe video. |
+| Transcript import | `openfx/transcript_import.py` on PR #11 branch | Local subtitle/text parsing; not automatic video transcription. |
+| Transcript fidelity warnings | `openfx/transcript_quality.py` on PR #12/#14 chain | Heuristics for selected differences; cannot establish semantic equivalence. |
+| Source/claim provenance | `openfx/source_registry.py`, `openfx/evidence.py` on PR #11 branch | Useful structural traceability prototype; not source-truth verification. |
+| MT5 report parsing | `openfx/mt5_report_parser.py` on PR #11 branch | Limited English HTML summary parser; not terminal execution or report authenticity verification. |
+| Backtest-result schema validation | `openfx/backtest_result.py` on PR #11 branch | Metadata/review-readiness checks; it explicitly does not verify artifact bytes or profitability. |
+| Actual MT5 Strategy Tester execution | No execution adapter found; worker docs say it does not invoke MT5 | Not established / not implemented in inspected code. |
+| Autonomous full research pipeline | Components remain separate and partially manual | Not established. |
+| Trading edge/profitability | No real MT5 test artifacts or independently reproduced results established | Not established. |
+
+## 6. Initial findings and priority
+
+### F-01 — Feature branch capabilities are not in the default branch
+**Severity:** P1 — mission/release blocker  
+**Status:** Observed  
+**Evidence:** `main` tree at `25c1366097c2ddf3a7951111ca9e9a1e6e4928b6` lacks `openfx/evidence.py`, `openfx/source_registry.py`, `openfx/transcript_import.py`, `openfx/youtube_search.py`, and `openfx/backtest_result.py`; these files are included in PR #11's changed-file list. PR #11 and #12 remain open.  
+**Impact:** Users may mistake a feature branch's capabilities for what is actually available from the default branch. PR #13 alone does not resolve this.  
+**Action:** Keep branch/commit attached to every capability claim; review PR dependency order and CI before any owner-approved merge. Do not merge automatically.
+
+### F-02 — No end-to-end MT5 execution or strategy-performance evidence
+**Severity:** P1 — mission blocker  
+**Status:** Observed / not established  
+**Evidence:** `README.md` states the current worker is mock-only and VPS/MT5 deployment is deferred; `worker/openfx_worker.py` states it does not invoke MT5; feature-branch result validation describes itself as metadata-level.  
+**Impact:** OpenFX cannot yet demonstrate real strategy execution or profitability from the inspected code.  
+**Action:** Treat MT5 integration as a separate controlled pilot with immutable inputs, actual tester logs/reports, data/cost manifests, and independent reproduction. No paid host or live trading without owner approval.
+
+### F-03 — Transcript numeric token comparison has equivalent-glyph false positives
+**Severity:** P2 — quality issue with research consequences  
+**Status:** Code-reviewed; fix submitted for CI  
+**Evidence:** Before PR #14, `openfx/transcript_quality.py` compared token strings without normalizing Persian/Arabic-Indic digits, Persian percent glyph, or Unicode minus/plus variants.  
+**Impact:** Equivalent numeric expressions may be flagged as changed; that can inflate review burden and reduce consistency. Conversely, this heuristic still cannot detect all semantic changes.  
+**Action taken:** PR #14 normalizes equivalent digit/sign/percent glyphs and adds regression tests while retaining tests for missing percent and sign changes. Exact-head CI status must be refreshed before calling this fix test-confirmed.  
+**Residual limitation:** Token similarity and a list of negation words do not understand units, numeric scope, clause meaning, or all paraphrases.
+
+### F-04 — A nested workflow file is outside GitHub Actions' active workflow directory
+**Severity:** P2 — repository hygiene / misleading duplication  
+**Status:** Observed  
+**Evidence:** Main tree contains `.github/workflows/.github/workflows/.github/workflows/test.yml` in addition to root-level workflows. The nested file duplicates an older test workflow; GitHub Actions discovers workflow definitions from the immediate `.github/workflows` directory, not arbitrary nested subdirectories.  
+**Impact:** The nested copy is not an active workflow and can mislead maintainers about which tests are actually running.  
+**Action:** After confirming no intended archival purpose, remove or relocate it in a separate reviewed PR and keep a single canonical workflow.
+
+### F-05 — CI validates JSON syntax but does not consistently validate JSON Schema conformance
+**Severity:** P2 — validation coverage gap  
+**Status:** Code-reviewed  
+**Evidence:** Root-level workflows include JSON syntax checks, but syntax checks alone do not validate sample manifests/records against their JSON Schemas. Main's `schemas/experiment-v1.schema.json` also uses permissive root `additionalProperties: true`, while PR #11's Python manifest validator rejects unknown fields and its feature-branch schema uses stricter rules.  
+**Impact:** A JSON file can parse successfully while violating the intended contract; schema and Python behavior may drift.  
+**Action:** Add a pinned schema-validation dependency or a controlled validator step and positive/negative schema fixtures. Define one canonical contract and test parity with Python validation.
+
+### F-06 — Human verification is represented as a status, not an auditable review event
+**Severity:** P1/P2 — evidence governance gap  
+**Status:** Code-reviewed on PR #11 branch  
+**Evidence:** `openfx/evidence.py` accepts `review_status == "human_verified"` for `source_confirmed` claims, but the claim structure has no reviewer identity, review timestamp, review note/version, or signed/append-only audit event. Exact quote matching checks linkage to a registered segment, not whether the segment accurately represents the original source or whether the claim follows from it.  
+**Impact:** The field can assert that review occurred without a durable record of who reviewed what and when; source fidelity and logical entailment remain outside the validator's proof.  
+**Action:** Add an auditable review record/event and explicitly label provenance validation separately from source truth and rule interpretation.
+
+### F-07 — Backtest metadata validation is not artifact or result verification
+**Severity:** P1 — financial-research integrity gap  
+**Status:** Code-reviewed on PR #11 branch  
+**Evidence:** `openfx/backtest_result.py` explicitly states it does not verify artifact bytes, parse reports, or prove profitability; `openfx/mt5_report_parser.py` is a limited English HTML summary parser and labels its scope accordingly.  
+**Impact:** Correctly shaped hashes/metrics can still refer to absent, changed, unrelated, or fabricated artifacts unless actual files and provenance are independently checked. A parseable report is not proof of a genuine tester run.  
+**Action:** Require file-backed size/hash verification under a trusted root, cross-check parsed report metrics, preserve raw tester/journal artifacts, and independently reproduce selected runs.
+
+### F-08 — Gemini workflow can finish successfully when the AI review did not run
+**Severity:** P2 — status interpretation risk  
+**Status:** Observed in workflow code  
+**Evidence:** `.github/workflows/ai-review-gemini.yml` exits with status 0 when `GEMINI_API_KEY` is absent and writes “AI review not run” to the step summary. The workflow uses `pull_request_target` with read-only repository/PR permissions, does not check out PR code, and fetches only the diff; this reduces but does not eliminate untrusted-input/prompt-injection concerns.  
+**Impact:** A green workflow badge alone may be misread as an AI review having occurred.  
+**Action:** Keep explicit skip reporting and ensure any dashboard/report distinguishes skipped from reviewed; do not use the workflow's green status as a review-quality metric.
+
+### F-09 — No labelled adversarial corpus or measured false-positive/false-negative rates
+**Severity:** P1/P2 — research-quality gap  
+**Status:** Observed in inspected tests  
+**Evidence:** `tests/test_source_research.py` includes targeted cases for dropped negation, changed signed numbers, percentages, and provenance, but no broad labelled corpus or measured error rates was found.  
+**Impact:** Passing hand-selected unit tests does not show how reliably transcript checks behave on realistic Persian/English transcripts, ASR errors, units, dates, paraphrases, or clause changes.  
+**Action:** Build a small, versioned, human-labelled adversarial fixture set; report confusion matrix and known blind spots before expanding automation claims.
+
+## 7. Security and operational observations
+
+- `worker/openfx_worker.py` explicitly avoids command execution and MT5 invocation. This is an appropriate prototype boundary, not production readiness.
+- The worker has URL/config/job allow-list checks and bounded time/range settings; those controls require additional testing for canonicalization, state persistence, stale locks, retry behavior, and real control-plane threat modeling before deployment.
+- Gemini review uses `pull_request_target`, but currently does not check out or execute PR code and scopes its token to read-only contents/PR access. Diff content remains untrusted and can still influence model output.
+- The YouTube API key is placed in the API request URL by the feature-branch code. The current exception handler avoids echoing the request URL, which is a useful safeguard, but query-string credentials are still generally less desirable than header-based authentication where the API supports it; ensure logs, proxies, and traces never retain the URL.
+- The repository is public but its `LICENSE` reserves rights; public visibility is not permission to reuse the project code. External-source licenses must be assessed separately.
+
+## 8. Testing and execution evidence
+
+### Tests actually evidenced
+- GitHub Actions reported successful syntax/unit-test/worker checks for PR #11 at run `40921215811`.
+- GitHub Actions reported successful CI for PR #12 at run `40921649710`.
+- GitHub Actions reported successful unit/project test workflows and CodeQL for PR #13 at runs `40923717266`, `40923717250`, and `40923717315`.
+- PR #14 exact-head check was queued at the last query; outcome not yet established.
+
+### Not performed / not established
+- No local test execution in this environment (network DNS prevented cloning the repository).
+- No real MT5 compile or Strategy Tester run.
+- No VPS deployment.
+- No end-to-end autonomous source-to-claim-to-rule-to-backtest pipeline.
+- No independent reproduction of trading results.
+- No profitability or durable-edge conclusion.
+
+## 9. Recommended next sequence
+
+1. Refresh PR #14 CI and inspect the exact job result/logs; keep the fix only if all regression tests pass.
+2. Review the full PR #11/12 dependency chain and compare each file/schema/workflow with `main`; do not merge automatically.
+3. Add a schema-validation job with negative fixtures and parity checks against Python validators.
+4. Add durable reviewer identity/time/version records to source-confirmed claims and tests for contradictory or unsupported claims.
+5. Add labelled transcript adversarial fixtures and measure false positives/false negatives.
+6. Audit worker recovery/idempotency and artifact verification with explicit failure injection.
+7. Define a non-trading MT5 pilot specification and acceptance artifacts before any VPS purchase/deployment.
+8. Only after the baseline and dependency order are clear, consider removing the nested duplicate workflow in a separate PR.
+
+## 10. Acceptance criteria for the next audit checkpoint
+
+- Every capability statement names branch and commit.
+- PR #14 has a refreshed successful test result for the exact head or a documented failure.
+- Schema validation is executed, not merely JSON syntax checked.
+- A human-review record is auditable.
+- Transcript checks have a labelled adversarial fixture set and documented limitations.
+- Worker tests cover recovery and duplicate/retry behavior.
+- No report claims real MT5 execution until raw tester logs/reports and reproducible artifacts exist.
