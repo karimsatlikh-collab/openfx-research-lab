@@ -94,7 +94,7 @@ def validate_backtest_result(result: Any) -> dict[str, Any]:
     for field in ("ea_sha256", "data_sha256"):
         if not isinstance(execution[field], str) or not _SHA256_RE.fullmatch(execution[field]):
             raise ValueError(f"execution.{field} must be a SHA-256 digest")
-    if execution["modeling_mode"] not in _MODELING_MODES:
+    if not isinstance(execution["modeling_mode"], str) or execution["modeling_mode"] not in _MODELING_MODES:
         raise ValueError("unsupported modeling_mode")
     data_start = _real_date(execution["data_start"], "execution.data_start")
     data_end = _real_date(execution["data_end"], "execution.data_end")
