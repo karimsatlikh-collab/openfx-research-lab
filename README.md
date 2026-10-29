@@ -59,7 +59,7 @@ The current worker is mock-only. A future MT5 worker must record verifiable test
 - Keep real remote execution disabled until a private, least-privilege control plane and threat model are reviewed.
 - Live trading is outside the default scope and requires separate explicit authorization.
 
-For the current Windows VPS worker prototype, see [worker/README.md](worker/README.md) and [docs/OWNER_NEXT_STEPS_AI_TOOLS.md](docs/OWNER_NEXT_STEPS_AI_TOOLS.md). Start with [docs/QUICKSTART.md](docs/QUICKSTART.md). See [docs/OWNER_PREREQUISITES.md](docs/OWNER_PREREQUISITES.md), [docs/AI_WORKER_ARCHITECTURE.md](docs/AI_WORKER_ARCHITECTURE.md), [docs/CLAUDE_REVIEWER.md](docs/CLAUDE_REVIEWER.md), [CONTRIBUTING.md](CONTRIBUTING.md), [docs/EXPERIMENT_MANIFEST.md](docs/EXPERIMENT_MANIFEST.md), [docs/SECURE_EXECUTION.md](docs/SECURE_EXECUTION.md), and [docs/OPEN_DECISIONS.md](docs/OPEN_DECISIONS.md).
+For source provenance and transcript-quality limits, see [docs/SOURCE_INGESTION.md](docs/SOURCE_INGESTION.md). For the current Windows VPS worker prototype, see [worker/README.md](worker/README.md) and [docs/OWNER_NEXT_STEPS_AI_TOOLS.md](docs/OWNER_NEXT_STEPS_AI_TOOLS.md). Start with [docs/QUICKSTART.md](docs/QUICKSTART.md). See [docs/OWNER_PREREQUISITES.md](docs/OWNER_PREREQUISITES.md), [docs/AI_WORKER_ARCHITECTURE.md](docs/AI_WORKER_ARCHITECTURE.md), [docs/CLAUDE_REVIEWER.md](docs/CLAUDE_REVIEWER.md), [CONTRIBUTING.md](CONTRIBUTING.md), [docs/EXPERIMENT_MANIFEST.md](docs/EXPERIMENT_MANIFEST.md), [docs/SECURE_EXECUTION.md](docs/SECURE_EXECUTION.md), and [docs/OPEN_DECISIONS.md](docs/OPEN_DECISIONS.md).
 
 ## Status and next boundary
 
