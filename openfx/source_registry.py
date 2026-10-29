@@ -58,6 +58,9 @@ def validate_source_record(record: Any) -> dict[str, Any]:
     if (parsed.scheme != "https" or not parsed.hostname or parsed.username is not None
             or parsed.password is not None or parsed.fragment):
         raise ValueError("url must be HTTPS, have no credentials, and omit fragments")
+    sensitive_query_keys = {"token", "access_token", "api_key", "apikey", "key", "signature", "sig", "password", "secret", "auth"}
+    if any(name.casefold() in sensitive_query_keys for name, _ in urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)):
+        raise ValueError("url appears to contain a credential-like query parameter; store a canonical URL without secrets")
     if any(ord(ch) < 32 for ch in record["url"]):
         raise ValueError("url contains control characters")
     _nonempty(record["title"], "title")
