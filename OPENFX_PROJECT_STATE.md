@@ -314,3 +314,32 @@ No pass is claimed yet. Refresh these exact-head runs before treating this slice
 ### Next action
 
 Refresh all three exact-head Actions runs for `69107bc606ae18bce8fe91f073696dd5ac05a644`; inspect any failures and correct them on the same PR branch. If green, add persisted JSON Schema contracts and artifact re-read/hash verification, then review the complete two-mission audit and cross-PR integration risks. Do not merge PRs.
+
+
+## 15. Persisted synthetic artifact integrity — 2026-10-30
+
+### Changes on PR #23 branch `openfx-foundation-m1-contracts`
+
+- `openfx/synthetic_e2e.py`, commit `20de21a70ddbd153b1c5879ecad7ad0ef922f058`: after writing each synthetic run record, re-opens the exact path, compares persisted bytes to the expected bytes, parses JSON, enforces the strict v1 field set and synthetic evidence label, compares decoded content with the execution record, and hashes the bytes read back from disk.
+- `schemas/synthetic-run-record-v1.schema.json`, created in commit `1b5935b17be6af5ae7585ec7485c37cc59a53656`, corrected to match the actual synthetic engine output in commit `f3bcc524d2b00b7112ff13dc8278b11c4ce2c4ca`. The schema is Draft 2020-12, versioned, rejects unknown fields, pins `evidence_level=synthetic` and `is_market_backtest=false`, and defines the actual run metrics/parameters.
+- `tests/test_synthetic_e2e.py`, commit `ecb523bafa36d0cfbfb9768043963cca4ab52e10`: injects post-write disk tampering; expects read-back verification to reject the artifact and the registry to record `pending → failed`.
+- `tests/test_json_schema_validation.py`, commits `1bbc5988fcf8c63fb4e776d061cbde5cd2afd232` and `cda92cbc2320e1bf96ea473eded5ef9fe167721e`: adds a valid schema fixture plus negative cases for market-level evidence relabeling, missing result, malformed frozen hash, and unsupported schema version.
+
+### CI evidence
+
+- The preceding head `69107bc606ae18bce8fe91f073696dd5ac05a644` has now completed all three exact-head checks successfully:
+  - OpenFX Unit Tests run `40973530989`: success.
+  - Project Tests run `40973531157`: success.
+  - CodeQL run `40973531033`: success (Analyze Python job completed).
+- The new hardening head `cda92cbc2320e1bf96ea473eded5ef9fe167721e` had no workflow runs returned at the time of this ledger update. Its CI status is pending/not yet observed; do not infer it from the previous head.
+
+### Remaining limitations
+
+- The persisted artifact is now read back and structurally checked by a small runtime contract plus a JSON Schema. The production execution path does not yet load/validate this schema through a general schema-validation service; the runtime check is deliberately local and narrow.
+- This slice still runs the same synthetic engine twice in one process. It is not independent implementation reproduction, market-data testing, MT5 validation, or profitability evidence.
+- SourceRecord, AtomicClaim, HypothesisCard, FrozenTrial, and registry event structures do not yet all have dedicated persisted JSON Schema files. This commit adds only the actual synthetic RunRecord contract.
+- No local execution is claimed. Only GitHub Actions can establish repository CI results.
+
+### Next action
+
+Refresh exact-head Actions for `cda92cbc2320e1bf96ea473eded5ef9fe167721e`; inspect failures and correct them. Then extend schema contracts to the remaining persisted provenance/frozen-trial/registry objects and expand adversarial checks (invalid JSON, malformed event chains, duplicate event IDs, replay divergence, and source-content mismatch). Resume the broader two-mission audit after that, including cross-PR integration and actual worker/source-extraction boundaries. No merge.
