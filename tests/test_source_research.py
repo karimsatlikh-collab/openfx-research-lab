@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 from datetime import datetime, timezone
 
+from openfx.evidence import validate_claim_register
 from openfx.source_registry import (
     load_source_registry,
     make_source_record,
@@ -149,6 +150,87 @@ class TranscriptFidelityTests(unittest.TestCase):
     def test_persian_negation_change_is_flagged(self):
         result = compare_transcript_fidelity("این سطح معتبر نیست", "این سطح معتبر است")
         self.assertIn("negation_mismatch", result["flags"])
+
+class EvidenceTraceabilityTests(unittest.TestCase):
+    def make_registry(self):
+        source = source_record()
+        text = "The confirmed pivot is 1.5 ATR; do not enter before close."
+        segment = {
+            "segment_id": "segment-001",
+            "source_id": source["source_id"],
+            "start_seconds": 10.0,
+            "end_seconds": 12.0,
+            "text": text,
+            "extraction_method": "human_checked_transcript",
+            "confidence": 1.0,
+            "text_sha256": hashlib.sha256(text.encode()).hexdigest(),
+        }
+        return {"schema_version": 1, "sources": [source], "transcript_segments": [segment]}
+
+    def test_source_confirmed_claim_requires_exact_evidence(self):
+        registry = self.make_registry()
+        claim = {
+            "claim_id": "claim-001",
+            "claim_text": "The source specifies a 1.5 ATR pivot threshold.",
+            "classification": "source_confirmed",
+            "review_status": "human_verified",
+            "rationale": "Checked against the referenced transcript segment.",
+            "evidence": [{
+                "source_id": "source-001",
+                "segment_id": "segment-001",
+                "quote": "The confirmed pivot is 1.5 ATR",
+            }],
+            "contradiction_group": "pivot-threshold",
+        }
+        result = validate_claim_register({"schema_version": 1, "claims": [claim]}, registry)
+        self.assertEqual(result["claim_count"], 1)
+        self.assertEqual(result["contradiction_groups"], {})
+
+    def test_claim_rejects_quote_not_present_in_segment(self):
+        registry = self.make_registry()
+        claim = {
+            "claim_id": "claim-001", "claim_text": "A source claim",
+            "classification": "source_claim", "review_status": "draft",
+            "rationale": "Needs review",
+            "evidence": [{
+                "source_id": "source-001", "segment_id": "segment-001",
+                "quote": "The source says 3 ATR",
+            }],
+            "contradiction_group": None,
+        }
+        with self.assertRaisesRegex(ValueError, "exactly match"):
+            validate_claim_register({"schema_version": 1, "claims": [claim]}, registry)
+
+    def test_source_confirmed_claim_requires_human_review(self):
+        registry = self.make_registry()
+        claim = {
+            "claim_id": "claim-001", "claim_text": "A claim",
+            "classification": "source_confirmed", "review_status": "draft",
+            "rationale": "Needs human review",
+            "evidence": [{
+                "source_id": "source-001", "segment_id": "segment-001",
+                "quote": "do not enter",
+            }],
+            "contradiction_group": None,
+        }
+        with self.assertRaisesRegex(ValueError, "human_verified"):
+            validate_claim_register({"schema_version": 1, "claims": [claim]}, registry)
+
+    def test_contradiction_groups_are_reported_for_manual_review(self):
+        registry = self.make_registry()
+        claims = []
+        for claim_id, quote in (("claim-001", "do not enter"), ("claim-002", "1.5 ATR")):
+            claims.append({
+                "claim_id": claim_id, "claim_text": f"Claim {claim_id}",
+                "classification": "source_claim", "review_status": "needs_review",
+                "rationale": "Potential rule conflict",
+                "evidence": [{
+                    "source_id": "source-001", "segment_id": "segment-001", "quote": quote,
+                }],
+                "contradiction_group": "possible-conflict",
+            })
+        result = validate_claim_register({"schema_version": 1, "claims": claims}, registry)
+        self.assertEqual(result["contradiction_groups"]["possible-conflict"], ["claim-001", "claim-002"])
 
 
 if __name__ == "__main__":
