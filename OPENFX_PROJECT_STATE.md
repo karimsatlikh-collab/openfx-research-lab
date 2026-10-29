@@ -149,3 +149,34 @@ The repository could not be cloned in the local execution container because DNS/
 ## 9. Latest continuation point
 
 **Next action:** refresh current head CI and mergeability of PRs #14–#22, including the latest docs PR checks for head `a9d4a8093fcda7e4803319678d6f88333bbafe7a`. The 24-case synthetic transcript corpus is in PR #20; expand it with independently labelled real-world examples and measure error rates. Then address auditable human-review events, raw transcript artifact provenance, confidence-field semantics, further evidence-specific verification for journal/data/cost/splits, worker failure/recovery and idempotency, artifact verification/MT5 pilot acceptance criteria, and auto-report artifact retention. Review whether to consolidate duplicate workflows. Do not merge any PR without explicit owner approval. Review the PR #11/#12 dependency chain and the inactive nested workflow, but do not merge any PR without explicit owner approval.
+
+
+## 10. Continuation reconciliation — 2026-10-30
+
+This section supersedes older status snapshots above where they conflict with live GitHub state. It is a status refresh, not an endorsement to merge any PR.
+
+### Standing two-mission instruction
+
+The continuation keyword **“ادامه OpenFX”** invokes both workstreams together:
+
+1. **Independent, evidence-based project audit:** determine whether the current repository is ready to serve as an automated, reliable, reproducible research system. Inspect code, tests, workflows, provenance, security boundaries, branches, dependencies, and actual evidence; distinguish implemented features from plans and mocks.
+2. **Research-team process engineering:** build a disciplined strategy-discovery and validation process that cheaply rejects weak ideas and fairly validates promising ones, with separated roles, Hypothesis Cards, gates G0–G5, source-to-claim traceability, frozen experiments, independent checks, and preservation of negative results.
+
+Neither mission replaces the other. Infrastructure is only useful insofar as it enables trustworthy strategy research; strategy claims must not outrun the evidence infrastructure can support.
+
+### Live repository and PR reconciliation
+
+- Current `main` branch observed at `25c1366097c2ddf3a7951111ca9e9a1e6e4928b6`.
+- PRs #11–#23 were refreshed through the GitHub connector on 2026-10-30: all were open and unmerged at the time checked; GitHub reported each as mergeable. This is not approval to merge.
+- The dependency chain remains important: #12 is based on #11's branch; #14 is based on #12; #15, #16, #17, #20, and #22 are based on #14's branch; #21 is based on #11. PRs #13, #18, #19, and #23 are based on `main`. Review sequencing and cross-branch integration before considering any merge.
+- PR #23 head is `9323341e1a4dfa4e76d87d6315f4875c8d997494`. It adds a fail-closed `validate_attested_run` helper and negative tests. On that exact head, OpenFX Unit Tests completed successfully, Project Tests completed successfully, and AI review completed successfully; CodeQL was still in progress at the last refresh.
+- An earlier OpenFX Unit Tests run for PR #23 head `40f355c0630d7125bf141f031d7b3b2e7d799326` failed on a mismatched expected error message; the test assertion was corrected in the later head. Preserve this failed run as evidence, not as current-head status.
+- The attestation helper is only a fail-closed interface to an externally supplied verifier. No trusted-key provisioning, production signature verification policy, or mandatory executor/registrar integration has been established. It does not prove MT5 execution.
+- The current PR #23 branch has not been merged; its contents must not be described as part of `main`.
+
+### Next continuation actions
+
+1. Complete the cross-PR audit from the two missions above, beginning with dependency/merge order and exact-head CI status rather than merging anything.
+2. For mission 1, prioritize the trust boundary and artifact/manifest integrity audit: atomic writes, symlink/TOCTOU behavior, provenance and hashes, forged result assertions, and mandatory verifier integration.
+3. For mission 2, review the current research-team operating contract and gate design against the actual code; identify which G0–G5 controls are enforced versus merely documented, and define a small end-to-end acceptance path from authorized source to reviewed hypothesis and reproducible result.
+4. Refresh this ledger after meaningful work with exact branch/head, test outcomes, remaining risks, and the next action. No PR merge, paid service, VPS deployment, broker access, or live trading without explicit owner approval.
