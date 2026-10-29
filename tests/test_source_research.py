@@ -215,6 +215,14 @@ class TranscriptFidelityTests(unittest.TestCase):
         )
         self.assertIn("condition_mismatch", result["flags"])
 
+    def test_changed_unit_is_flagged_even_when_similarity_is_high(self):
+        reference = "Use 1.5 ATR as the confirmed pivot threshold before entering on the next candle."
+        extracted = "Use 1.5 pips as the confirmed pivot threshold before entering on the next candle."
+        result = compare_transcript_fidelity(reference, extracted)
+        self.assertGreaterEqual(result["similarity"], 0.85)
+        self.assertIn("unit_mismatch", result["flags"])
+        self.assertEqual(result["status"], "needs_human_review")
+
 class EvidenceTraceabilityTests(unittest.TestCase):
     def make_registry(self):
         source = source_record()
