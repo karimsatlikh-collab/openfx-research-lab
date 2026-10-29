@@ -1,71 +1,84 @@
-# Universal Data Collection and Research Team
+# OpenFX Research Lab
+
+**Short name:** OpenFX  
+**Tagline:** *Research. Test. Validate. Improve.*  
+**Project type:** Open, evidence-driven research and engineering for Forex trading strategies.
+
+> **OpenFX is a research project, not a promise of trading profits.** Its purpose is to build a reproducible process for discovering, implementing, testing, and independently validating strategies. A backtest or optimization result alone does not establish a durable trading edge.
 
 ## Mission
-Build an extensible, reliable, and continuously improving system for collecting, analyzing, validating, and learning from diverse data sources.
 
-## 1. Universal Data Collection
-The system should support:
-- Structured data: databases, tables, CSV, and Excel.
-- Semi-structured data: JSON, XML, APIs, and event logs.
-- Unstructured data: text, webpages, PDFs, documents, images, audio, and video.
-- Metadata, timestamps, and other relevant contextual information.
+Build an AI-assisted platform that can discover research sources, formalize trading ideas into precise rules, implement them, run reproducible experiments, and evaluate results independently. The long-term priority is reliable, repeatable Forex strategy research and large-scale backtesting/parameter optimization—not video collection for its own sake.
 
-## 2. Multi-Method Data Acquisition
-Use appropriate, authorized methods, including:
-- File ingestion and public datasets.
-- Public websites and authorized APIs.
-- Audio, video, image, and document extraction.
-- Automated and human-assisted labeling.
-- Cross-source comparison and verification.
+## Main workstreams
 
-Every collected item should retain its source, collection time, method, permissions or license information when available, quality indicators, and uncertainty.
+1. **Strategy research and validation — primary**
+   - Define explicit, reviewable hypotheses and trading rules.
+   - Implement research prototypes and MetaTrader 5 / MQL5 Expert Advisors.
+   - Run baseline backtests, then controlled parameter searches.
+   - Validate with realistic trading costs, out-of-sample periods, walk-forward analysis, sensitivity checks, and independent review.
+   - Preserve negative, failed, interrupted, and superseded experiments.
 
-## 3. Machine Learning and Deep Learning
-Use suitable machine-learning and deep-learning methods to:
-- Classify and analyze collected data.
-- Detect patterns, anomalies, duplicates, and contradictions.
-- Extract information and identify semantic relationships.
-- Assess data quality and select effective collection methods.
-- Train or fine-tune models when suitable data and computational resources are available.
+2. **Source discovery and knowledge acquisition — supporting**
+   - Find permitted educational videos, transcripts, papers, documentation, datasets, and public code.
+   - Record source provenance, timestamps, licenses, permissions, and uncertainty.
+   - Check extraction quality before treating extracted text as evidence.
+   - Separate source-confirmed rules from interpretations and team hypotheses.
 
-## 4. Continuous Improvement
-Record methods, outcomes, errors, resource usage, and lessons learned. Use this evidence to improve future collection and analysis while avoiding unsupported claims of progress.
+3. **Backtest operations and reliability**
+   - Design versioned experiment manifests, job queues, result records, and artifact checks.
+   - Prepare for unattended MT5 Strategy Tester runs and broad parameter optimization on a compatible Windows host.
+   - Design secure, constrained communication with future infrastructure.
+   - Never report a test as run unless logs and artifacts demonstrate that it ran.
 
-## 5. Independent Research Management
-The system should be designed to:
-- Define research objectives and break them into tasks.
-- Prioritize tasks and select appropriate methods.
-- Execute tasks and validate results.
-- Identify failures, revise approaches, and document decisions.
-- Select the next task based on evidence, priorities, and available resources.
-- Request human assistance when necessary.
+4. **Open-source collaboration**
+   - Welcome useful contributions in MQL5, Python, testing, data quality, research methodology, documentation, and security.
+   - Prefer small, reproducible contributions with clear evidence.
+   - Review license and security implications before adopting external code or dependencies.
 
-Autonomous planning does not guarantee continuous execution; runtime and hosting requirements must be evaluated separately.
+## Research lifecycle
 
-## 6. Independent Evaluation and Quality Assurance
-Evaluate performance using measurable criteria, including:
-- Data volume, coverage, completeness, and collection cost.
-- Accuracy, consistency, duplication, and missing information.
-- Appropriate model metrics, such as precision, recall, and F1 score.
-- Performance on independent, previously unseen test data.
-- Research completion time, failure rate, reliability, and recovery.
-- Improvements or regressions compared with previous versions.
+Research question → source and evidence review → explicit rule specification → implementation → baseline test → controlled optimization → independent validation → documented decision.
 
-Maintain reproducible tests, separate training and evaluation data, document limitations, and preserve previous working versions. After evaluation, accept, repeat, modify, roll back, or request assistance as appropriate.
+Every material claim should be labelled as one of:
+- **Observed / verified:** directly checked evidence.
+- **Source claim:** asserted by an external author or source, not independently reproduced.
+- **Hypothesis:** a proposed idea that still needs testing.
+- **Not tested / unknown:** no adequate execution or evidence yet.
 
-## 7. Architecture and Reliability
-Develop the system in modular stages. Keep source code, documentation, configurations, experiments, and evaluation results version-controlled. Prefer reproducible workflows and openly document dependencies and resource requirements.
+## Current status
 
-## 8. Privacy, Security, and Responsible Research
-Collect and process data only through lawful and authorized methods. Respect privacy, access restrictions, licenses, and applicable terms. Protect credentials and sensitive information. Do not claim access to data, tools, models, or computing resources that are unavailable.
+The repository currently contains project specifications, research notes, workflow/templates, and early code skeletons. The project is still under development; not every documented capability is implemented or operational.
 
-## 9. Initial Development Principles
-- Start with a small, working baseline.
-- Test each component before expanding the system.
-- Record evidence for important decisions.
-- Measure real performance instead of assuming success.
-- Expand functionality incrementally.
-- Prefer sustainable, low-cost resources when practical, without assuming that free services provide permanent, uninterrupted execution.
+- The future Windows VPS purchase and MT5 installation are deferred until separately approved.
+- No VPS worker or ChatGPT-to-VPS connection is currently deployed.
+- Public GitHub research has identified projects worth reviewing, but those reviews do not prove strategy profitability.
+- A persistent self-hosted GitHub Actions runner must **not** be attached to this public repository. Any future privileged execution system must use a suitably restricted control plane and reviewed security design.
 
-## Current Status
-Project specification and repository setup are in progress. Features must be implemented and tested before being described as operational.
+## How to contribute
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Good first contributions include:
+- Reproducible synthetic-data tests and bug reports.
+- Improving MQL5/Python test diagnostics and report provenance.
+- Reviewing public research tools and licenses.
+- Improving transcript extraction quality checks.
+- Documentation, experiment schemas, and artifact-validation tests.
+
+Please do not submit broker credentials, access tokens, private keys, account details, or other secrets. Do not include proprietary strategy details without authorization. Do not claim profitability without independently reproducible evidence.
+
+## Principles
+
+- Reproducibility over impressive screenshots.
+- Independent validation over self-confirmation.
+- Preserve negative results.
+- No look-ahead bias or hidden future information.
+- Realistic spread, commission, slippage, and execution assumptions.
+- Separate development, validation, and untouched final out-of-sample data.
+- No live trading unless separately and explicitly authorized.
+- Respect licenses, access controls, privacy, and source terms.
+- Never claim access, execution, compilation, or deployment without evidence.
+
+## Project identity
+
+The conversational invocation name is **OpenFX**. The formal project name is **OpenFX Research Lab**. The intended repository name is `openfx-research-lab`; the current GitHub repository URL may continue to contain the previous name until its owner changes it in GitHub repository settings.
+
