@@ -124,6 +124,63 @@ def validate_run_against_job(run: dict[str, Any], job: dict[str, Any]) -> dict[s
     }
 
 
+def validate_attested_run(
+    run: dict[str, Any],
+    job: dict[str, Any],
+    *,
+    attestation: dict[str, Any] | None,
+    attestation_verifier: Any = None,
+) -> dict[str, Any]:
+    """Fail closed unless a trusted external verifier accepts a bound attestation.
+
+    The verifier is the trust anchor: it must cryptographically verify the
+    attestation signature against configured trusted executor keys and policy.
+    This function checks claim binding and delegates authenticity verification;
+    it does not implement signatures or establish trust in a caller-supplied
+    verifier. The consistency-only validator remains available for unit tests
+    and non-authoritative inspection.
+    """
+    validate_run_against_job(run, job)
+    _require(isinstance(attestation, dict), "trusted executor attestation is required")
+    _require(callable(attestation_verifier),
+             "trusted attestation verifier is required; label-only validation is insufficient")
+
+    required = (
+        "executor_id", "job_id", "run_id", "engine",
+        "implementation_sha256", "issued_at_utc", "signature",
+    )
+    for key in required:
+        _require(isinstance(attestation.get(key), str) and bool(attestation[key].strip()),
+                 f"attestation.{key} must be a non-empty string")
+
+    expected = {
+        "job_id": job.get("job_id"),
+        "run_id": run.get("run_id"),
+        "engine": job.get("requested_engine"),
+        "implementation_sha256": job.get("implementation", {}).get("build_sha256"),
+    }
+    for key, value in expected.items():
+        _require(attestation.get(key) == value,
+                 f"attestation.{key} does not match the frozen run/job")
+
+    try:
+        verified = attestation_verifier(attestation, run, job)
+    except Exception as exc:
+        raise ContractValidationError("trusted attestation verifier failed") from exc
+    _require(verified is True, "trusted executor attestation signature/policy verification failed")
+
+    return {
+        "valid": True,
+        "run_id": run.get("run_id"),
+        "executor_id": attestation["executor_id"],
+        "attestation_status": "verified_by_external_trust_policy",
+        "limitations": [
+            "Signature authenticity depends on the externally configured verifier and trusted keys.",
+            "Attestation does not establish scientific validity or profitability.",
+        ],
+    }
+
+
 RUN_TRANSITIONS = {
     "QUEUED": {"VALIDATED", "REJECTED", "CANCELLED", "FAILED"},
     "VALIDATED": {"APPROVED", "REJECTED", "CANCELLED", "FAILED"},
