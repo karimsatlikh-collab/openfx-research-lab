@@ -35,7 +35,7 @@ jobs:
                   "file_name": "sample.csv",
                   "file_type": ".csv",
                   "file_size_bytes": 10,
-                  "sha256": "abc123",
+                  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                   "collection_method": "test"
               }
           ]
