@@ -9,7 +9,7 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
-logger = logging.getLogger("research_team.data_collection")
+logger = logging.getLogger("openfx.data_collection")
 
 SUPPORTED_EXTENSIONS = {
     ".txt", ".csv", ".json", ".xml", ".pdf",
