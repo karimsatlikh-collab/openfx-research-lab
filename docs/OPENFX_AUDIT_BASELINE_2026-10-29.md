@@ -210,7 +210,7 @@ validated strategy rule -> compiled EA -> real MT5 Strategy Tester
 **Status:** Code-reviewed on PR #11 branch  
 **Evidence:** `validate_backtest_result` accepts `journal_complete`, `data_coverage_verified`, `costs_recorded`, and `split_boundaries_verified` when their input values are simply `true`. The CLI independently sets `tester_report_parsed` after parsing, but does not independently derive the other flags from journal/data artifacts or an auditable reviewer record.  
 **Impact:** A result can be labelled `ready_for_independent_review` while some important verification statements are only assertions in the JSON. The status means review readiness, not proven verification, but the field names can overstate what the tool checked.  
-**Action:** Separate declared checks from machine-verified checks and human review events. For each flag, store the validator/reviewer, evidence artifact, timestamp, and outcome; leave it unverified until that evidence is checked. Do not silently trust user-supplied `true` values as verification evidence.
+**Action taken:** PR #22 adds a `verification_claims` section to the CLI output: the report-parsed flag is labelled `verified_by_cli` only after the artifact/report/metric checks, while journal/data/cost/split flags are labelled `declared_not_independently_verified`. Exact-head CI run `40926577896` passed: 109 repository tests and 15 worker tests. The PR is based on the open audit branch and is not in main. The remaining work is to implement evidence-specific validators or auditable human review events for those fields.
 
 ### F-08 — Gemini workflow can finish successfully when the AI review did not run
 **Severity:** P2 — status interpretation risk  
@@ -315,6 +315,7 @@ validated strategy rule -> compiled EA -> real MT5 Strategy Tester
 - PR #19 test workflows and CodeQL all passed.
 - PR #20 exact-head CI run `40925975774` passed with 115 repository tests, 15 worker tests, and the 24-case synthetic corpus. Curated matrix: TP=18, FN=0, FP=0, TN=6; no real-world accuracy claim is implied. Earlier failure `40925884008` exposed a script import-path problem, which was fixed and preserved in history.
 - PR #21 exact-head CI run `40926204432` passed with 104 repository tests and 15 worker tests; API key is now sent in a header on that feature branch.
+- PR #22 exact-head CI run `40926577896` passed with 109 repository tests and 15 worker tests; the CLI now distinguishes parsed-report verification from other self-declared checks.
 - No MT5 execution occurred.
 
 ### Not performed / not established
