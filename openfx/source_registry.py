@@ -48,6 +48,8 @@ def validate_source_record(record: Any) -> dict[str, Any]:
     if not isinstance(record["source_type"], str) or record["source_type"] not in SOURCE_TYPES:
         raise ValueError("unsupported source_type")
     _nonempty(record["url"], "url")
+    if record["url"] != record["url"].strip() or any(ch.isspace() for ch in record["url"]):
+        raise ValueError("url must not contain whitespace")
     parsed = urllib.parse.urlsplit(record["url"])
     try:
         _ = parsed.port
@@ -75,8 +77,8 @@ def validate_source_record(record: Any) -> dict[str, Any]:
     _nonempty(record["license_reference"], "license_reference", optional=True)
     if record["license_reference"] is not None and not isinstance(record["license_reference"], str):
         raise ValueError("license_reference must be a string or null")
-    if record["license_status"] == "reviewed_permitted" and not record["license_reference"]:
-        raise ValueError("reviewed_permitted requires a license_reference")
+    if record["license_status"] in {"reviewed_permitted", "public_domain"} and not record["license_reference"]:
+        raise ValueError("reviewed_permitted/public_domain requires a license_reference")
     if not isinstance(record["access_method"], str) or record["access_method"] not in ACCESS_METHODS:
         raise ValueError("unsupported access_method")
     _nonempty(record["collected_at_utc"], "collected_at_utc")
@@ -101,6 +103,8 @@ def make_source_record(
     access_method: str = "manual", content: bytes | None = None, notes: str = "",
 ) -> dict[str, Any]:
     """Create a validated source record; unknown rights remain explicitly unknown."""
+    if content is not None and not isinstance(content, (bytes, bytearray)):
+        raise ValueError("content must be bytes or null")
     record = {
         "source_id": source_id,
         "source_type": source_type,
