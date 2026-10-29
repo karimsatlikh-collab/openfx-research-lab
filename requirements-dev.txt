@@ -1,0 +1,2 @@
+# Pinned dependency used only by CI and schema-contract tests.
+jsonschema==4.25.1
