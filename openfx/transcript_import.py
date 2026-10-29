@@ -43,6 +43,7 @@ def _clean_caption_text(lines: list[str]) -> str:
 
 def _caption_blocks(content: str, source_id: str, fmt: str) -> list[dict[str, Any]]:
     segments = []
+    previous_start = -1.0
     for block in re.split(r"\n\s*\n", content.replace("\r\n", "\n").replace("\r", "\n")):
         lines = [line.strip("\ufeff").rstrip() for line in block.split("\n")]
         lines = [line for line in lines if line.strip()]
@@ -64,6 +65,9 @@ def _caption_blocks(content: str, source_id: str, fmt: str) -> list[dict[str, An
         end = _time_to_seconds(match.group(2))
         if end <= start:
             raise ValueError("subtitle cue end must be after its start")
+        if start < previous_start:
+            raise ValueError("subtitle cues must be ordered by non-decreasing start time")
+        previous_start = start
         text = _clean_caption_text(lines[index + 1:])
         if not text:
             continue
@@ -87,6 +91,8 @@ def parse_transcript_text(content: str, source_id: str, fmt: str) -> list[dict[s
         raise ValueError("transcript content must be a non-empty string")
     if not isinstance(source_id, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,79}", source_id):
         raise ValueError("invalid source_id")
+    if not isinstance(fmt, str):
+        raise ValueError("transcript format must be a string")
     normalized_format = fmt.lower().lstrip(".")
     if normalized_format in {"vtt", "webvtt", "srt"}:
         segments = _caption_blocks(content, source_id, "vtt" if normalized_format in {"vtt", "webvtt"} else "srt")
@@ -121,6 +127,8 @@ def import_transcript_file(path: str | Path, source_id: str, fmt: str | None = N
     if size <= 0 or size > _MAX_TRANSCRIPT_BYTES:
         raise ValueError("transcript file must be between 1 byte and 10 MiB")
     content = source_path.read_text(encoding="utf-8-sig")
+    if fmt is not None and not isinstance(fmt, str):
+        raise ValueError("transcript format must be a string")
     format_name = fmt or source_path.suffix
     return parse_transcript_text(content, source_id, format_name)
 
@@ -130,7 +138,7 @@ def import_transcript_into_registry(
 ) -> dict[str, Any]:
     """Return a new validated registry with imported segments appended."""
     validated = validate_source_registry(registry)
-    if source_id not in {source["source_id"] for source in validated["sources"]}:
+    if not isinstance(source_id, str) or source_id not in {source["source_id"] for source in validated["sources"]}:
         raise ValueError("source_id must be registered before importing its transcript")
     updated = json.loads(json.dumps(validated, ensure_ascii=False))
     segments = parse_transcript_text(content, source_id, fmt)
