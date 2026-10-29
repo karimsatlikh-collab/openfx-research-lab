@@ -50,12 +50,14 @@ def _caption_blocks(content: str, source_id: str, fmt: str) -> list[dict[str, An
         if not lines:
             continue
         first = lines[0].lstrip("\ufeff").strip()
-        if first == "WEBVTT" or first in {"STYLE", "REGION"} or re.match(r"^NOTE(?:\s|$)", first):
+        if first == "WEBVTT":
             continue
         timestamp_indices = [i for i, line in enumerate(lines) if "-->" in line]
         if not timestamp_indices:
-            # A malformed cue can contain a lost negation/number. Do not silently
-            # omit it when other valid cues exist; require a human to repair it.
+            # Skip only actual metadata blocks. A cue identifier may itself be
+            # NOTE or STYLE, and a malformed cue must never be silently omitted.
+            if first in {"STYLE", "REGION"} or re.match(r"^NOTE(?:\s|$)", first):
+                continue
             raise ValueError("subtitle block has no timestamp line")
         if len(timestamp_indices) != 1:
             raise ValueError("subtitle block contains multiple timestamp lines")
