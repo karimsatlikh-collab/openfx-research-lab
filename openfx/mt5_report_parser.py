@@ -179,12 +179,20 @@ def compare_report_metrics(parsed_report: dict[str, Any], result_manifest: dict[
     mismatches = []
     for field in fields:
         actual, declared = parsed_metrics.get(field), declared_metrics.get(field)
+        if actual is not None and (
+            not isinstance(actual, (int, float)) or isinstance(actual, bool) or not math.isfinite(actual)
+        ):
+            raise ValueError(f"parsed report metric {field} must be finite numeric data or null")
+        if declared is not None and (
+            not isinstance(declared, (int, float)) or isinstance(declared, bool) or not math.isfinite(declared)
+        ):
+            raise ValueError(f"declared metric {field} must be finite numeric data or null")
         if actual is None and declared is None:
             continue
         if actual is None or declared is None:
             mismatches.append(field)
         elif field == "trade_count":
-            if actual != declared:
+            if not isinstance(actual, int) or isinstance(actual, bool) or actual != declared:
                 mismatches.append(field)
         elif not math.isclose(float(actual), float(declared), rel_tol=0.01, abs_tol=0.05):
             mismatches.append(field)
