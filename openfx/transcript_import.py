@@ -50,7 +50,7 @@ def _caption_blocks(content: str, source_id: str, fmt: str) -> list[dict[str, An
         if not lines:
             continue
         first = lines[0].lstrip("\ufeff").strip()
-        if first == "WEBVTT" or first in {"STYLE", "REGION"} or re.match(r"^NOTE(?:\\s|$)", first):
+        if first == "WEBVTT" or first in {"STYLE", "REGION"} or re.match(r"^NOTE(?:\s|$)", first):
             continue
         timestamp_indices = [i for i, line in enumerate(lines) if "-->" in line]
         if not timestamp_indices:
