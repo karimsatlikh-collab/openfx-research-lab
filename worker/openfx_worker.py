@@ -63,8 +63,10 @@ class WorkerConfig:
         if not isinstance(url, str):
             raise ValueError("control_plane_url must be a string.")
         parsed = urllib.parse.urlparse(url)
-        if parsed.scheme != "https" or not parsed.netloc or parsed.hostname is None:
-            raise ValueError("control_plane_url must be an HTTPS URL.")
+        if (parsed.scheme != "https" or not parsed.netloc or parsed.hostname is None
+                or parsed.username is not None or parsed.password is not None
+                or parsed.query or parsed.fragment):
+            raise ValueError("control_plane_url must be a clean HTTPS URL without credentials, query, or fragment.")
         if parsed.hostname.endswith(".invalid") or "PLACEHOLDER" in url:
             # Allowed only for local validation; network calls will be refused.
             pass
@@ -122,6 +124,9 @@ def validate_job(job: Any, config: WorkerConfig) -> dict[str, Any]:
         raise JobValidationError("Invalid symbol.")
     if not isinstance(job["timeframe"], str) or job["timeframe"] not in ALLOWED_TIMEFRAMES:
         raise JobValidationError("Unsupported timeframe.")
+    if (not isinstance(job["start_date"], str) or not re.fullmatch(r"\\d{4}-\\d{2}-\\d{2}", job["start_date"])
+            or not isinstance(job["end_date"], str) or not re.fullmatch(r"\\d{4}-\\d{2}-\\d{2}", job["end_date"])):
+        raise JobValidationError("Dates must use YYYY-MM-DD.")
     try:
         start = date.fromisoformat(job["start_date"])
         end = date.fromisoformat(job["end_date"])
@@ -242,6 +247,11 @@ def process_job(job_data: Any, config: WorkerConfig, state: dict[str, Any]) -> s
     if job_id in state["seen_jobs"]:
         record_event(state, job_id, "DUPLICATE", "Previously seen job; no action taken.")
         return "DUPLICATE"
+    # Idempotency keys are globally unique across job IDs, not merely per job.
+    for seen_id, seen in state["seen_jobs"].items():
+        if isinstance(seen, dict) and seen.get("idempotency_key") == job["idempotency_key"]:
+            record_event(state, job_id, "REJECTED", f"Idempotency key already belongs to job {seen_id}.")
+            return "REJECTED"
     state["seen_jobs"][job_id] = {
         "idempotency_key": job["idempotency_key"],
         "ea_sha256": job["ea_sha256"].lower(),
