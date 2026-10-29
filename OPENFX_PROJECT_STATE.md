@@ -343,3 +343,11 @@ Refresh all three exact-head Actions runs for `69107bc606ae18bce8fe91f073696dd5a
 ### Next action
 
 Refresh exact-head Actions for `cda92cbc2320e1bf96ea473eded5ef9fe167721e`; inspect failures and correct them. Then extend schema contracts to the remaining persisted provenance/frozen-trial/registry objects and expand adversarial checks (invalid JSON, malformed event chains, duplicate event IDs, replay divergence, and source-content mismatch). Resume the broader two-mission audit after that, including cross-PR integration and actual worker/source-extraction boundaries. No merge.
+
+
+### CI refresh correction — exact hardening head
+
+For `cda92cbc2320e1bf96ea473eded5ef9fe167721e`, refreshed Actions now show:
+- OpenFX Unit Tests run `40975873137`: completed success (syntax check and unit-test step both successful).
+- Project Tests run `40975873003`: completed success (syntax check and project data-evaluation step successful).
+- CodeQL run `40975872872`: still in progress at the latest refresh; the Analyze Python job was in progress at Initialize CodeQL. This is not yet a pass.
