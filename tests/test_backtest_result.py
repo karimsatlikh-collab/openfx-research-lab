@@ -1,10 +1,14 @@
+import contextlib
 import copy
+import io
+import json
 import hashlib
 import tempfile
 import unittest
 from pathlib import Path
 
 from openfx.backtest_result import validate_backtest_result, verify_artifact_files
+from openfx.result_cli import main as result_cli_main
 
 
 def make_result():
@@ -160,6 +164,37 @@ class BacktestResultTests(unittest.TestCase):
             target.write_bytes(b"X" * target.stat().st_size)
             result = verify_artifact_files(fixture, root)
             self.assertIn("artifact_hash_mismatch:reports/tester.html", result["blockers"])
+
+
+    def test_result_cli_reports_verified_artifact_bytes(self):
+        fixture = make_result()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.materialize_artifacts(fixture, root)
+            result_path = root / "result.json"
+            result_path.write_text(json.dumps(fixture), encoding="utf-8")
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                code = result_cli_main([
+                    "validate", "--result", str(result_path), "--artifact-root", str(root),
+                ])
+            self.assertEqual(code, 0)
+            self.assertIn("ready_for_independent_review", output.getvalue())
+            self.assertIn("does_not_parse_mt5_report", output.getvalue())
+
+    def test_result_cli_returns_nonzero_when_artifact_is_missing(self):
+        fixture = make_result()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            result_path = root / "result.json"
+            result_path.write_text(json.dumps(fixture), encoding="utf-8")
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                code = result_cli_main([
+                    "validate", "--result", str(result_path), "--artifact-root", str(root),
+                ])
+            self.assertEqual(code, 2)
+            self.assertIn("incomplete", output.getvalue())
 
     def test_invalid_modeling_mode_type_is_rejected_cleanly(self):
         fixture = make_result()
