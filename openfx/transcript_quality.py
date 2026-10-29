@@ -18,6 +18,20 @@ _NEGATIONS = {
     "بدون", "نمی‌شود", "نمیشود", "نمی‌کند", "نمیکند", "نخواهد", "نشود",
 }
 
+# Changes to these condition/threshold words can reverse or materially narrow a
+# trading rule even when overall token similarity remains high.
+_CONDITION_MARKERS = {
+    "only", "unless", "except", "until", "if", "when", "while",
+    "before", "after", "above", "below", "over", "under", "between",
+    "within", "outside", "least", "most", "minimum", "maximum",
+    "greater", "less", "equal", "equals", "later", "earlier", "prior",
+    "following", "exactly", "strictly", "inclusive", "exclusive",
+    "فقط", "مگر", "جز", "به‌جز", "تا", "قبل", "پیش", "بعد",
+    "بالا", "پایین", "بالاتر", "پایین‌تر", "حداقل", "حداکثر",
+    "بیشتر", "کمتر", "برابر", "اگر", "وقتی", "باید", "لازم",
+    "مجاز", "غیرمجاز",
+}
+
 
 _DIGIT_AND_SYMBOL_TRANSLATION = str.maketrans({
     **dict(zip("۰۱۲۳۴۵۶۷۸۹", "0123456789")),
@@ -54,6 +68,8 @@ def compare_transcript_fidelity(reference_text: Any, extracted_text: Any, *, min
     unexpected_numbers = list((extracted_numbers - reference_numbers).elements())
     reference_negations = [token for token in reference_tokens if token in _NEGATIONS]
     extracted_negations = [token for token in extracted_tokens if token in _NEGATIONS]
+    reference_conditions = [token for token in reference_tokens if token in _CONDITION_MARKERS]
+    extracted_conditions = [token for token in extracted_tokens if token in _CONDITION_MARKERS]
     similarity = SequenceMatcher(a=reference_tokens, b=extracted_tokens, autojunk=False).ratio()
     flags = []
     if missing_numbers:
@@ -62,6 +78,8 @@ def compare_transcript_fidelity(reference_text: Any, extracted_text: Any, *, min
         flags.append("unexpected_numbers")
     if reference_negations != extracted_negations:
         flags.append("negation_mismatch")
+    if reference_conditions != extracted_conditions:
+        flags.append("condition_mismatch")
     if similarity < min_similarity:
         flags.append("low_token_similarity")
 
