@@ -263,7 +263,7 @@ validated strategy rule -> compiled EA -> real MT5 Strategy Tester
 **Status:** Code-reviewed on PR #11 branch  
 **Evidence:** `openfx/youtube_search.py` constructs the official API request URL with the API key as a query parameter. The current error handling avoids echoing the URL, but query strings may be retained by proxies, traces, or diagnostics.  
 **Impact:** A key could leak through infrastructure logs even when application logs are careful.  
-**Action:** Prefer the provider-supported API-key header (for example `x-goog-api-key`) if supported by the endpoint, and test that exceptions/logging never expose the key. Keep the key restricted to the YouTube Data API and rotate it if exposure is suspected.
+**Action taken:** PR #21 moves the key into the `X-Goog-Api-Key` header and tests that the URL contains no `key` query parameter. Exact-head CI run `40926204432` passed: 104 repository tests and 15 worker tests. PR #21 is based on PR #11's feature branch and is not in main. Keep the key restricted to the YouTube Data API and rotate it if exposure is suspected.
 
 ## 7. Security and operational observations
 
@@ -286,6 +286,7 @@ validated strategy rule -> compiled EA -> real MT5 Strategy Tester
 - PR #18 exact-head CI passed on commit `29f7fcf061bf8c274bda79787dc3c0eb0749d2ec`; project/unit tests and CodeQL completed successfully.
 - PR #19 test workflows and CodeQL all passed.
 - PR #20 exact-head CI run `40925975774` passed with 115 repository tests, 15 worker tests, and the 24-case synthetic corpus. Curated matrix: TP=18, FN=0, FP=0, TN=6; no real-world accuracy claim is implied. Earlier failure `40925884008` exposed a script import-path problem, which was fixed and preserved in history.
+- PR #21 exact-head CI run `40926204432` passed with 104 repository tests and 15 worker tests; API key is now sent in a header on that feature branch.
 - No MT5 execution occurred.
 
 ### Not performed / not established
