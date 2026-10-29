@@ -8,5 +8,5 @@ These items should be resolved deliberately rather than guessed by an automated 
 4. **Remote execution:** no VPS worker or ChatGPT-to-VPS connection is deployed. Do not enable one before the security boundary and threat model are reviewed.
 5. **MT5 installation:** explicitly deferred by the project owner.
 6. **Strategy evidence:** no strategy is validated by this repository setup work. Backtests, code compilation, and profitability claims require their own evidence.
-7. **Source ingestion:** source registry and transcript-fidelity foundations are implemented, but automatic video discovery/download/transcription, source-specific permission checks, and human-reviewed transcript truth remain unimplemented.
+7. **Source ingestion:** source registry, exact-quote claim traceability, and transcript-fidelity foundations are implemented, but automatic video discovery/download/transcription, source-specific permission checks, human-reviewed transcript truth, and semantic contradiction resolution remain unimplemented.
 8. **Worker concurrency:** the prototype writes a local state file without a cross-process lock. Keep it single-process until locking and crash-recovery tests are added.
