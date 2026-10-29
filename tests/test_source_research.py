@@ -1,10 +1,16 @@
 import hashlib
+import tempfile
 import unittest
+from pathlib import Path
 from datetime import datetime, timezone
 
 from openfx.source_registry import (
+    load_source_registry,
     make_source_record,
+    new_source_registry,
+    save_source_registry,
     validate_source_record,
+    validate_source_registry,
     validate_transcript_segment,
 )
 from openfx.transcript_quality import compare_transcript_fidelity
@@ -81,6 +87,33 @@ class SourceRegistryTests(unittest.TestCase):
         }
         with self.assertRaises(ValueError):
             validate_transcript_segment(segment, {"source-001"})
+
+
+    def test_empty_registry_round_trip(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "sources.json"
+            registry = new_source_registry()
+            save_source_registry(registry, path)
+            self.assertEqual(load_source_registry(path), registry)
+
+    def test_registry_rejects_duplicate_source_ids(self):
+        record = source_record()
+        registry = {"schema_version": 1, "sources": [record, record], "transcript_segments": []}
+        with self.assertRaisesRegex(ValueError, "duplicate source_id"):
+            validate_source_registry(registry)
+
+    def test_registry_rejects_orphan_transcript_segment(self):
+        registry = {
+            "schema_version": 1, "sources": [],
+            "transcript_segments": [{
+                "segment_id": "segment-001", "source_id": "missing-source",
+                "start_seconds": 0, "end_seconds": 1, "text": "text",
+                "extraction_method": "manual", "confidence": 1,
+                "text_sha256": hashlib.sha256(b"text").hexdigest(),
+            }],
+        }
+        with self.assertRaisesRegex(ValueError, "not registered"):
+            validate_source_registry(registry)
 
     def test_malformed_source_type_is_rejected_cleanly(self):
         with self.assertRaises(ValueError):
