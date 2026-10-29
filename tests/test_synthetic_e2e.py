@@ -1,6 +1,7 @@
 """Acceptance and tamper tests for the synthetic-only G0-G2 vertical slice."""
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from openfx.source_provenance import build_source_record, build_atomic_claim, build_hypothesis_card
@@ -55,6 +56,26 @@ class SyntheticEndToEndTests(unittest.TestCase):
             self.assertFalse(result["is_market_backtest"])
             self.assertEqual(result["registry"]["event_count"], 2)
             self.assertEqual(result["gate_verdict"]["trial_count"], 1)
+
+    def test_artifact_tampering_after_write_is_detected_and_trial_fails(self):
+        original_read_bytes = Path.read_bytes
+
+        def tamper_then_read(path):
+            if path.name == "run_record.json":
+                original = original_read_bytes(path)
+                path.write_bytes(original + b"tampered")
+            return original_read_bytes(path)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            registry = LocalTrialRegistry(Path(tmp) / "registry.jsonl")
+            with mock.patch.object(Path, "read_bytes", autospec=True, side_effect=tamper_then_read):
+                with self.assertRaisesRegex(ValueError, "persisted run artifact bytes differ"):
+                    run_synthetic_reproduction(
+                        frozen=frozen(), registry=registry, workspace=Path(tmp) / "runs"
+                    )
+            rows = registry._read_and_verify()
+            self.assertEqual([row["outcome"] for row in rows], ["pending", "failed"])
+            self.assertEqual(rows[-1]["event_id"], "trial-e2e-1-failed")
 
     def test_frozen_input_tampering_is_rejected_before_registration(self):
         spec = frozen()
