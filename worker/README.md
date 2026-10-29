@@ -25,7 +25,7 @@ Requires Python 3.11+.
 python openfx_worker.py --self-test
 ```
 
-The self-test validates example manifests without connecting to any service. The state file is not protected by a cross-process lock, so run only one worker process against a given state file.
+The self-test validates example manifests without connecting to any service. Polling and state updates use an exclusive lock file so two worker processes cannot poll/update the same state concurrently. If the process is interrupted, inspect the lock and confirm its owner is no longer running before removing it manually.
 
 ## Future configuration
 Copy `worker_config.example.json` to a private local configuration file only after reviewing the deployment threat model. Never commit credentials or real server URLs/tokens. The eventual control plane must authenticate workers, validate approvals server-side, rate-limit requests, and return only signed/approved declarative jobs.
