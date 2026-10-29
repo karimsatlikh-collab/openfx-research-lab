@@ -137,11 +137,12 @@ on branch `openfx-mission-state-docs`, commit `09f909f756fbda2afe37b6d96b2f06eba
 - PR #17 `openfx-rights-gate` (base `openfx-audit-round1`): blocks transcript import unless rights are `reviewed_permitted` or `public_domain` with a reference. After correcting a CLI fixture that still relied on unknown rights, exact-head CI run `40924903871` passed: 111 repository tests and 15 worker tests.
 - PR #18 `openfx-local-scan-boundary` (base `main`): skips symlinks and records root-relative paths to disambiguate same-named files. Current-head Project Tests `40925208557`, OpenFX Unit Tests `40925208133`, and CodeQL `40925208196` all passed.
 - PR #19 `openfx-ci-least-privilege` (base `main`): adds `contents: read` permissions and five-minute timeouts to the two baseline test workflows. Test runs `40925003750` and `40925003699`, CodeQL `40925003707`, and Gemini review `40925001639` all passed.
-- None of PRs #14–#19 has been merged by this work.
+- PR #20 `openfx-transcript-critical-conditions` (base `openfx-audit-round1`): adds conservative condition-marker comparison for selected English/Persian words such as `only`, `unless`, before/after, above/below, `فقط`, `مگر`, and `حداقل/حداکثر`. Exact-head CI run `40925516804` passed: 112 repository tests and 15 worker tests.
+- None of PRs #14–#20 has been merged by this work.
 
 ### Audit limitations
 The repository could not be cloned in the local execution container because DNS/network access to GitHub was unavailable. This audit checkpoint uses GitHub connector file/branch/PR/Actions evidence and code review. No local test command, real MT5 run, VPS deployment, or trading backtest is claimed.
 
 ## 9. Latest continuation point
 
-**Next action:** refresh the current head CI and mergeability of PRs #14–#19, and check the latest CI status for this docs PR. Then continue with auditable human-review events for claims, a labelled transcript adversarial corpus, worker failure/recovery and idempotency, and artifact verification/MT5 pilot acceptance criteria. Review the auto-report artifact-retention gap and whether to consolidate duplicate workflows. Do not merge any PR without explicit owner approval. Review the PR #11/#12 dependency chain and the inactive nested workflow, but do not merge any PR without explicit owner approval.
+**Next action:** refresh current head CI and mergeability of PRs #14–#20, and check the latest CI status for this docs PR. Then continue with auditable human-review events for claims, a labelled transcript adversarial corpus with measured false-positive/false-negative rates, worker failure/recovery and idempotency, artifact verification/MT5 pilot acceptance criteria, and the auto-report artifact-retention gap. Review whether to consolidate duplicate workflows. Do not merge any PR without explicit owner approval. Review the PR #11/#12 dependency chain and the inactive nested workflow, but do not merge any PR without explicit owner approval.
