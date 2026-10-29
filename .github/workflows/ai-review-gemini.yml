@@ -39,7 +39,6 @@ jobs:
           import os
           import sys
           import urllib.error
-          import urllib.parse
           import urllib.request
 
           api_key = os.environ.get("GEMINI_API_KEY", "").strip()
@@ -51,7 +50,7 @@ jobs:
               )
               with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
                   f.write(msg + "\n")
-              sys.exit(1)
+              sys.exit(0)
 
           event = os.environ["GH_EVENT_NAME"]
           if event == "pull_request_target":
@@ -68,11 +67,11 @@ jobs:
                   },
               )
               with urllib.request.urlopen(req, timeout=30) as response:
-                  diff = response.read().decode("utf-8", errors="replace")
+                  diff_bytes = response.read(45001)
+              truncated = len(diff_bytes) > 45000
+              diff = diff_bytes[:45000].decode("utf-8", errors="replace")
               if not diff.strip():
                   raise RuntimeError("GitHub returned an empty pull-request diff.")
-              truncated = len(diff) > 45000
-              diff = diff[:45000]
               prompt = (
                   "You are a skeptical code reviewer for OpenFX Research Lab. "
                   "Review only the supplied diff. Prioritize correctness, security, "
@@ -110,13 +109,16 @@ jobs:
           }
           endpoint = (
               "https://generativelanguage.googleapis.com/v1beta/models/"
-              "gemini-2.5-flash:generateContent?"
-              + urllib.parse.urlencode({"key": api_key})
+              "gemini-2.5-flash:generateContent"
           )
           request = urllib.request.Request(
               endpoint,
               data=json.dumps(payload).encode("utf-8"),
-              headers={"Content-Type": "application/json", "User-Agent": "OpenFX-Gemini-Reviewer"},
+              headers={
+                  "Content-Type": "application/json",
+                  "User-Agent": "OpenFX-Gemini-Reviewer",
+                  "x-goog-api-key": api_key,
+              },
               method="POST",
           )
           try:
