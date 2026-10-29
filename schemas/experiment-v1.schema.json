@@ -156,7 +156,8 @@
     },
     "error": {
       "type": "string",
-      "maxLength": 2000
+      "maxLength": 2000,
+      "minLength": 1
     }
   },
   "allOf": [
@@ -272,6 +273,60 @@
               }
             }
           }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "FAILED"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string",
+            "minLength": 1
+          },
+          "execution": {
+            "properties": {
+              "finished_at_utc": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "enum": [
+              "QUEUED",
+              "RUNNING",
+              "COMPLETED"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "not": {
+          "required": [
+            "error"
+          ]
         }
       }
     }
