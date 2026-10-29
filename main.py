@@ -35,7 +35,7 @@ def get_system_status():
         "python_version": platform.python_version(),
         "data_directory": str(DATA_DIR),
         "log_directory": str(LOG_DIR),
-        "mt5_available": False,
+        "mt5_integration_status": "not_connected_or_verified",
         "trading_enabled": False,
     }
 
