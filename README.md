@@ -21,6 +21,7 @@ The repository now includes:
 - Versioned experiment manifests with strict date/time, state, finite-JSON, and safe-artifact-path validation.
 - A deterministic mock worker for testing the experiment lifecycle without MT5 or market data.
 - A provenance-first source registry that records source type, URL, rights-review status, collection method, and content hashes.
+- An evidence-linked claim register that requires exact quotes from registered transcript segments and separates source-confirmed claims, source claims, interpretations, hypotheses, and unknowns.
 - Transcript fidelity checks for numeric/date changes, dropped negation, and large text drift; these are heuristic warnings, not proof of semantic correctness.
 - Unit tests for manifest validation, safe local file collection, source provenance, transcript fidelity, and mock-worker behavior.
 - A consolidated GitHub Actions CI workflow for repository tests, worker regression tests, JSON syntax, and offline worker self-test.
