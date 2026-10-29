@@ -1,7 +1,10 @@
 import copy
+import hashlib
+import tempfile
 import unittest
+from pathlib import Path
 
-from openfx.backtest_result import validate_backtest_result
+from openfx.backtest_result import validate_backtest_result, verify_artifact_files
 
 
 def make_result():
@@ -124,6 +127,39 @@ class BacktestResultTests(unittest.TestCase):
         fixture["artifacts"][0]["path"] = "../private/report.html"
         with self.assertRaisesRegex(ValueError, "escape"):
             validate_backtest_result(fixture)
+
+
+    def materialize_artifacts(self, fixture, root):
+        for artifact in fixture["artifacts"]:
+            path = root / artifact["path"]
+            path.parent.mkdir(parents=True, exist_ok=True)
+            content = ("synthetic artifact: " + artifact["kind"]).encode("utf-8")
+            path.write_bytes(content)
+            artifact["size_bytes"] = len(content)
+            artifact["sha256"] = hashlib.sha256(content).hexdigest()
+            if artifact["kind"] == "ea_binary":
+                fixture["execution"]["ea_sha256"] = artifact["sha256"]
+            if artifact["kind"] == "data_manifest":
+                fixture["execution"]["data_sha256"] = artifact["sha256"]
+
+    def test_artifact_bytes_and_hashes_are_verified(self):
+        fixture = make_result()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.materialize_artifacts(fixture, root)
+            result = verify_artifact_files(fixture, root)
+            self.assertEqual(result["status"], "artifact_bytes_verified")
+            self.assertEqual(len(result["verified_artifacts"]), 4)
+
+    def test_modified_artifact_is_rejected(self):
+        fixture = make_result()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.materialize_artifacts(fixture, root)
+            target = root / fixture["artifacts"][0]["path"]
+            target.write_bytes(b"X" * target.stat().st_size)
+            result = verify_artifact_files(fixture, root)
+            self.assertIn("artifact_hash_mismatch:reports/tester.html", result["blockers"])
 
     def test_invalid_modeling_mode_type_is_rejected_cleanly(self):
         fixture = make_result()
