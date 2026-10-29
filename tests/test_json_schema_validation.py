@@ -54,6 +54,17 @@ EXAMPLES = {
         "outputs": [{"name": "summary.json", "sha256": HASH, "media_type": "application/json"}],
         "error": None,
     },
+    "synthetic-run-record-v1.schema.json": {
+        "schema_version": 1, "frozen_sha256": HASH, "trial_id": "trial-1",
+        "evidence_level": "synthetic", "engine": "openfx.synthetic_engine.run_synthetic",
+        "engine_parameters": {"seed": 17, "n": 50, "edge": 0.0, "noise": 1.0},
+        "result": {
+            "seed": 17, "sample_size": 50, "mean_return": 0.0,
+            "positive_fraction": 0.5, "max_drawdown_units": 4.0,
+            "returns_sha256": HASH, "evidence_level": "synthetic",
+            "is_market_backtest": False,
+        },
+    },
     "trial-registry-entry-v1.schema.json": {
         "schema_version": 1, "trial_id": "trial-1", "family_id": "family-1",
         "job_id": "job-1", "run_id": "run-1", "trial_index": 1,
