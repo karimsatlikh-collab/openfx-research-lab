@@ -39,7 +39,6 @@ jobs:
           import os
           import sys
           import urllib.error
-          import urllib.parse
           import urllib.request
 
           api_key = os.environ.get("GEMINI_API_KEY", "").strip()
@@ -51,7 +50,7 @@ jobs:
               )
               with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
                   f.write(msg + "\n")
-              sys.exit(1)
+              sys.exit(0)
 
           event = os.environ["GH_EVENT_NAME"]
           if event == "pull_request_target":
