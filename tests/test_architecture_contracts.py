@@ -27,6 +27,9 @@ class ArchitectureContractTests(unittest.TestCase):
             "run-record-v1.schema.json",
             "trial-registry-entry-v1.schema.json",
             "gate-verdict-v1.schema.json",
+            "data-profile-v1.schema.json",
+            "cost-profile-v1.schema.json",
+            "gate-config-v1.schema.json",
         ]
         for filename in files:
             with self.subTest(filename=filename):
@@ -39,7 +42,7 @@ class ArchitectureContractTests(unittest.TestCase):
         required = set(schema["required"])
         self.assertTrue({
             "strategy_spec_ref", "implementation", "data_profile_ref",
-            "cost_profile_ref", "frozen_parameters", "budget", "requested_engine"
+            "cost_profile_ref", "gate_config_ref", "frozen_parameters", "budget", "requested_engine"
         }.issubset(required))
         self.assertEqual(
             schema["properties"]["requested_engine"]["enum"],
@@ -84,9 +87,24 @@ class ArchitectureContractTests(unittest.TestCase):
         claim = schema["properties"]["claims"]["items"]["properties"]["label"]
         self.assertEqual(
             claim["enum"],
-            ["Verified", "Source claim", "Hypothesis", "Unknown / not tested"],
+            ["verified", "source_claim", "hypothesis", "unknown_not_tested"],
         )
 
 
 if __name__ == "__main__":
     unittest.main()
+
+    def test_profiles_are_versioned_and_bind_data_or_cost_assumptions(self):
+        data = self.load_schema("data-profile-v1.schema.json")
+        self.assertTrue({"profile_id", "version", "source", "symbol", "timeframe",
+                         "date_range", "price_data_mode", "data_sha256"}.issubset(set(data["required"])))
+        cost = self.load_schema("cost-profile-v1.schema.json")
+        self.assertTrue({"spread_model", "commission", "slippage", "swap", "symbol_spec"}.issubset(set(cost["required"])))
+
+    def test_gate_config_is_frozen_and_counts_failed_trials(self):
+        schema = self.load_schema("gate-config-v1.schema.json")
+        self.assertEqual(schema["properties"]["frozen_before_trials"], {"const": True})
+        policy = schema["properties"]["trial_family_policy"]["properties"]
+        self.assertEqual(policy["count_failures_and_abandoned"], {"const": True})
+        self.assertIn("multiple_testing_method", schema["required"])
+        self.assertIn("final_oos", schema["properties"]["data_split"]["required"])
