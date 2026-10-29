@@ -156,3 +156,18 @@ def import_transcript_into_registry(
     updated["transcript_segments"].extend(segments)
     validate_source_registry(updated)
     return updated
+
+
+def import_transcript_file_into_registry(
+    registry: dict[str, Any], source_id: str, path: str | Path, fmt: str | None = None,
+) -> dict[str, Any]:
+    """Import a bounded local transcript file into a validated registry."""
+    source_path = Path(path)
+    size = source_path.stat().st_size
+    if size <= 0 or size > _MAX_TRANSCRIPT_BYTES:
+        raise ValueError("transcript file must be between 1 byte and 10 MiB")
+    content = source_path.read_text(encoding="utf-8-sig")
+    if fmt is not None and not isinstance(fmt, str):
+        raise ValueError("transcript format must be a string")
+    format_name = fmt or source_path.suffix
+    return import_transcript_into_registry(registry, source_id, content, format_name)
