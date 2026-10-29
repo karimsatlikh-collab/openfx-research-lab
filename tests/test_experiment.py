@@ -181,6 +181,20 @@ class ExperimentTests(unittest.TestCase):
                 run_mock(path)
             self.assertEqual(load_manifest(path)["status"], "QUEUED")
 
+    def test_failed_transition_requires_explanation(self):
+        with self.assertRaisesRegex(ValueError, "error explanation"):
+            transition(sample(), "FAILED")
+        failed = transition(sample(), "FAILED", error="Synthetic test failure")
+        self.assertEqual(failed["status"], "FAILED")
+        self.assertEqual(failed["error"], "Synthetic test failure")
+
+    def test_manifest_rejects_boolean_schema_version(self):
+        from openfx.experiment import validate_manifest
+        manifest = sample()
+        manifest["schema_version"] = True
+        with self.assertRaises(ValueError):
+            validate_manifest(manifest)
+
 
 if __name__ == "__main__":
     unittest.main()
