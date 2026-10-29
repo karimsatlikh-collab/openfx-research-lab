@@ -54,7 +54,9 @@ def _caption_blocks(content: str, source_id: str, fmt: str) -> list[dict[str, An
             continue
         timestamp_indices = [i for i, line in enumerate(lines) if "-->" in line]
         if not timestamp_indices:
-            continue
+            # A malformed cue can contain a lost negation/number. Do not silently
+            # omit it when other valid cues exist; require a human to repair it.
+            raise ValueError("subtitle block has no timestamp line")
         if len(timestamp_indices) != 1:
             raise ValueError("subtitle block contains multiple timestamp lines")
         index = timestamp_indices[0]
