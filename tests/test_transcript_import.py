@@ -58,6 +58,17 @@ cue-1
         self.assertEqual(segments[0]["start_seconds"], 1.0)
         self.assertEqual(segments[0]["text"], "Saeid: Pivot is confirmed.")
 
+    def test_cue_id_starting_with_note_is_not_mistaken_for_metadata(self):
+        content = """WEBVTT
+
+NOTES-CUE
+00:01.000 --> 00:02.000
+This valid cue must not be dropped.
+"""
+        segments = parse_transcript_text(content, "source-001", "vtt")
+        self.assertEqual(len(segments), 1)
+        self.assertEqual(segments[0]["text"], "This valid cue must not be dropped.")
+
     def test_plain_text_is_segmented_without_invented_timestamps(self):
         segments = parse_transcript_text("First paragraph.\n\nSecond paragraph.", "source-001", "txt")
         self.assertEqual(len(segments), 2)
