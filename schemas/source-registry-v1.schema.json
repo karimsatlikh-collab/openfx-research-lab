@@ -1,0 +1,211 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenFX Source Registry v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "sources",
+    "transcript_segments"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source_id",
+          "source_type",
+          "url",
+          "title",
+          "author",
+          "published_date",
+          "license_status",
+          "license_reference",
+          "access_method",
+          "collected_at_utc",
+          "content_sha256",
+          "notes"
+        ],
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"
+          },
+          "source_type": {
+            "enum": [
+              "video",
+              "transcript",
+              "paper",
+              "dataset",
+              "code",
+              "article",
+              "other"
+            ]
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "author": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "published_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "license_status": {
+            "enum": [
+              "unknown",
+              "reviewed_permitted",
+              "public_domain",
+              "permission_required",
+              "restricted"
+            ]
+          },
+          "license_reference": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "access_method": {
+            "enum": [
+              "manual",
+              "user_provided",
+              "official_api",
+              "authorized_download"
+            ]
+          },
+          "collected_at_utc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "content_sha256": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[a-fA-F0-9]{64}$"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "transcript_segments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "segment_id",
+          "source_id",
+          "start_seconds",
+          "end_seconds",
+          "text",
+          "extraction_method",
+          "confidence",
+          "text_sha256"
+        ],
+        "properties": {
+          "segment_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"
+          },
+          "source_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"
+          },
+          "start_seconds": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "end_seconds": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1
+          },
+          "extraction_method": {
+            "type": "string",
+            "minLength": 1
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "text_sha256": {
+            "type": "string",
+            "pattern": "^[a-fA-F0-9]{64}$"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "start_seconds": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "start_seconds"
+              ]
+            },
+            "then": {
+              "properties": {
+                "end_seconds": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "end_seconds": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "end_seconds"
+              ]
+            },
+            "then": {
+              "properties": {
+                "start_seconds": {
+                  "type": "number"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
