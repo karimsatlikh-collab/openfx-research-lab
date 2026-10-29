@@ -11,6 +11,7 @@
     "implementation",
     "data_profile_ref",
     "cost_profile_ref",
+    "gate_config_ref",
     "frozen_parameters",
     "budget",
     "requested_engine",
@@ -84,6 +85,9 @@
     },
     "notes": {
       "type": "string"
+    },
+    "gate_config_ref": {
+      "$ref": "#/$defs/immutable_ref"
     }
   },
   "$defs": {
