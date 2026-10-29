@@ -1,6 +1,6 @@
 # Contributing to OpenFX Research Lab
 
-Thank you for considering a contribution to OpenFX. We welcome contributions that improve reproducibility, research quality, data provenance, test engineering, reliability, security, and documentation.
+OpenFX is publicly visible but its original materials are rights-reserved and are not offered under an open-source license. You may report issues or suggest improvements. Do not submit code for incorporation unless the project owner has first provided written permission and established the applicable contribution terms.
 
 ## Before you start
 
@@ -9,7 +9,7 @@ Thank you for considering a contribution to OpenFX. We welcome contributions tha
 3. For a substantial change, open an issue describing the question, proposed approach, expected evidence, risks, and acceptance criteria.
 4. Keep a contribution focused and small enough to review.
 
-## Useful contribution areas
+## Potential improvement areas (suggestions only until written terms are agreed)
 
 - Python tooling, schemas, validation, and automated tests.
 - MQL5/MetaTrader 5 testing patterns and diagnostics.
