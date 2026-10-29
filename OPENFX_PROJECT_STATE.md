@@ -209,3 +209,16 @@ Neither mission replaces the other. Infrastructure is only useful insofar as it 
 
 ### Next action
 Refresh PR #23's current head and Actions after the two commits; add adversarial artifact tests (symlink rejection where supported, file mutation during hashing, and concurrent manifest writers), then define the G0–G5 enforcement matrix and identify the smallest end-to-end path that can honestly reach a reproducible synthetic result. No merge, paid service, VPS, broker, MT5 demo, or live trading without explicit approval.
+
+
+## 12. G0–G5 enforcement matrix — 2026-10-30
+
+- Added `docs/G0_G5_ENFORCEMENT_MATRIX.md` on the PR #23 work branch; commit `8fcbb7901d98890e6b416539b75cafa03188b2b1`.
+- The matrix defines G0 source admissibility, G1 claim/hypothesis, G2 implementation and synthetic qualification, G3 market-data evaluation, G4 independent reproduction/demo acceptance, and G5 release/deployment decision.
+- Each gate has required inputs, target enforcing component, adversarial tests, immutable evidence output, human authorization boundary, and current implementation status.
+- Added explicit gate semantics (`BLOCKED/PASS/WAIVED`), non-waivable integrity/OOS/authorization controls, gate invariants, a minimum end-to-end synthetic-only acceptance path, ordered implementation backlog, and criteria for using “research-ready” or “production-ready”.
+- This is an engineering contract/design artifact, not a claim that G0–G5 are now implemented. The current honest first vertical slice stops at a reproducible synthetic result; it must not be called a market backtest or profitability validation.
+- No code tests were added or run for this documentation-only change. The matrix commit is on the PR #23 head branch, not main. No merge was performed.
+
+### Next action
+Implement the smallest G0→G1 data contract slice: define and validate a source record with rights basis, immutable content hash, exact locator, extraction method, and explicit provenance state; add fail-closed tests for missing rights/locator/hash and source-content mismatch. Keep the test fixture explicitly synthetic/local and do not ingest third-party media without an established rights basis. Then wire one HypothesisCard to a source-backed atomic claim without promoting hypotheses to verified rules.
