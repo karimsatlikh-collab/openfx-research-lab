@@ -8,7 +8,7 @@ import hashlib
 import json
 import re
 from datetime import date, datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 SCHEMA_VERSION = 1
@@ -46,7 +46,7 @@ def new_experiment(
     notes: str = "",
 ) -> dict[str, Any]:
     """Create a validated, reproducible experiment manifest."""
-    if not _ID_RE.fullmatch(experiment_id):
+    if not isinstance(experiment_id, str) or not _ID_RE.fullmatch(experiment_id):
         raise ValueError("experiment_id must be 1-80 safe filename characters")
     required = {
         "hypothesis": hypothesis,
@@ -63,6 +63,15 @@ def new_experiment(
     _validate_iso_date(data_end, "data_end")
     if date.fromisoformat(data_start) > date.fromisoformat(data_end):
         raise ValueError("data_start must not be later than data_end")
+
+    if parameters is not None and not isinstance(parameters, dict):
+        raise ValueError("parameters must be an object")
+    if not isinstance(notes, str):
+        raise ValueError("notes must be a string")
+    try:
+        json.dumps(parameters or {}, allow_nan=False)
+    except (TypeError, ValueError):
+        raise ValueError("parameters must contain only finite JSON values") from None
 
     now = utc_now()
     return {
@@ -124,6 +133,9 @@ def validate_manifest(manifest: dict[str, Any]) -> None:
     missing = required - set(manifest)
     if missing:
         raise ValueError(f"missing required fields: {', '.join(sorted(missing))}")
+    unknown = set(manifest) - required - {"error"}
+    if unknown:
+        raise ValueError(f"unknown manifest fields: {', '.join(sorted(unknown))}")
     if manifest.get("schema_version") != SCHEMA_VERSION:
         raise ValueError("unsupported or missing schema_version")
     experiment_id = manifest.get("experiment_id")
@@ -148,13 +160,17 @@ def validate_manifest(manifest: dict[str, Any]) -> None:
         raise ValueError("market.data_start must not be later than market.data_end")
     if not isinstance(manifest["parameters"], dict):
         raise ValueError("parameters must be an object")
+    try:
+        json.dumps(manifest["parameters"], allow_nan=False)
+    except (TypeError, ValueError):
+        raise ValueError("parameters must contain only finite JSON values") from None
     execution = manifest["execution"]
     if not isinstance(execution, dict):
         raise ValueError("execution must be an object")
     for key in ("mode", "worker_version", "started_at_utc", "finished_at_utc"):
         if key not in execution:
             raise ValueError(f"execution missing required field: {key}")
-    if not isinstance(execution["mode"], str) or not execution["mode"]:
+    if not isinstance(execution["mode"], str) or not execution["mode"].strip():
         raise ValueError("execution.mode must be a non-empty string")
     if execution["worker_version"] is not None and not isinstance(execution["worker_version"], str):
         raise ValueError("execution.worker_version must be a string or null")
@@ -166,8 +182,14 @@ def validate_manifest(manifest: dict[str, Any]) -> None:
     for index, artifact in enumerate(manifest["artifacts"]):
         if not isinstance(artifact, dict):
             raise ValueError(f"artifacts[{index}] must be an object")
-        if not isinstance(artifact.get("path"), str) or not artifact["path"]:
-            raise ValueError(f"artifacts[{index}].path must be a non-empty string")
+        artifact_path = artifact.get("path")
+        if not isinstance(artifact_path, str) or not artifact_path or "\\" in artifact_path:
+            raise ValueError(f"artifacts[{index}].path must be a safe relative POSIX path")
+        parsed_path = PurePosixPath(artifact_path)
+        if parsed_path.is_absolute() or any(part in {"", ".", ".."} for part in artifact_path.split("/")):
+            raise ValueError(f"artifacts[{index}].path must not escape the artifact root")
+        if set(artifact) != {"path", "size_bytes", "sha256"}:
+            raise ValueError(f"artifacts[{index}] must contain only path, size_bytes, and sha256")
         size = artifact.get("size_bytes")
         if not isinstance(size, int) or isinstance(size, bool) or size < 0:
             raise ValueError(f"artifacts[{index}].size_bytes must be a non-negative integer")
@@ -179,6 +201,34 @@ def validate_manifest(manifest: dict[str, Any]) -> None:
         raise ValueError("COMPLETED requires a non-empty structured result")
     if "error" in manifest and (not isinstance(manifest["error"], str) or len(manifest["error"]) > 2000):
         raise ValueError("error must be a string of at most 2000 characters")
+    try:
+        created = datetime.fromisoformat(manifest["created_at_utc"].replace("Z", "+00:00"))
+        updated = datetime.fromisoformat(manifest["updated_at_utc"].replace("Z", "+00:00"))
+        started_raw = execution["started_at_utc"]
+        finished_raw = execution["finished_at_utc"]
+        started = datetime.fromisoformat(started_raw.replace("Z", "+00:00")) if started_raw else None
+        finished = datetime.fromisoformat(finished_raw.replace("Z", "+00:00")) if finished_raw else None
+    except (AttributeError, TypeError, ValueError):
+        raise ValueError("manifest timestamps are inconsistent") from None
+    if updated < created:
+        raise ValueError("updated_at_utc must not precede created_at_utc")
+    if started and (started < created or started > updated):
+        raise ValueError("execution.started_at_utc must be between creation and last update")
+    if finished and (finished < created or finished > updated or (started and finished < started)):
+        raise ValueError("execution.finished_at_utc is inconsistent with other timestamps")
+    status = manifest["status"]
+    if status == "QUEUED" and (started or finished or manifest["result"] is not None):
+        raise ValueError("QUEUED experiments cannot have execution timestamps or results")
+    if status == "RUNNING" and (started is None or finished is not None or manifest["result"] is not None):
+        raise ValueError("RUNNING experiments require a start time and no finish time/result")
+    if status in {"COMPLETED", "FAILED"} and finished is None:
+        raise ValueError(f"{status} experiments require a finish timestamp")
+    if status == "COMPLETED" and (started is None or not manifest["result"]):
+        raise ValueError("COMPLETED experiments require start/finish timestamps and a non-empty result")
+    try:
+        json.dumps(manifest, allow_nan=False)
+    except (TypeError, ValueError):
+        raise ValueError("manifest must contain only finite JSON values") from None
 
 
 def transition(
