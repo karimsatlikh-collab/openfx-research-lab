@@ -34,8 +34,8 @@ def compare_transcript_fidelity(reference_text: Any, extracted_text: Any, *, min
 
     reference_tokens = _tokens(reference_text)
     extracted_tokens = _tokens(extracted_text)
-    reference_numbers = Counter(token for token in reference_tokens if token[0].isdigit())
-    extracted_numbers = Counter(token for token in extracted_tokens if token[0].isdigit())
+    reference_numbers = Counter(token for token in reference_tokens if token.lstrip("+-") and token.lstrip("+-")[0].isdigit())
+    extracted_numbers = Counter(token for token in extracted_tokens if token.lstrip("+-") and token.lstrip("+-")[0].isdigit())
     missing_numbers = list((reference_numbers - extracted_numbers).elements())
     unexpected_numbers = list((extracted_numbers - reference_numbers).elements())
     reference_negations = [token for token in reference_tokens if token in _NEGATIONS]
