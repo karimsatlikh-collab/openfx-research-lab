@@ -96,6 +96,31 @@ class RegistryTests(unittest.TestCase):
             with self.assertRaises(TrialRegistryError):
                 registry.append(event_id="evt-1", family_id="fam-1", trial_id="trial-1", outcome="completed")
 
+    def test_trial_budget_is_enforced_atomically_and_failed_trials_count(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            registry = LocalTrialRegistry(Path(tmp) / "trials.jsonl")
+            first = registry.append(event_id="e1", family_id="fam", trial_id="t1",
+                                    outcome="failed", max_trials=1)
+            self.assertEqual(first["trial_index"], 1)
+            # An idempotent retry is accepted even when the family budget is full.
+            self.assertEqual(
+                registry.append(event_id="e1", family_id="fam", trial_id="t1",
+                                outcome="failed", max_trials=1), first
+            )
+            with self.assertRaisesRegex(TrialRegistryError, "budget exceeded"):
+                registry.append(event_id="e2", family_id="fam", trial_id="t2",
+                                outcome="pending", max_trials=1)
+            self.assertEqual(registry.trial_count("fam"), 1)
+
+    def test_pending_can_finish_once_but_terminal_contradictions_are_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            registry = LocalTrialRegistry(Path(tmp) / "trials.jsonl")
+            registry.append(event_id="e1", family_id="fam", trial_id="t1", outcome="pending")
+            registry.append(event_id="e2", family_id="fam", trial_id="t1", outcome="completed")
+            with self.assertRaisesRegex(TrialRegistryError, "terminal trial outcome"):
+                registry.append(event_id="e3", family_id="fam", trial_id="t1", outcome="failed")
+            self.assertEqual(registry.trial_count("fam"), 1)
+
     def test_tampering_is_detected(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "trials.jsonl"
