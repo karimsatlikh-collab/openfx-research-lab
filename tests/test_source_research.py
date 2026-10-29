@@ -58,6 +58,11 @@ class SourceRegistryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "license_reference"):
             validate_source_record(source_record(license_status="public_domain"))
 
+
+    def test_credential_like_query_parameters_are_rejected(self):
+        with self.assertRaisesRegex(ValueError, "credential-like"):
+            validate_source_record(source_record(url="https://example.com/video?access_token=secret"))
+
     def test_url_whitespace_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "whitespace"):
             validate_source_record(source_record(url="https://example.com/video "))
