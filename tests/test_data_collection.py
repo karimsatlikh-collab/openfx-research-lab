@@ -18,6 +18,7 @@ class DataCollectionTests(unittest.TestCase):
 
             self.assertEqual(len(records), 1)
             self.assertEqual(records[0]["file_name"], "sample.txt")
+            self.assertEqual(records[0]["relative_path"], "sample.txt")
             self.assertEqual(records[0]["collection_method"], "authorized_local_file_scan")
             self.assertFalse(records[0]["content_extracted"])
             self.assertEqual(len(records[0]["sha256"]), 64)
@@ -44,13 +45,26 @@ class DataCollectionTests(unittest.TestCase):
     def test_duplicate_hashes_are_reported(self):
         records = [
             {"file_name": "a.txt", "file_type": ".txt", "file_size_bytes": 1,
-             "sha256": "same", "collection_method": "test"},
+             "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "collection_method": "test"},
             {"file_name": "b.txt", "file_type": ".txt", "file_size_bytes": 1,
-             "sha256": "same", "collection_method": "test"},
+             "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "collection_method": "test"},
         ]
         result = evaluate_records(records)
         self.assertEqual(result["duplicate_records"], 1)
         self.assertEqual(result["quality_status"], "needs_review")
+
+    def test_does_not_follow_symlink_outside_source_root(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "source"
+            root.mkdir()
+            outside = Path(directory) / "outside.txt"
+            outside.write_text("private", encoding="utf-8")
+            link = root / "linked.txt"
+            try:
+                link.symlink_to(outside)
+            except (OSError, NotImplementedError):
+                self.skipTest("symlinks are not available on this platform")
+            self.assertEqual(collect_local_metadata(str(root)), [])
 
 
 if __name__ == "__main__":
