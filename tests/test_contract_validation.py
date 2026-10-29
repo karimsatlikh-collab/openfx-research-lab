@@ -52,6 +52,15 @@ class SemanticContractTests(unittest.TestCase):
                 job, strategy_spec=strategy, data_profile=data, cost_profile=costs, gate_config=gate
             )
 
+    def test_boolean_gate_trial_budget_is_rejected(self):
+        job, strategy, data, costs, gate = bundle()
+        gate["trial_family_policy"]["max_trials"] = True
+        job["gate_config_ref"]["sha256"] = canonical_sha256(gate)
+        with self.assertRaisesRegex(ContractValidationError, "gate max_trials"):
+            validate_job_bundle(
+                job, strategy_spec=strategy, data_profile=data, cost_profile=costs, gate_config=gate
+            )
+
     def test_job_budget_cannot_exceed_frozen_gate_budget(self):
         job, strategy, data, costs, gate = bundle()
         job["budget"]["max_trials"] = 4
