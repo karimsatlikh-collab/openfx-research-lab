@@ -195,6 +195,17 @@ class ExperimentTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_manifest(manifest)
 
+    def test_manifest_rejects_windows_drive_artifact_path(self):
+        from openfx.experiment import validate_manifest
+        manifest = sample()
+        manifest["artifacts"] = [{
+            "path": "C:/private/report.html",
+            "size_bytes": 1,
+            "sha256": "a" * 64,
+        }]
+        with self.assertRaisesRegex(ValueError, "relative|escape"):
+            validate_manifest(manifest)
+
 
 if __name__ == "__main__":
     unittest.main()
