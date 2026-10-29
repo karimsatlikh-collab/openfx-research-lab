@@ -68,9 +68,9 @@ class LocalTrialRegistry:
             for key in ("event_id", "family_id", "trial_id"):
                 if not isinstance(row[key], str) or not row[key].strip():
                     raise TrialRegistryError(f"invalid {key} at ledger line {line_number}")
-            if isinstance(row["sequence"], bool) or row["sequence"] != len(rows) + 1:
+            if isinstance(row["sequence"], bool) or not isinstance(row["sequence"], int) or row["sequence"] != len(rows) + 1:
                 raise TrialRegistryError(f"invalid sequence at ledger line {line_number}")
-            if row["outcome"] not in TRIAL_OUTCOMES:
+            if not isinstance(row["outcome"], str) or row["outcome"] not in TRIAL_OUTCOMES:
                 raise TrialRegistryError(f"invalid outcome at ledger line {line_number}")
             if not isinstance(row["payload"], dict):
                 raise TrialRegistryError(f"invalid payload at ledger line {line_number}")
@@ -85,13 +85,13 @@ class LocalTrialRegistry:
             if prior_trial and row["outcome"] == "pending":
                 raise TrialRegistryError(f"pending trial cannot repeat pending outcome at ledger line {line_number}")
             expected_family_sequence = 1 + sum(item["family_id"] == row["family_id"] for item in rows)
-            if isinstance(row["family_sequence"], bool) or row["family_sequence"] != expected_family_sequence:
+            if isinstance(row["family_sequence"], bool) or not isinstance(row["family_sequence"], int) or row["family_sequence"] != expected_family_sequence:
                 raise TrialRegistryError(f"invalid family_sequence at ledger line {line_number}")
             known_family_trials = family_trials.setdefault(row["family_id"], [])
             if row["trial_id"] not in known_family_trials:
                 known_family_trials.append(row["trial_id"])
             expected_trial_index = known_family_trials.index(row["trial_id"]) + 1
-            if isinstance(row["trial_index"], bool) or row["trial_index"] != expected_trial_index:
+            if isinstance(row["trial_index"], bool) or not isinstance(row["trial_index"], int) or row["trial_index"] != expected_trial_index:
                 raise TrialRegistryError(f"invalid trial_index at ledger line {line_number}")
             row["event_sha256"] = supplied_hash
             rows.append(row)
