@@ -182,3 +182,19 @@ This document defines the proposed project and roles; it does not mean that thes
 
 ## 9. Immediate next action
 Audit the existing repository and turn this charter into a prioritized implementation backlog. The first implementation target should be the research control plane (source registry + experiment/run records + durable queue + logs/recovery), while the Windows MT5 compatibility review proceeds as a separate validation track. Do not conduct a financial/vendor selection exercise unless the user reopens it.
+
+
+## 11. GitHub ecosystem research and collaboration mandate — user instruction (2026-10-29)
+
+The Source Discovery and Collection Team is explicitly tasked with treating relevant GitHub users, repositories, and open-source projects that develop Forex/trading strategies, indicators, EAs, backtesting frameworks, market-data tools, or research workflows as target research sources and potential collaboration partners—not merely as software dependencies.
+
+Required activities:
+- Discover and catalogue relevant public GitHub repositories, authors/maintainers, issues, pull requests, releases, tests, documentation, strategy specifications, backtest methodology, and published results.
+- Extract reusable research knowledge: explicit rules, implementation patterns, bug reports, failed approaches, limitations, test fixtures, performance claims, and reproducibility evidence. Record repository URL, commit/release SHA, retrieval date, license, provenance, and confidence.
+- Separate source facts, author claims, measured/reproduced findings, and our own hypotheses. A repository's star count, README claim, screenshot, or single backtest is not evidence of profitability by itself.
+- Where appropriate, participate constructively: report reproducible bugs, ask focused technical questions, propose tests, improve documentation, or submit code/documentation contributions.
+- Before contributing, inspect the repository's license, contribution guide, code of conduct, security policy, and maintainer expectations. Respect attribution and license obligations; do not copy code into proprietary components unless the license and intended use permit it. Do not publish the user's private strategy rules, credentials, private data, or company-internal results.
+- Do not create noisy issues/PRs or claim affiliation. Contributions must be relevant, evidence-backed, and reviewed before submission. Public issue/PR submission on behalf of the user requires user approval when it discloses proprietary methods, makes a commitment, or materially represents the company.
+- Preserve useful negative findings and abandoned/failed approaches when their evidence can be checked. Track upstream project status and avoid relying on abandoned or unsafe dependencies without review.
+
+This is a standing project instruction from the user. It does not authorize paid services, private-repository access, live trading, or disclosure of confidential information.
