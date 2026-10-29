@@ -1,5 +1,6 @@
 """M2 prototype calibration tests; synthetic fixtures only, never market validation."""
 import json
+import multiprocessing
 import tempfile
 import unittest
 from pathlib import Path
@@ -8,6 +9,22 @@ from openfx.synthetic_engine import run_synthetic
 from openfx.statistical_gate import evaluate_synthetic_summary, GateConfigError
 from openfx.trial_registry import LocalTrialRegistry, TrialRegistryError
 from openfx.synthetic_engine import validate_feature_timing
+
+
+def _concurrent_registry_append(path, worker_id, result_queue):
+    """Spawn-safe worker for cross-process registry budget testing."""
+    registry = LocalTrialRegistry(path, lock_timeout_seconds=15.0)
+    try:
+        registry.append(event_id=f"event-{worker_id}", family_id="concurrent-family",
+                        trial_id=f"trial-{worker_id}", outcome="failed", max_trials=6)
+        result_queue.put((worker_id, "accepted"))
+    except TrialRegistryError as exc:
+        if "budget exceeded" in str(exc):
+            result_queue.put((worker_id, "budget_rejected"))
+        else:
+            result_queue.put((worker_id, "error", str(exc)))
+    except Exception as exc:
+        result_queue.put((worker_id, "error", repr(exc)))
 
 
 class SyntheticEngineTests(unittest.TestCase):
@@ -135,6 +152,45 @@ class RegistryTests(unittest.TestCase):
             with self.assertRaisesRegex(TrialRegistryError, "lock timeout"):
                 registry.append(event_id="e1", family_id="fam", trial_id="t1", outcome="pending")
             self.assertTrue(registry.lock_path.exists())
+
+    def test_multiprocess_appends_enforce_family_budget_atomically(self):
+        # Each process opens its own registry instance against the same ledger.
+        with tempfile.TemporaryDirectory() as tmp:
+            path = str(Path(tmp) / "trials.jsonl")
+            ctx = multiprocessing.get_context("spawn")
+            result_queue = ctx.Queue()
+            workers = [ctx.Process(target=_concurrent_registry_append,
+                                   args=(path, worker_id, result_queue))
+                       for worker_id in range(12)]
+            for worker in workers:
+                worker.start()
+            for worker in workers:
+                worker.join(timeout=25)
+            for worker in workers:
+                if worker.is_alive():
+                    worker.terminate()
+                    worker.join()
+                    self.fail("concurrent registry worker did not finish")
+                self.assertEqual(worker.exitcode, 0)
+            results = [result_queue.get(timeout=3) for _ in workers]
+            errors = [result for result in results if result[1] == "error"]
+            self.assertEqual(errors, [], f"unexpected worker errors: {errors}")
+            self.assertEqual(sum(result[1] == "accepted" for result in results), 6)
+            self.assertEqual(sum(result[1] == "budget_rejected" for result in results), 6)
+            registry = LocalTrialRegistry(path)
+            self.assertEqual(registry.trial_count("concurrent-family"), 6)
+            self.assertEqual(registry.verify()["event_count"], 6)
+
+    def test_truncated_final_event_fails_closed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "trials.jsonl"
+            registry = LocalTrialRegistry(path)
+            registry.append(event_id="evt-1", family_id="fam-1", trial_id="trial-1",
+                            outcome="failed")
+            with path.open("a", encoding="utf-8") as stream:
+                stream.write('{"sequence":2,"event_id":"partial')
+            with self.assertRaisesRegex(TrialRegistryError, "invalid JSON"):
+                registry.verify()
 
     def test_tampering_is_detected(self):
         with tempfile.TemporaryDirectory() as tmp:
