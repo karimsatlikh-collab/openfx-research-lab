@@ -1,14 +1,13 @@
-"""OpenFX Windows VPS worker prototype.
+"""OpenFX Windows worker prototype: strict job validation and local audit only.
 
-This module validates declarative jobs and records a local audit trail only.
-It intentionally does NOT execute commands or invoke MT5. The real control plane
-and MT5 adapter must be implemented and reviewed before deployment.
+This prototype deliberately never executes shell commands or launches MT5.
 """
 from __future__ import annotations
 
 import argparse
 import hashlib
 import json
+import math
 import os
 import re
 import sys
@@ -23,14 +22,16 @@ from typing import Any
 
 JOB_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{2,79}$")
 SHA256_RE = re.compile(r"^[a-fA-F0-9]{64}$")
+ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 ALLOWED_TIMEFRAMES = {"M1", "M5", "M15", "M30", "H1", "H4", "D1"}
 ALLOWED_MODELING = {"every_tick", "1m_ohlc", "open_prices"}
 REQUIRED_JOB_KEYS = {
     "job_id", "idempotency_key", "ea_id", "ea_sha256", "symbol",
     "timeframe", "start_date", "end_date", "modeling_mode",
-    "parameters", "approved", "timeout_seconds"
+    "parameters", "approved", "timeout_seconds",
 }
 ALLOWED_JOB_KEYS = REQUIRED_JOB_KEYS | {"metadata"}
+MAX_METADATA_BYTES = 16_384
 
 
 class JobValidationError(ValueError):
@@ -52,22 +53,19 @@ class WorkerConfig:
     @classmethod
     def from_mapping(cls, data: dict[str, Any]) -> "WorkerConfig":
         required = {
-            "control_plane_url", "poll_interval_seconds",
-            "request_timeout_seconds", "max_jobs_per_poll",
-            "allowed_ea_ids", "max_backtest_days", "max_runtime_seconds",
-            "local_state_file", "execution_enabled"
+            "control_plane_url", "poll_interval_seconds", "request_timeout_seconds",
+            "max_jobs_per_poll", "allowed_ea_ids", "max_backtest_days",
+            "max_runtime_seconds", "local_state_file", "execution_enabled",
         }
-        if set(data) != required:
+        if not isinstance(data, dict) or set(data) != required:
             raise ValueError("Configuration has missing or unknown keys.")
         url = data["control_plane_url"]
         if not isinstance(url, str):
             raise ValueError("control_plane_url must be a string.")
         parsed = urllib.parse.urlparse(url)
-        if parsed.scheme != "https" or not parsed.netloc or parsed.hostname is None:
-            raise ValueError("control_plane_url must be an HTTPS URL.")
-        if parsed.hostname.endswith(".invalid") or "PLACEHOLDER" in url:
-            # Allowed only for local validation; network calls will be refused.
-            pass
+        if (parsed.scheme != "https" or not parsed.hostname or parsed.username is not None
+                or parsed.password is not None or parsed.fragment):
+            raise ValueError("control_plane_url must be a credential-free HTTPS URL without a fragment.")
         for key, low, high in (
             ("poll_interval_seconds", 5, 3600),
             ("request_timeout_seconds", 3, 120),
@@ -78,22 +76,22 @@ class WorkerConfig:
             value = data[key]
             if not isinstance(value, int) or isinstance(value, bool) or not low <= value <= high:
                 raise ValueError(f"{key} must be an integer from {low} to {high}.")
-        if not isinstance(data["allowed_ea_ids"], list) or not data["allowed_ea_ids"]:
+        ids = data["allowed_ea_ids"]
+        if not isinstance(ids, list) or not ids:
             raise ValueError("allowed_ea_ids must be a non-empty list.")
         if any(not isinstance(item, str) or not re.fullmatch(r"[A-Za-z0-9._-]{1,80}", item)
-               for item in data["allowed_ea_ids"]):
-            raise ValueError("allowed_ea_ids contains an invalid identifier.")
-        if not isinstance(data["local_state_file"], str) or not data["local_state_file"]:
+               for item in ids) or len(set(ids)) != len(ids):
+            raise ValueError("allowed_ea_ids contains an invalid or duplicate identifier.")
+        if not isinstance(data["local_state_file"], str) or not data["local_state_file"].strip():
             raise ValueError("local_state_file must be a non-empty path.")
         if not isinstance(data["execution_enabled"], bool):
             raise ValueError("execution_enabled must be boolean.")
-        # Even if a config sets true, this prototype never executes jobs.
         return cls(
             control_plane_url=url,
             poll_interval_seconds=data["poll_interval_seconds"],
             request_timeout_seconds=data["request_timeout_seconds"],
             max_jobs_per_poll=data["max_jobs_per_poll"],
-            allowed_ea_ids=tuple(data["allowed_ea_ids"]),
+            allowed_ea_ids=tuple(ids),
             max_backtest_days=data["max_backtest_days"],
             max_runtime_seconds=data["max_runtime_seconds"],
             local_state_file=data["local_state_file"],
@@ -102,7 +100,7 @@ class WorkerConfig:
 
 
 def validate_job(job: Any, config: WorkerConfig) -> dict[str, Any]:
-    """Validate a job strictly; return a shallow copy if accepted."""
+    """Validate a declarative job; never interpret any field as executable code."""
     if not isinstance(job, dict):
         raise JobValidationError("Job must be a JSON object.")
     keys = set(job)
@@ -110,10 +108,9 @@ def validate_job(job: Any, config: WorkerConfig) -> dict[str, Any]:
         raise JobValidationError("Job is missing required fields.")
     if keys - ALLOWED_JOB_KEYS:
         raise JobValidationError("Job contains unknown fields.")
-    if not isinstance(job["job_id"], str) or not JOB_ID_RE.fullmatch(job["job_id"]):
-        raise JobValidationError("Invalid job_id.")
-    if not isinstance(job["idempotency_key"], str) or not JOB_ID_RE.fullmatch(job["idempotency_key"]):
-        raise JobValidationError("Invalid idempotency_key.")
+    for key in ("job_id", "idempotency_key"):
+        if not isinstance(job[key], str) or not JOB_ID_RE.fullmatch(job[key]):
+            raise JobValidationError(f"Invalid {key}.")
     if not isinstance(job["ea_id"], str) or job["ea_id"] not in config.allowed_ea_ids:
         raise JobValidationError("EA is not on the worker allow-list.")
     if not isinstance(job["ea_sha256"], str) or not SHA256_RE.fullmatch(job["ea_sha256"]):
@@ -122,28 +119,30 @@ def validate_job(job: Any, config: WorkerConfig) -> dict[str, Any]:
         raise JobValidationError("Invalid symbol.")
     if not isinstance(job["timeframe"], str) or job["timeframe"] not in ALLOWED_TIMEFRAMES:
         raise JobValidationError("Unsupported timeframe.")
+    for key in ("start_date", "end_date"):
+        if not isinstance(job[key], str) or not ISO_DATE_RE.fullmatch(job[key]):
+            raise JobValidationError(f"{key} must use YYYY-MM-DD.")
     try:
-        start = date.fromisoformat(job["start_date"])
-        end = date.fromisoformat(job["end_date"])
-    except (TypeError, ValueError):
-        raise JobValidationError("Dates must use YYYY-MM-DD.") from None
+        start, end = date.fromisoformat(job["start_date"]), date.fromisoformat(job["end_date"])
+    except ValueError:
+        raise JobValidationError("Dates must be valid calendar dates in YYYY-MM-DD format.") from None
     if end <= start:
         raise JobValidationError("end_date must be after start_date.")
     if (end - start).days > config.max_backtest_days:
         raise JobValidationError("Date range exceeds the configured limit.")
     if not isinstance(job["modeling_mode"], str) or job["modeling_mode"] not in ALLOWED_MODELING:
         raise JobValidationError("Unsupported modeling mode.")
-    if not isinstance(job["parameters"], dict) or len(job["parameters"]) > 100:
+    params = job["parameters"]
+    if not isinstance(params, dict) or len(params) > 100:
         raise JobValidationError("parameters must be a JSON object with at most 100 entries.")
-    # Only finite JSON primitive values are accepted; no nested executable payloads.
-    for key, value in job["parameters"].items():
+    for key, value in params.items():
         if not isinstance(key, str) or not re.fullmatch(r"[A-Za-z0-9_]{1,64}", key):
             raise JobValidationError("Invalid parameter name.")
-        if isinstance(value, (dict, list)) or value is None or isinstance(value, bool):
-            raise JobValidationError("Parameter values must be numbers or strings.")
+        if isinstance(value, (dict, list, bool)) or value is None:
+            raise JobValidationError("Parameter values must be finite numbers or strings.")
         if not isinstance(value, (int, float, str)):
             raise JobValidationError("Unsupported parameter value.")
-        if isinstance(value, float) and (value != value or abs(value) == float("inf")):
+        if isinstance(value, float) and not math.isfinite(value):
             raise JobValidationError("Non-finite parameter values are not allowed.")
         if isinstance(value, str) and len(value) > 256:
             raise JobValidationError("String parameter value is too long.")
@@ -152,8 +151,20 @@ def validate_job(job: Any, config: WorkerConfig) -> dict[str, Any]:
     timeout = job["timeout_seconds"]
     if not isinstance(timeout, int) or isinstance(timeout, bool) or not 30 <= timeout <= config.max_runtime_seconds:
         raise JobValidationError("timeout_seconds exceeds the permitted range.")
-    if "metadata" in job and not isinstance(job["metadata"], dict):
-        raise JobValidationError("metadata must be an object.")
+    if "metadata" in job:
+        metadata = job["metadata"]
+        if not isinstance(metadata, dict):
+            raise JobValidationError("metadata must be an object.")
+        try:
+            encoded = json.dumps(metadata, ensure_ascii=False, allow_nan=False, separators=(",", ":")).encode("utf-8")
+        except (TypeError, ValueError):
+            raise JobValidationError("metadata must contain JSON-safe values.") from None
+        if len(encoded) > MAX_METADATA_BYTES:
+            raise JobValidationError("metadata exceeds the 16 KB limit.")
+        if any(not isinstance(k, str) for k in metadata):
+            raise JobValidationError("metadata keys must be strings.")
+        if any(isinstance(v, (dict, list)) for v in metadata.values()):
+            raise JobValidationError("metadata values must be flat JSON primitives.")
     return dict(job)
 
 
@@ -174,17 +185,14 @@ def save_state(path: str, state: dict[str, Any]) -> None:
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     temporary = p.with_suffix(p.suffix + ".tmp")
-    temporary.write_text(json.dumps(state, indent=2, sort_keys=True), encoding="utf-8")
+    temporary.write_text(json.dumps(state, indent=2, sort_keys=True, allow_nan=False), encoding="utf-8")
     temporary.replace(p)
 
 
 def record_event(state: dict[str, Any], job_id: str, status: str, detail: str) -> None:
-    # Keep audit detail intentionally small and never include request headers/tokens.
     state["events"].append({
         "time_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "job_id": job_id,
-        "status": status,
-        "detail": detail[:240],
+        "job_id": job_id, "status": status, "detail": detail[:240],
     })
     state["events"] = state["events"][-2000:]
 
@@ -192,14 +200,13 @@ def record_event(state: dict[str, Any], job_id: str, status: str, detail: str) -
 def safe_poll(config: WorkerConfig, token: str) -> list[dict[str, Any]]:
     """Poll a future control plane; never follow redirects or call non-HTTPS URLs."""
     parsed = urllib.parse.urlparse(config.control_plane_url)
-    if parsed.hostname is None or parsed.hostname.endswith(".invalid") or "PLACEHOLDER" in config.control_plane_url:
+    if not parsed.hostname or parsed.hostname.endswith(".invalid") or "PLACEHOLDER" in config.control_plane_url:
         raise RuntimeError("Control-plane URL is a placeholder; network polling is disabled.")
     if not token or len(token) < 24:
         raise RuntimeError("OPENFX_WORKER_TOKEN is missing or too short.")
     request = urllib.request.Request(
         config.control_plane_url.rstrip("/") + "/v1/worker/jobs",
-        headers={"Authorization": "Bearer " + token, "Accept": "application/json"},
-        method="GET",
+        headers={"Authorization": "Bearer " + token, "Accept": "application/json"}, method="GET",
     )
     opener = urllib.request.build_opener(_NoRedirectHandler)
     try:
@@ -238,61 +245,46 @@ def process_job(job_data: Any, config: WorkerConfig, state: dict[str, Any]) -> s
     except JobValidationError as exc:
         record_event(state, "unknown", "REJECTED", str(exc))
         return "REJECTED"
-    job_id = job["job_id"]
-    if job_id in state["seen_jobs"]:
-        record_event(state, job_id, "DUPLICATE", "Previously seen job; no action taken.")
+    job_id, key = job["job_id"], job["idempotency_key"]
+    if job_id in state["seen_jobs"] or any(
+        isinstance(record, dict) and record.get("idempotency_key") == key
+        for record in state["seen_jobs"].values()
+    ):
+        record_event(state, job_id, "DUPLICATE", "Previously seen job ID or idempotency key; no action taken.")
         return "DUPLICATE"
     state["seen_jobs"][job_id] = {
-        "idempotency_key": job["idempotency_key"],
+        "idempotency_key": key,
         "ea_sha256": job["ea_sha256"].lower(),
         "status": "VALIDATED_NOT_EXECUTED",
     }
-    record_event(
-        state, job_id, "VALIDATED_NOT_EXECUTED",
-        "Schema accepted; MT5 execution is not implemented in this prototype."
-    )
+    record_event(state, job_id, "VALIDATED_NOT_EXECUTED",
+                 "Schema accepted; MT5 execution is not implemented in this prototype.")
     return "VALIDATED_NOT_EXECUTED"
 
 
 def self_test() -> int:
     config = WorkerConfig.from_mapping({
         "control_plane_url": "https://CONTROL-PLANE-PLACEHOLDER.invalid",
-        "poll_interval_seconds": 30,
-        "request_timeout_seconds": 15,
-        "max_jobs_per_poll": 1,
-        "allowed_ea_ids": ["openfx-demo-ea"],
-        "max_backtest_days": 365,
-        "max_runtime_seconds": 1800,
-        "local_state_file": "worker_state.json",
+        "poll_interval_seconds": 30, "request_timeout_seconds": 15, "max_jobs_per_poll": 1,
+        "allowed_ea_ids": ["openfx-demo-ea"], "max_backtest_days": 365,
+        "max_runtime_seconds": 1800, "local_state_file": "worker_state.json",
         "execution_enabled": False,
     })
     good = {
-        "job_id": "test-job-001",
-        "idempotency_key": "test-key-001",
-        "ea_id": "openfx-demo-ea",
-        "ea_sha256": hashlib.sha256(b"demo").hexdigest(),
-        "symbol": "EURUSD",
-        "timeframe": "M15",
-        "start_date": "2025-01-01",
-        "end_date": "2025-02-01",
-        "modeling_mode": "every_tick",
+        "job_id": "test-job-001", "idempotency_key": "test-key-001",
+        "ea_id": "openfx-demo-ea", "ea_sha256": hashlib.sha256(b"demo").hexdigest(),
+        "symbol": "EURUSD", "timeframe": "M15", "start_date": "2025-01-01",
+        "end_date": "2025-02-01", "modeling_mode": "every_tick",
         "parameters": {"RiskPercent": 0.5, "UseFilter": "true"},
-        "approved": True,
-        "timeout_seconds": 300,
+        "approved": True, "timeout_seconds": 300,
     }
     validate_job(good, config)
-    try:
-        validate_job({**good, "command": "whoami"}, config)
-    except JobValidationError:
-        pass
-    else:
-        raise AssertionError("Unknown command field was not rejected.")
-    try:
-        validate_job({**good, "ea_id": "unapproved-ea"}, config)
-    except JobValidationError:
-        pass
-    else:
-        raise AssertionError("Unapproved EA was not rejected.")
+    for bad in ({**good, "command": "whoami"}, {**good, "ea_id": "unapproved-ea"}):
+        try:
+            validate_job(bad, config)
+        except JobValidationError:
+            continue
+        raise AssertionError("Unsafe job was not rejected.")
     state = {"seen_jobs": {}, "events": []}
     assert process_job(good, config, state) == "VALIDATED_NOT_EXECUTED"
     assert process_job(good, config, state) == "DUPLICATE"
