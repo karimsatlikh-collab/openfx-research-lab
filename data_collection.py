@@ -47,6 +47,10 @@ def collect_local_metadata(source_directory: str) -> list[dict]:
     records = []
 
     for file_path in root.rglob("*"):
+        # Do not follow file symlinks: a link inside the selected directory can
+        # point outside it and cause metadata/hash collection from an unintended path.
+        if file_path.is_symlink():
+            continue
         if not file_path.is_file():
             continue
 
