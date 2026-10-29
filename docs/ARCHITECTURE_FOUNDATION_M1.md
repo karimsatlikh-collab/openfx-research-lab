@@ -131,5 +131,13 @@ entire ledger and produce a fully consistent replacement.
 Additional adversarial tests cover unsupported outcome types and stale-lock
 behavior. A stale lock causes a bounded timeout and is deliberately not deleted
 automatically, because the prototype cannot safely determine whether its owner
-is still active. Concurrency across separate processes, power-loss durability,
-and trusted multi-host registration remain open verification/design work.
+is still active. A multi-process test now starts independent registry instances
+against one local ledger and verifies that concurrent unique trial submissions
+cannot exceed the configured family budget; it also verifies the resulting hash
+chain and event count. This is a bounded CI test, not proof of correctness under
+all operating systems, filesystems, process-kill timings, or power-loss cases.
+A deliberately truncated final JSONL event is rejected closed during
+verification. There is no automatic repair/recovery because the prototype
+cannot reliably distinguish a crash-truncated write from corruption. Power-loss
+durability, crash recovery, and trusted multi-host registration remain open
+verification/design work.
