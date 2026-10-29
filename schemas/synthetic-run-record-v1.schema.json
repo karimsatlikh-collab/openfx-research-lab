@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/karimsatlikh-collab/openfx-research-lab/blob/main/schemas/synthetic-run-record-v1.schema.json",
+  "title": "OpenFX Synthetic RunRecord v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "frozen_sha256",
+    "trial_id",
+    "evidence_level",
+    "engine",
+    "engine_parameters",
+    "result"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "frozen_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "trial_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evidence_level": {
+      "const": "synthetic"
+    },
+    "engine": {
+      "const": "openfx.synthetic_engine.run_synthetic"
+    },
+    "engine_parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "seed",
+        "n",
+        "edge",
+        "noise"
+      ],
+      "properties": {
+        "seed": {
+          "type": "integer"
+        },
+        "n": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "edge": {
+          "type": "number"
+        },
+        "noise": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sample_size",
+        "mean_return",
+        "std_return",
+        "sharpe_like",
+        "total_return"
+      ],
+      "properties": {
+        "sample_size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "mean_return": {
+          "type": "number"
+        },
+        "std_return": {
+          "type": "number"
+        },
+        "sharpe_like": {
+          "type": "number"
+        },
+        "total_return": {
+          "type": "number"
+        }
+      }
+    }
+  }
+}
