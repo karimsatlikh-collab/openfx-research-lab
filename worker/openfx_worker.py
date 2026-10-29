@@ -124,8 +124,8 @@ def validate_job(job: Any, config: WorkerConfig) -> dict[str, Any]:
         raise JobValidationError("Invalid symbol.")
     if not isinstance(job["timeframe"], str) or job["timeframe"] not in ALLOWED_TIMEFRAMES:
         raise JobValidationError("Unsupported timeframe.")
-    if (not isinstance(job["start_date"], str) or not re.fullmatch(r"\\d{4}-\\d{2}-\\d{2}", job["start_date"])
-            or not isinstance(job["end_date"], str) or not re.fullmatch(r"\\d{4}-\\d{2}-\\d{2}", job["end_date"])):
+    if (not isinstance(job["start_date"], str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", job["start_date"])
+            or not isinstance(job["end_date"], str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", job["end_date"])):
         raise JobValidationError("Dates must use YYYY-MM-DD.")
     try:
         start = date.fromisoformat(job["start_date"])
