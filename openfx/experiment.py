@@ -194,7 +194,9 @@ def validate_manifest(manifest: dict[str, Any]) -> None:
         if not isinstance(artifact_path, str) or not artifact_path or "\\" in artifact_path:
             raise ValueError(f"artifacts[{index}].path must be a safe relative POSIX path")
         parsed_path = PurePosixPath(artifact_path)
-        if parsed_path.is_absolute() or any(part in {"", ".", ".."} for part in artifact_path.split("/")):
+        if (parsed_path.is_absolute() or re.match(r"^[A-Za-z]:", artifact_path)
+                or any(ord(ch) < 32 for ch in artifact_path)
+                or any(part in {"", ".", ".."} for part in artifact_path.split("/"))):
             raise ValueError(f"artifacts[{index}].path must not escape the artifact root")
         if set(artifact) != {"path", "size_bytes", "sha256"}:
             raise ValueError(f"artifacts[{index}] must contain only path, size_bytes, and sha256")
