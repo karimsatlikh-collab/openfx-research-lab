@@ -192,7 +192,9 @@ class BacktestResultTests(unittest.TestCase):
                 ])
             self.assertEqual(code, 0)
             self.assertIn("ready_for_independent_review", output.getvalue())
-            self.assertIn("does_not_parse_mt5_report", output.getvalue())
+            self.assertIn('"report_parsing": {\n    "parser_version": "openfx-mt5-html/0.1"', output.getvalue())
+            self.assertIn('"status": "parsed"', output.getvalue())
+            self.assertIn('"status": "matched"', output.getvalue())
 
     def test_result_cli_returns_nonzero_when_artifact_is_missing(self):
         fixture = make_result()
