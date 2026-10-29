@@ -62,6 +62,7 @@ class SourceCliTests(unittest.TestCase):
                 "--url", "https://www.youtube.com/watch?v=AbCdEf12345",
                 "--title", "Existing", "--access-method", "official_api",
             ])[0], 0)
+            existing = load_source_registry(registry)["sources"][0]
             new = make_source_record(
                 source_id="yt-ZyXwVu98765", source_type="video",
                 url="https://www.youtube.com/watch?v=ZyXwVu98765",
