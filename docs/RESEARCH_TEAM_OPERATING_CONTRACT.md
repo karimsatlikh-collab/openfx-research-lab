@@ -52,3 +52,8 @@ Use content-addressed SHA-256 artifacts and an append-only event ledger with acc
 ## 7. Explicit non-goals for M1
 
 These contracts do not implement a production registrar, cryptographic job signatures, permission enforcement, a statistical gate, synthetic engine, MT5 executor, VPS deployment, or a profitable strategy. Those claims require later implementation and direct evidence.
+
+
+## M3 threat-model audit
+
+The initial threat register and release blockers are tracked in [THREAT_MODEL_M3.md](THREAT_MODEL_M3.md). It distinguishes implemented checks from controls that remain documentation-only or are not yet implemented. No real execution should be enabled until the authorization, executor-attestation, artifact-provenance, and OOS-access gaps listed there are reviewed and closed.
