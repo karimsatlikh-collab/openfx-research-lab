@@ -53,6 +53,7 @@ class ExperimentTests(unittest.TestCase):
             self.assertFalse(result["result"]["is_backtest"])
             self.assertFalse(result["result"]["is_trading_signal"])
             self.assertEqual(load_manifest(path)["status"], "COMPLETED")
+            self.assertFalse(path.with_name(path.name + ".lock").exists())
 
     def test_mock_worker_does_not_rerun_completed_job(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -82,6 +83,128 @@ class ExperimentTests(unittest.TestCase):
             finally:
                 outside.unlink(missing_ok=True)
 
+
+    def test_rejects_impossible_calendar_dates(self):
+        with self.assertRaises(ValueError):
+            new_experiment("test-date", "h", "v1", "EURUSD", "M15", "2024-99-99", "2024-12-31")
+
+    def test_rejects_non_iso_date_shape(self):
+        with self.assertRaises(ValueError):
+            new_experiment("test-date", "h", "v1", "EURUSD", "M15", "20240101", "2024-12-31")
+
+    def test_completed_requires_non_empty_structured_result(self):
+        queued = sample()
+        running = transition(queued, "RUNNING")
+        with self.assertRaises(ValueError):
+            transition(running, "COMPLETED")
+        with self.assertRaises(ValueError):
+            transition(running, "COMPLETED", result={})
+
+    def test_manifest_rejects_invalid_nested_dates(self):
+        from openfx.experiment import validate_manifest
+        manifest = sample()
+        manifest["market"]["data_start"] = "2024-99-99"
+        with self.assertRaises(ValueError):
+            validate_manifest(manifest)
+
+    def test_manifest_rejects_timezone_free_timestamp(self):
+        from openfx.experiment import validate_manifest
+        manifest = sample()
+        manifest["created_at_utc"] = "2024-01-01T00:00:00"
+        with self.assertRaises(ValueError):
+            validate_manifest(manifest)
+
+    def test_constructor_rejects_non_object_parameters(self):
+        with self.assertRaises(ValueError):
+            new_experiment("test-params", "h", "v1", "EURUSD", "M15",
+                           "2024-01-01", "2024-02-01", parameters=["unsafe"])
+
+    def test_constructor_rejects_non_finite_parameter(self):
+        with self.assertRaises(ValueError):
+            new_experiment("test-nan", "h", "v1", "EURUSD", "M15",
+                           "2024-01-01", "2024-02-01", parameters={"x": float("nan")})
+
+    def test_manifest_rejects_unknown_root_fields(self):
+        from openfx.experiment import validate_manifest
+        manifest = sample()
+        manifest["unexpected"] = True
+        with self.assertRaises(ValueError):
+            validate_manifest(manifest)
+
+    def test_manifest_rejects_artifact_path_traversal(self):
+        from openfx.experiment import validate_manifest
+        manifest = sample()
+        manifest["artifacts"] = [{
+            "path": "../secret.txt",
+            "size_bytes": 1,
+            "sha256": "a" * 64,
+        }]
+        with self.assertRaises(ValueError):
+            validate_manifest(manifest)
+
+    def test_running_manifest_requires_start_timestamp(self):
+        from openfx.experiment import validate_manifest
+        manifest = sample()
+        manifest["status"] = "RUNNING"
+        with self.assertRaises(ValueError):
+            validate_manifest(manifest)
+
+    def test_completed_manifest_requires_finished_timestamp(self):
+        from openfx.experiment import validate_manifest
+        manifest = sample()
+        manifest["status"] = "COMPLETED"
+        manifest["result"] = {"kind": "mock"}
+        with self.assertRaises(ValueError):
+            validate_manifest(manifest)
+
+    def test_manifest_rejects_unknown_nested_market_fields(self):
+        from openfx.experiment import validate_manifest
+        manifest = sample()
+        manifest["market"]["extra"] = "not allowed"
+        with self.assertRaises(ValueError):
+            validate_manifest(manifest)
+
+    def test_manifest_rejects_unknown_execution_fields(self):
+        from openfx.experiment import validate_manifest
+        manifest = sample()
+        manifest["execution"]["command"] = "not allowed"
+        with self.assertRaises(ValueError):
+            validate_manifest(manifest)
+
+    def test_mock_worker_refuses_existing_lock(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "experiment.json"
+            save_manifest(sample(), path)
+            lock_path = path.with_name(path.name + ".lock")
+            lock_path.write_text("synthetic stale lock", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "locked"):
+                run_mock(path)
+            self.assertEqual(load_manifest(path)["status"], "QUEUED")
+
+    def test_failed_transition_requires_explanation(self):
+        with self.assertRaisesRegex(ValueError, "error explanation"):
+            transition(sample(), "FAILED")
+        failed = transition(sample(), "FAILED", error="Synthetic test failure")
+        self.assertEqual(failed["status"], "FAILED")
+        self.assertEqual(failed["error"], "Synthetic test failure")
+
+    def test_manifest_rejects_boolean_schema_version(self):
+        from openfx.experiment import validate_manifest
+        manifest = sample()
+        manifest["schema_version"] = True
+        with self.assertRaises(ValueError):
+            validate_manifest(manifest)
+
+    def test_manifest_rejects_windows_drive_artifact_path(self):
+        from openfx.experiment import validate_manifest
+        manifest = sample()
+        manifest["artifacts"] = [{
+            "path": "C:/private/report.html",
+            "size_bytes": 1,
+            "sha256": "a" * 64,
+        }]
+        with self.assertRaisesRegex(ValueError, "relative|escape"):
+            validate_manifest(manifest)
 
 
 if __name__ == "__main__":

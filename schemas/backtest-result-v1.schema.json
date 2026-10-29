@@ -1,0 +1,299 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenFX MT5 Backtest Result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "experiment_id",
+    "created_at_utc",
+    "source_commit_sha",
+    "result_origin",
+    "execution",
+    "splits",
+    "metrics",
+    "artifacts",
+    "verification",
+    "notes"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "experiment_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"
+    },
+    "created_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source_commit_sha": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{40}$"
+    },
+    "result_origin": {
+      "const": "mt5_strategy_tester"
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "terminal_build",
+        "ea_sha256",
+        "data_sha256",
+        "symbol",
+        "timeframe",
+        "data_start",
+        "data_end",
+        "modeling_mode",
+        "initial_deposit",
+        "deposit_currency",
+        "leverage",
+        "spread_points",
+        "commission_per_lot",
+        "slippage_points"
+      ],
+      "properties": {
+        "terminal_build": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ea_sha256": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$"
+        },
+        "data_sha256": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$"
+        },
+        "symbol": {
+          "type": "string",
+          "minLength": 1
+        },
+        "timeframe": {
+          "type": "string",
+          "minLength": 1
+        },
+        "data_start": {
+          "type": "string",
+          "format": "date"
+        },
+        "data_end": {
+          "type": "string",
+          "format": "date"
+        },
+        "modeling_mode": {
+          "enum": [
+            "every_tick",
+            "1m_ohlc",
+            "open_prices"
+          ]
+        },
+        "initial_deposit": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "deposit_currency": {
+          "type": "string",
+          "minLength": 1
+        },
+        "leverage": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "spread_points": {
+          "type": "number",
+          "minimum": 0
+        },
+        "commission_per_lot": {
+          "type": "number",
+          "minimum": 0
+        },
+        "slippage_points": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "splits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "development",
+        "validation",
+        "final_oos"
+      ],
+      "properties": {
+        "development": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "start",
+            "end"
+          ],
+          "properties": {
+            "start": {
+              "type": "string",
+              "format": "date"
+            },
+            "end": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        },
+        "validation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "start",
+            "end"
+          ],
+          "properties": {
+            "start": {
+              "type": "string",
+              "format": "date"
+            },
+            "end": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        },
+        "final_oos": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "start",
+            "end"
+          ],
+          "properties": {
+            "start": {
+              "type": "string",
+              "format": "date"
+            },
+            "end": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "trade_count",
+        "net_profit",
+        "gross_profit",
+        "gross_loss",
+        "profit_factor",
+        "expected_payoff",
+        "max_drawdown_pct",
+        "relative_drawdown_pct"
+      ],
+      "properties": {
+        "trade_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "net_profit": {
+          "type": "number"
+        },
+        "gross_profit": {
+          "type": "number",
+          "minimum": 0
+        },
+        "gross_loss": {
+          "type": "number",
+          "minimum": 0
+        },
+        "profit_factor": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "expected_payoff": {
+          "type": "number"
+        },
+        "max_drawdown_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "relative_drawdown_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "path",
+          "size_bytes",
+          "sha256"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\\\\\).+$"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-fA-F0-9]{64}$"
+          }
+        }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tester_report_parsed",
+        "journal_complete",
+        "data_coverage_verified",
+        "costs_recorded",
+        "split_boundaries_verified"
+      ],
+      "properties": {
+        "tester_report_parsed": {
+          "type": "boolean"
+        },
+        "journal_complete": {
+          "type": "boolean"
+        },
+        "data_coverage_verified": {
+          "type": "boolean"
+        },
+        "costs_recorded": {
+          "type": "boolean"
+        },
+        "split_boundaries_verified": {
+          "type": "boolean"
+        }
+      }
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

@@ -7,6 +7,7 @@ and MT5 adapter must be implemented and reviewed before deployment.
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import hashlib
 import json
 import os
@@ -44,6 +45,7 @@ class WorkerConfig:
     request_timeout_seconds: int
     max_jobs_per_poll: int
     allowed_ea_ids: tuple[str, ...]
+    allowed_control_plane_hosts: tuple[str, ...]
     max_backtest_days: int
     max_runtime_seconds: int
     local_state_file: str
@@ -54,7 +56,7 @@ class WorkerConfig:
         required = {
             "control_plane_url", "poll_interval_seconds",
             "request_timeout_seconds", "max_jobs_per_poll",
-            "allowed_ea_ids", "max_backtest_days", "max_runtime_seconds",
+            "allowed_ea_ids", "allowed_control_plane_hosts", "max_backtest_days", "max_runtime_seconds",
             "local_state_file", "execution_enabled"
         }
         if set(data) != required:
@@ -63,11 +65,24 @@ class WorkerConfig:
         if not isinstance(url, str):
             raise ValueError("control_plane_url must be a string.")
         parsed = urllib.parse.urlparse(url)
-        if parsed.scheme != "https" or not parsed.netloc or parsed.hostname is None:
-            raise ValueError("control_plane_url must be an HTTPS URL.")
-        if parsed.hostname.endswith(".invalid") or "PLACEHOLDER" in url:
-            # Allowed only for local validation; network calls will be refused.
-            pass
+        try:
+            hostname = parsed.hostname.lower().rstrip(".") if parsed.hostname else None
+            port = parsed.port
+        except ValueError:
+            raise ValueError("control_plane_url has an invalid host or port.") from None
+        if (parsed.scheme != "https" or not parsed.netloc or hostname is None
+                or parsed.username is not None or parsed.password is not None
+                or parsed.query or parsed.fragment or port == 0):
+            raise ValueError("control_plane_url must be a clean HTTPS URL without credentials, query, or fragment.")
+        allowed_hosts = data["allowed_control_plane_hosts"]
+        if (not isinstance(allowed_hosts, list) or not allowed_hosts
+                or any(not isinstance(host, str) or host != host.lower().rstrip(".")
+                       or not re.fullmatch(r"[a-z0-9.-]{1,253}", host)
+                       or ".." in host or host.startswith(".") or host.endswith(".")
+                       for host in allowed_hosts)):
+            raise ValueError("allowed_control_plane_hosts must be a non-empty list of normalized hostnames.")
+        if hostname not in allowed_hosts:
+            raise ValueError("control_plane_url hostname is not on the explicit allow-list.")
         for key, low, high in (
             ("poll_interval_seconds", 5, 3600),
             ("request_timeout_seconds", 3, 120),
@@ -94,6 +109,7 @@ class WorkerConfig:
             request_timeout_seconds=data["request_timeout_seconds"],
             max_jobs_per_poll=data["max_jobs_per_poll"],
             allowed_ea_ids=tuple(data["allowed_ea_ids"]),
+            allowed_control_plane_hosts=tuple(allowed_hosts),
             max_backtest_days=data["max_backtest_days"],
             max_runtime_seconds=data["max_runtime_seconds"],
             local_state_file=data["local_state_file"],
@@ -122,6 +138,9 @@ def validate_job(job: Any, config: WorkerConfig) -> dict[str, Any]:
         raise JobValidationError("Invalid symbol.")
     if not isinstance(job["timeframe"], str) or job["timeframe"] not in ALLOWED_TIMEFRAMES:
         raise JobValidationError("Unsupported timeframe.")
+    if (not isinstance(job["start_date"], str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", job["start_date"])
+            or not isinstance(job["end_date"], str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", job["end_date"])):
+        raise JobValidationError("Dates must use YYYY-MM-DD.")
     try:
         start = date.fromisoformat(job["start_date"])
         end = date.fromisoformat(job["end_date"])
@@ -170,6 +189,29 @@ def load_state(path: str) -> dict[str, Any]:
     return data
 
 
+@contextmanager
+def state_file_lock(path: str):
+    """Acquire an exclusive process lock for a worker state file."""
+    state_path = Path(path)
+    lock_path = state_path.with_name(state_path.name + ".lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        lock_fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    except FileExistsError:
+        raise RuntimeError(
+            "worker state is locked by another or interrupted process; inspect the lock before removing it"
+        ) from None
+    try:
+        os.write(lock_fd, f"pid={os.getpid()}\n".encode("ascii"))
+        os.close(lock_fd)
+        lock_fd = None
+        yield
+    finally:
+        if lock_fd is not None:
+            os.close(lock_fd)
+        lock_path.unlink(missing_ok=True)
+
+
 def save_state(path: str, state: dict[str, Any]) -> None:
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -191,8 +233,19 @@ def record_event(state: dict[str, Any], job_id: str, status: str, detail: str) -
 
 def safe_poll(config: WorkerConfig, token: str) -> list[dict[str, Any]]:
     """Poll a future control plane; never follow redirects or call non-HTTPS URLs."""
-    parsed = urllib.parse.urlparse(config.control_plane_url)
-    if parsed.hostname is None or parsed.hostname.endswith(".invalid") or "PLACEHOLDER" in config.control_plane_url:
+    try:
+        parsed = urllib.parse.urlparse(config.control_plane_url)
+        hostname = parsed.hostname.lower().rstrip(".") if parsed.hostname else None
+        port = parsed.port
+    except ValueError:
+        raise RuntimeError("Control-plane URL has an invalid host or port.") from None
+    if (parsed.scheme != "https" or hostname is None
+            or parsed.username is not None or parsed.password is not None
+            or parsed.query or parsed.fragment or port == 0):
+        raise RuntimeError("Control-plane URL failed the HTTPS URL policy.")
+    if hostname not in config.allowed_control_plane_hosts:
+        raise RuntimeError("Control-plane hostname is not on the configured allow-list.")
+    if hostname.endswith(".invalid") or "PLACEHOLDER" in config.control_plane_url:
         raise RuntimeError("Control-plane URL is a placeholder; network polling is disabled.")
     if not token or len(token) < 24:
         raise RuntimeError("OPENFX_WORKER_TOKEN is missing or too short.")
@@ -242,6 +295,11 @@ def process_job(job_data: Any, config: WorkerConfig, state: dict[str, Any]) -> s
     if job_id in state["seen_jobs"]:
         record_event(state, job_id, "DUPLICATE", "Previously seen job; no action taken.")
         return "DUPLICATE"
+    # Idempotency keys are globally unique across job IDs, not merely per job.
+    for seen_id, seen in state["seen_jobs"].items():
+        if isinstance(seen, dict) and seen.get("idempotency_key") == job["idempotency_key"]:
+            record_event(state, job_id, "REJECTED", f"Idempotency key already belongs to job {seen_id}.")
+            return "REJECTED"
     state["seen_jobs"][job_id] = {
         "idempotency_key": job["idempotency_key"],
         "ea_sha256": job["ea_sha256"].lower(),
@@ -261,6 +319,7 @@ def self_test() -> int:
         "request_timeout_seconds": 15,
         "max_jobs_per_poll": 1,
         "allowed_ea_ids": ["openfx-demo-ea"],
+        "allowed_control_plane_hosts": ["control-plane-placeholder.invalid"],
         "max_backtest_days": 365,
         "max_runtime_seconds": 1800,
         "local_state_file": "worker_state.json",
@@ -324,14 +383,15 @@ def main() -> int:
         print("Worker execution is disabled by configuration; no job will be executed.")
     token = os.environ.get("OPENFX_WORKER_TOKEN", "")
     try:
-        jobs = safe_poll(config, token)
-    except RuntimeError as exc:
+        with state_file_lock(config.local_state_file):
+            jobs = safe_poll(config, token)
+            state = load_state(config.local_state_file)
+            for job in jobs:
+                print(process_job(job, config, state))
+            save_state(config.local_state_file, state)
+    except (RuntimeError, OSError) as exc:
         print(f"Polling stopped safely: {exc}", file=sys.stderr)
         return 3
-    state = load_state(config.local_state_file)
-    for job in jobs:
-        print(process_job(job, config, state))
-    save_state(config.local_state_file, state)
     print("Prototype only: jobs were validated/recorded, not executed.")
     return 0
 

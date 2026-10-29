@@ -47,23 +47,32 @@ def collect_local_metadata(source_directory: str) -> list[dict]:
     records = []
 
     for file_path in root.rglob("*"):
-        if not file_path.is_file():
+        # Do not follow symlinks: a symlink inside the selected folder could
+        # otherwise expose metadata for files outside the authorized root.
+        if file_path.is_symlink() or not file_path.is_file():
+            continue
+        try:
+            resolved_path = file_path.resolve(strict=True)
+            resolved_path.relative_to(root)
+        except (OSError, ValueError):
+            logger.warning("Skipping file outside or unavailable under source root: %s", file_path)
             continue
 
         if file_path.suffix.lower() not in SUPPORTED_EXTENSIONS:
             continue
 
         try:
-            stat = file_path.stat()
+            stat = resolved_path.stat()
 
             record = {
                 "file_name": file_path.name,
+                "relative_path": file_path.relative_to(root).as_posix(),
                 "file_type": file_path.suffix.lower(),
                 "file_size_bytes": stat.st_size,
                 "modified_time_utc": datetime.fromtimestamp(
                     stat.st_mtime, tz=timezone.utc
                 ).isoformat(),
-                "sha256": calculate_sha256(file_path),
+                "sha256": calculate_sha256(resolved_path),
                 "collection_time_utc": datetime.now(
                     timezone.utc
                 ).isoformat(),

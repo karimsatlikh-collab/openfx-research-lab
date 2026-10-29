@@ -18,13 +18,20 @@ Build an AI-assisted platform that can discover research sources, formalize trad
 
 The repository now includes:
 - A Python startup/status scaffold.
-- Versioned experiment manifests with basic validation and state transitions.
+- Versioned experiment manifests with strict date/time, state, finite-JSON, and safe-artifact-path validation.
+- A strict MT5 result contract that records tester configuration, costs, chronological development/validation/final-OOS splits, key metrics, and artifact hashes; incomplete evidence blocks independent review.
+- A result CLI that independently checks declared artifact file sizes and SHA-256 hashes against a trusted local artifact directory.
 - A deterministic mock worker for testing the experiment lifecycle without MT5 or market data.
-- Unit tests for manifest validation, legal transitions, persistence, and mock-worker behavior.
-- A GitHub Actions workflow for running the standard-library test suite.
+- A provenance-first source registry that records source type, URL, rights-review status, collection method, and content hashes.
+- An evidence-linked claim register that requires exact quotes from registered transcript segments and separates source-confirmed claims, source claims, interpretations, hypotheses, and unknowns.
+- Local VTT, SRT, and plain-text transcript import with timestamp preservation, cue ordering checks, deterministic segment IDs, and text hashes.
+- A local CLI for initializing a source registry, registering source/rights metadata, importing authorized transcript files, and searching public YouTube video metadata through the official Data API.
+- Transcript fidelity checks for numeric/date changes, dropped negation, and large text drift; these are heuristic warnings, not proof of semantic correctness.
+- Unit tests for manifest validation, safe local file collection, source provenance, transcript fidelity, and mock-worker behavior.
+- A consolidated GitHub Actions CI workflow for repository tests, worker regression tests, JSON syntax, and offline worker self-test.
 - Documentation for experiment evidence requirements and the future secure execution boundary.
 
-The mock worker does **not** run a backtest, test a trading strategy, connect to a broker, or place trades. Do not treat its successful lifecycle as trading evidence. CI execution should be checked in the Actions tab before describing the tests as passed.
+The source registry does not yet discover or download videos automatically; it validates records for sources supplied by a user or a future authorized connector. Transcript fidelity checks do not replace human review. The mock worker does **not** run a backtest, test a trading strategy, connect to a broker, or place trades. Do not treat its successful lifecycle as trading evidence. CI execution should be checked in the Actions tab before describing the tests as passed.
 
 ## Research lifecycle
 
@@ -57,7 +64,7 @@ The current worker is mock-only. A future MT5 worker must record verifiable test
 - Keep real remote execution disabled until a private, least-privilege control plane and threat model are reviewed.
 - Live trading is outside the default scope and requires separate explicit authorization.
 
-For the current Windows VPS worker prototype, see [worker/README.md](worker/README.md) and [docs/OWNER_NEXT_STEPS_AI_TOOLS.md](docs/OWNER_NEXT_STEPS_AI_TOOLS.md). Start with [docs/QUICKSTART.md](docs/QUICKSTART.md). See [docs/OWNER_PREREQUISITES.md](docs/OWNER_PREREQUISITES.md), [docs/AI_WORKER_ARCHITECTURE.md](docs/AI_WORKER_ARCHITECTURE.md), [docs/CLAUDE_REVIEWER.md](docs/CLAUDE_REVIEWER.md), [CONTRIBUTING.md](CONTRIBUTING.md), [docs/EXPERIMENT_MANIFEST.md](docs/EXPERIMENT_MANIFEST.md), [docs/SECURE_EXECUTION.md](docs/SECURE_EXECUTION.md), and [docs/OPEN_DECISIONS.md](docs/OPEN_DECISIONS.md).
+For MT5 result requirements and the difference between metadata validation and independent verification, see [docs/BACKTEST_RESULT.md](docs/BACKTEST_RESULT.md). For source provenance and transcript-quality limits, see [docs/SOURCE_INGESTION.md](docs/SOURCE_INGESTION.md). For the current Windows VPS worker prototype, see [worker/README.md](worker/README.md) and [docs/OWNER_NEXT_STEPS_AI_TOOLS.md](docs/OWNER_NEXT_STEPS_AI_TOOLS.md). Start with [docs/QUICKSTART.md](docs/QUICKSTART.md). See [docs/OWNER_PREREQUISITES.md](docs/OWNER_PREREQUISITES.md), [docs/AI_WORKER_ARCHITECTURE.md](docs/AI_WORKER_ARCHITECTURE.md), [docs/CLAUDE_REVIEWER.md](docs/CLAUDE_REVIEWER.md), [CONTRIBUTING.md](CONTRIBUTING.md), [docs/EXPERIMENT_MANIFEST.md](docs/EXPERIMENT_MANIFEST.md), [docs/SECURE_EXECUTION.md](docs/SECURE_EXECUTION.md), and [docs/OPEN_DECISIONS.md](docs/OPEN_DECISIONS.md).
 
 ## Status and next boundary
 

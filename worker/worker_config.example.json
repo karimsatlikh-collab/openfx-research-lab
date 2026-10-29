@@ -6,6 +6,9 @@
   "allowed_ea_ids": [
     "openfx-demo-ea"
   ],
+  "allowed_control_plane_hosts": [
+    "control-plane-placeholder.invalid"
+  ],
   "max_backtest_days": 365,
   "max_runtime_seconds": 1800,
   "local_state_file": "worker_state.json",

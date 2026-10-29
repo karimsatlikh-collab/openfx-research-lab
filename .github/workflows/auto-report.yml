@@ -13,10 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -24,9 +24,23 @@ jobs:
         id: syntax
         run: python -m compileall -q .
 
-      - name: Run unit tests
+      - name: Validate JSON files
+        id: json
+        run: |
+          python -m json.tool schemas/experiment-v1.schema.json > /dev/null
+          python -m json.tool schemas/source-registry-v1.schema.json > /dev/null
+          python -m json.tool schemas/claim-register-v1.schema.json > /dev/null
+          python -m json.tool schemas/backtest-result-v1.schema.json > /dev/null
+          python -m json.tool data/source_registry.example.json > /dev/null
+          python -m json.tool data/claim_register.example.json > /dev/null
+          python -m json.tool worker/worker_config.example.json > /dev/null
+
+      - name: Run repository and worker tests
         id: tests
-        run: python -m unittest discover -s tests -v
+        run: |
+          python -m unittest discover -s tests -v
+          python -m unittest worker.test_worker -v
+          python worker/openfx_worker.py --self-test
 
       - name: Run application smoke test
         id: smoke
@@ -36,6 +50,7 @@ jobs:
         if: always()
         env:
           SYNTAX_RESULT: ${{ steps.syntax.outcome }}
+          JSON_RESULT: ${{ steps.json.outcome }}
           TESTS_RESULT: ${{ steps.tests.outcome }}
           SMOKE_RESULT: ${{ steps.smoke.outcome }}
           COMMIT_SHA: ${{ github.sha }}
@@ -54,7 +69,8 @@ jobs:
 
           checks = {
               "python_syntax": os.getenv("SYNTAX_RESULT", "not_run"),
-              "unit_tests": os.getenv("TESTS_RESULT", "not_run"),
+              "json_syntax": os.getenv("JSON_RESULT", "not_run"),
+              "unit_and_worker_tests": os.getenv("TESTS_RESULT", "not_run"),
               "application_smoke_test": os.getenv("SMOKE_RESULT", "not_run"),
           }
           overall = "passed" if all(value == "success" for value in checks.values()) else "needs_attention"
@@ -69,7 +85,7 @@ jobs:
               "run_url": os.getenv("RUN_URL", ""),
               "limitations": [
                   "A passing health check does not mean all planned research features are implemented.",
-                  "This workflow checks syntax, existing unit tests, and basic application startup only.",
+                  "This workflow checks syntax, JSON syntax, repository/worker tests, and basic application startup only.",
                   "It does not verify 24/7 uptime, video extraction quality, or trading-strategy performance."
               ],
           }
