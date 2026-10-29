@@ -222,6 +222,13 @@ validated strategy rule -> compiled EA -> real MT5 Strategy Tester
 **Action taken:** PR #18 skips symbolic links and adds an external-target regression test. Run `40924838032` passed with 18 data/project tests; CodeQL run `40924853233` also passed. PR #18 remains open and is not in main.  
 **Residual limitation:** This check does not establish a sandbox for other file-processing components.
 
+### F-13 — Local collection records omit a root-relative file locator
+**Severity:** P2 — provenance/reproducibility gap  
+**Status:** Code-reviewed on main  
+**Evidence:** `data_collection.py` records `file_name`, extension, size, timestamps, and SHA-256, but not a root-relative path.  
+**Impact:** Two files with the same basename in different subdirectories are hard to distinguish in the record, and a future workflow cannot reliably map a record back to its local source path without re-scanning and matching hashes.  
+**Action:** Decide whether the metadata format should include a root-relative path (preferable to an absolute path) or a stable source locator that avoids leaking full local paths. Add duplicate-basename tests and document privacy implications before changing the contract.
+
 ## 7. Security and operational observations
 
 - `worker/openfx_worker.py` explicitly avoids command execution and MT5 invocation. This is an appropriate prototype boundary, not production readiness.
@@ -241,7 +248,7 @@ validated strategy rule -> compiled EA -> real MT5 Strategy Tester
 - PR #16 exact-head CI passed with 110 repository tests and 15 worker tests.
 - PR #17 exact-head CI passed with 111 repository tests and 15 worker tests.
 - PR #18 exact-head CI passed; its data/project test run logged 18 tests and CodeQL completed successfully.
-- PR #19 CI was still running at the last check; no result is claimed yet. No MT5 execution occurred.
+- PR #19 test workflows passed in runs `40925003750` and `40925003699`; CodeQL was still in progress at the last check. No MT5 execution occurred.
 
 ### Not performed / not established
 - No local test execution in this environment (network DNS prevented cloning the repository).
