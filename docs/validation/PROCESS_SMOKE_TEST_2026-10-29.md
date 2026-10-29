@@ -78,3 +78,25 @@ If the form does not appear or fails validation, capture the exact error and ame
 - No purchases or live trading were authorized or performed.
 - No claim is made that an EA compiled or that any backtest ran.
 - The user remains the final decision-maker.
+
+
+## Follow-up update — user UI observation and API issue read-back (2026-10-29)
+
+### Evidence received from user
+- User confirmed the template chooser displays three options, including a Research Work Item option.
+- User selected Research Work Item and reported seeing the title field, Work ID, and Question/objective field.
+- User then reported that only those three items were visible on the screen. This may reflect a rendering/scrolling limitation, but the assistant cannot inspect or operate the user's mobile screen directly.
+
+### Additional API test
+- Created `WORK-2026-002 — Process-only issue workflow test` through the GitHub connector/API.
+- Read the new issue back from GitHub: issue #2 exists, is open, and its saved body contains the expected Work ID and explicit note that this was created via API rather than by submitting the UI form.
+- Issue URL: https://github.com/karimsatlikh-collab/video-research-team/issues/2
+
+### Updated verdict
+- Repository template files: PASS for content/read-back checks.
+- User-visible template chooser: PARTIAL PASS (user reports the Research Work Item option appears).
+- Full rendered form and submission through GitHub UI: NOT VERIFIED.
+- API create-and-read-back of a process-only issue: PASS.
+- MT5, compilation, market backtest, VPS deployment, video extraction, and 24/7 operation: NOT RUN / NOT CLAIMED.
+
+The API issue test does not substitute for submitting the form through the actual GitHub UI. No paid service or compute was initiated.
