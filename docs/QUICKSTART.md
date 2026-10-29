@@ -24,7 +24,7 @@ This creates a JSON record in QUEUED state. The hypothesis is a label, not a con
 
     python -m openfx.mock_worker data/experiments/demo-001.json
 
-The mock worker changes the record through RUNNING to COMPLETED and records that no backtest occurred. It refuses to re-run a record that is not QUEUED. Use a new experiment ID and output file for another smoke test.
+The mock worker changes the record through RUNNING to COMPLETED and records that no backtest occurred. It takes an exclusive lock file to prevent two mock runs from racing on the same manifest. It refuses to re-run a record that is not QUEUED. Use a new experiment ID and output file for another smoke test. If a process is interrupted, inspect the corresponding `.lock` file and verify no process is active before removing a stale lock manually.
 
 ## What these commands do not do
 
