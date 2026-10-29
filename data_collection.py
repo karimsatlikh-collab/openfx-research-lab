@@ -62,7 +62,7 @@ def collect_local_metadata(source_directory: str) -> list[dict]:
             continue
 
         try:
-            stat = file_path.stat()
+            stat = resolved_path.stat()
 
             record = {
                 "file_name": file_path.name,
@@ -72,7 +72,7 @@ def collect_local_metadata(source_directory: str) -> list[dict]:
                 "modified_time_utc": datetime.fromtimestamp(
                     stat.st_mtime, tz=timezone.utc
                 ).isoformat(),
-                "sha256": calculate_sha256(file_path),
+                "sha256": calculate_sha256(resolved_path),
                 "collection_time_utc": datetime.now(
                     timezone.utc
                 ).isoformat(),
