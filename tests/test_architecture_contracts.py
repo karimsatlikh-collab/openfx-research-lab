@@ -91,9 +91,6 @@ class ArchitectureContractTests(unittest.TestCase):
         )
 
 
-if __name__ == "__main__":
-    unittest.main()
-
     def test_profiles_are_versioned_and_bind_data_or_cost_assumptions(self):
         data = self.load_schema("data-profile-v1.schema.json")
         self.assertTrue({"profile_id", "version", "source", "symbol", "timeframe",
@@ -108,3 +105,7 @@ if __name__ == "__main__":
         self.assertEqual(policy["count_failures_and_abandoned"], {"const": True})
         self.assertIn("multiple_testing_method", schema["required"])
         self.assertIn("final_oos", schema["properties"]["data_split"]["required"])
+
+
+if __name__ == "__main__":
+    unittest.main()
