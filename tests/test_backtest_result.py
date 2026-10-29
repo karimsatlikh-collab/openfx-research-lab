@@ -195,6 +195,17 @@ class BacktestResultTests(unittest.TestCase):
             self.assertIn('"report_parsing": {\n    "parser_version": "openfx-mt5-html/0.1"', output.getvalue())
             self.assertIn('"status": "parsed"', output.getvalue())
             self.assertIn('"status": "matched"', output.getvalue())
+            report = json.loads(output.getvalue())
+            claims = report["verification_claims"]
+            self.assertEqual(claims["tester_report_parsed"]["status"], "verified_by_cli")
+            for key in (
+                "journal_complete",
+                "data_coverage_verified",
+                "costs_recorded",
+                "split_boundaries_verified",
+            ):
+                self.assertTrue(claims[key]["input_assertion"])
+                self.assertEqual(claims[key]["status"], "declared_not_independently_verified")
 
     def test_result_cli_returns_nonzero_when_artifact_is_missing(self):
         fixture = make_result()
