@@ -9,7 +9,8 @@ This worker is intended to run on a private Windows VPS after the owner purchase
 - Reads the bearer token from the `OPENFX_WORKER_TOKEN` environment variable, never from source code.
 - Accepts only a narrow JSON job schema and an explicit allow-list of EA identifiers.
 - Rejects arbitrary commands, URLs, file paths, executables, and unknown fields.
-- Keeps a local JSON audit ledger and deduplicates job IDs.
+- Keeps a local JSON audit ledger, deduplicates job IDs, and rejects reused idempotency keys.
+- Requires the configured control-plane hostname to match an explicit exact-host allow-list; redirects and placeholder destinations are refused.
 - Does not log authorization headers or secrets.
 - Contains no live-trading functionality.
 - The MT5 adapter is intentionally not implemented; a job is not run until that adapter and a private control plane have been built and independently tested.
@@ -24,7 +25,7 @@ Requires Python 3.11+.
 python openfx_worker.py --self-test
 ```
 
-The self-test validates example manifests without connecting to any service.
+The self-test validates example manifests without connecting to any service. The state file is not protected by a cross-process lock, so run only one worker process against a given state file.
 
 ## Future configuration
 Copy `worker_config.example.json` to a private local configuration file only after reviewing the deployment threat model. Never commit credentials or real server URLs/tokens. The eventual control plane must authenticate workers, validate approvals server-side, rate-limit requests, and return only signed/approved declarative jobs.
