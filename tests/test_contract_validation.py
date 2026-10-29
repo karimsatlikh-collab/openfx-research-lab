@@ -103,7 +103,7 @@ class SemanticContractTests(unittest.TestCase):
                 "gate_config_sha256": job["gate_config_ref"]["sha256"],
             },
         }
-        with self.assertRaisesRegex(ContractValidationError, "attestation verifier is required"):
+        with self.assertRaisesRegex(ContractValidationError, "attestation is required"):
             validate_attested_run(run, job, attestation=None)
 
     def test_attested_run_rejects_claims_not_bound_to_job(self):
