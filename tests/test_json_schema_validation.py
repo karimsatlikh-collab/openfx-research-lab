@@ -141,6 +141,21 @@ class JsonSchemaValidationTests(unittest.TestCase):
                 )
                 self.assertTrue(list(validator.iter_errors(invalid)))
 
+    def test_synthetic_run_record_rejects_market_level_missing_fields_and_bad_hash(self):
+        filename = "synthetic-run-record-v1.schema.json"
+        schema = self.load_schema(filename)
+        validator = Draft202012Validator(schema, format_checker=FORMAT_CHECKER)
+        valid = copy.deepcopy(EXAMPLES[filename])
+        for mutate in (
+            lambda value: value.update(evidence_level="market"),
+            lambda value: value.pop("result"),
+            lambda value: value.update(frozen_sha256="not-a-sha256"),
+            lambda value: value.update(schema_version=2),
+        ):
+            invalid = copy.deepcopy(valid)
+            mutate(invalid)
+            self.assertTrue(list(validator.iter_errors(invalid)))
+
     def test_unknown_top_level_fields_are_rejected(self):
         for filename, instance in EXAMPLES.items():
             with self.subTest(schema=filename):
