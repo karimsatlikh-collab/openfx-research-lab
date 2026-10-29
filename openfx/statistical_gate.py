@@ -26,6 +26,12 @@ def evaluate_synthetic_summary(summary: dict[str, Any], config: dict[str, Any],
         reason = "trial_budget_exceeded"
     else:
         thresholds = config.get("acceptance_thresholds", {})
+        supported = {"min_sample_size", "min_mean_return"}
+        unknown = set(thresholds) - supported
+        if unknown:
+            raise GateConfigError(f"unsupported threshold(s): {sorted(unknown)}")
+        if config.get("multiple_testing_method") not in {"DSR", "PBO", "familywise_error", "other_pre_registered"}:
+            raise GateConfigError("missing or unsupported pre-registered multiple-testing method")
         checks = []
         if "min_sample_size" in thresholds:
             checks.append(summary.get("sample_size", 0) >= thresholds["min_sample_size"])
