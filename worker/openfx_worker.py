@@ -7,6 +7,7 @@ and MT5 adapter must be implemented and reviewed before deployment.
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import hashlib
 import json
 import os
@@ -188,6 +189,29 @@ def load_state(path: str) -> dict[str, Any]:
     return data
 
 
+@contextmanager
+def state_file_lock(path: str):
+    """Acquire an exclusive process lock for a worker state file."""
+    state_path = Path(path)
+    lock_path = state_path.with_name(state_path.name + ".lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        lock_fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    except FileExistsError:
+        raise RuntimeError(
+            "worker state is locked by another or interrupted process; inspect the lock before removing it"
+        ) from None
+    try:
+        os.write(lock_fd, f"pid={os.getpid()}\\n".encode("ascii"))
+        os.close(lock_fd)
+        lock_fd = None
+        yield
+    finally:
+        if lock_fd is not None:
+            os.close(lock_fd)
+        lock_path.unlink(missing_ok=True)
+
+
 def save_state(path: str, state: dict[str, Any]) -> None:
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -359,14 +383,15 @@ def main() -> int:
         print("Worker execution is disabled by configuration; no job will be executed.")
     token = os.environ.get("OPENFX_WORKER_TOKEN", "")
     try:
-        jobs = safe_poll(config, token)
-    except RuntimeError as exc:
+        with state_file_lock(config.local_state_file):
+            jobs = safe_poll(config, token)
+            state = load_state(config.local_state_file)
+            for job in jobs:
+                print(process_job(job, config, state))
+            save_state(config.local_state_file, state)
+    except (RuntimeError, OSError) as exc:
         print(f"Polling stopped safely: {exc}", file=sys.stderr)
         return 3
-    state = load_state(config.local_state_file)
-    for job in jobs:
-        print(process_job(job, config, state))
-    save_state(config.local_state_file, state)
     print("Prototype only: jobs were validated/recorded, not executed.")
     return 0
 
