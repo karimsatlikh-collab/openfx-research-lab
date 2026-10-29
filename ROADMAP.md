@@ -29,7 +29,8 @@
 - [x] Define source URL, author/date, rights status, collection method, content hash, transcript timestamps, extraction method, confidence, and text hash fields.
 - [x] Add local VTT/SRT/plain-text transcript import with timestamps, deterministic segment IDs, and content hashes.
 - [x] Add a local CLI for registry initialization, source registration, and transcript import.
-- [ ] Add an authorized source connector for source discovery and transcript acquisition; current registry does not crawl or download.
+- [x] Add official YouTube Data API metadata search with bounded responses, API-key environment configuration, and rights status defaulting to unknown.
+- [ ] Add a rights-authorized transcript/caption acquisition connector; the current API connector does not download videos or captions.
 - [x] Add heuristic extraction-quality checks for dropped/changed numbers and dates, changed negation, and low token similarity.
 - [ ] Expand multilingual/ASR-specific fixtures and add human-reviewed reference transcripts; heuristics cannot prove semantic equivalence.
 - [x] Add claim classifications and exact-quote evidence links to separate source-confirmed claims, source claims, interpretations, hypotheses, and unknowns.
