@@ -7,9 +7,13 @@ from __future__ import annotations
 
 import hashlib
 import math
+import os
 import re
+import json
+import tempfile
 import urllib.parse
 from datetime import date, datetime, timezone
+from pathlib import Path
 from typing import Any
 
 SOURCE_TYPES = {"video", "transcript", "paper", "dataset", "code", "article", "other"}
@@ -142,3 +146,67 @@ def validate_transcript_segment(segment: Any, known_source_ids: set[str]) -> dic
     if segment["text_sha256"] != digest:
         raise ValueError("text_sha256 does not match transcript text")
     return dict(segment)
+
+
+
+def new_source_registry() -> dict[str, Any]:
+    """Return an empty versioned registry; no source is implied or pre-approved."""
+    return {"schema_version": 1, "sources": [], "transcript_segments": []}
+
+
+def validate_source_registry(registry: Any) -> dict[str, Any]:
+    """Validate the registry envelope, unique IDs, and segment-to-source links."""
+    if not isinstance(registry, dict) or set(registry) != {"schema_version", "sources", "transcript_segments"}:
+        raise ValueError("source registry must contain only schema_version, sources, and transcript_segments")
+    if type(registry["schema_version"]) is not int or registry["schema_version"] != 1:
+        raise ValueError("unsupported source registry schema_version")
+    if not isinstance(registry["sources"], list) or not isinstance(registry["transcript_segments"], list):
+        raise ValueError("sources and transcript_segments must be lists")
+    source_ids = set()
+    for source in registry["sources"]:
+        validated = validate_source_record(source)
+        if validated["source_id"] in source_ids:
+            raise ValueError(f"duplicate source_id: {validated['source_id']}")
+        source_ids.add(validated["source_id"])
+    segment_ids = set()
+    for segment in registry["transcript_segments"]:
+        validated = validate_transcript_segment(segment, source_ids)
+        if validated["segment_id"] in segment_ids:
+            raise ValueError(f"duplicate segment_id: {validated['segment_id']}")
+        segment_ids.add(validated["segment_id"])
+    try:
+        json.dumps(registry, ensure_ascii=False, allow_nan=False)
+    except (TypeError, ValueError):
+        raise ValueError("source registry must contain only finite JSON values") from None
+    return registry
+
+
+def save_source_registry(registry: dict[str, Any], path: str | Path) -> None:
+    """Atomically persist a validated local registry; do not commit private/copyrighted text."""
+    validate_source_registry(registry)
+    destination = Path(path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temp_name = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=destination.parent,
+            prefix=f".{destination.name}.", suffix=".tmp", delete=False,
+        ) as stream:
+            temp_name = stream.name
+            stream.write(json.dumps(registry, indent=2, ensure_ascii=False, allow_nan=False) + "\\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        Path(temp_name).replace(destination)
+    except Exception:
+        if temp_name:
+            Path(temp_name).unlink(missing_ok=True)
+        raise
+
+
+def load_source_registry(path: str | Path) -> dict[str, Any]:
+    """Load and validate a local source registry."""
+    try:
+        registry = json.loads(Path(path).read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError("source registry file contains invalid JSON") from exc
+    return validate_source_registry(registry)
