@@ -28,6 +28,22 @@ class DataCollectionTests(unittest.TestCase):
             with self.assertRaises(FileNotFoundError):
                 collect_local_metadata(str(missing))
 
+    def test_symlink_to_file_outside_selected_root_is_not_scanned(self):
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            root = parent / "selected"
+            root.mkdir()
+            outside = parent / "outside.txt"
+            outside.write_text("outside the selected root", encoding="utf-8")
+            link = root / "linked.txt"
+            try:
+                link.symlink_to(outside)
+            except (OSError, NotImplementedError):
+                self.skipTest("symlinks are not supported by this environment")
+
+            records = collect_local_metadata(str(root))
+            self.assertEqual(records, [])
+
     def test_metadata_can_be_saved_and_evaluated(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
