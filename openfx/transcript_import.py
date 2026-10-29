@@ -93,6 +93,9 @@ def parse_transcript_text(content: str, source_id: str, fmt: str) -> list[dict[s
         raise ValueError("invalid source_id")
     if not isinstance(fmt, str):
         raise ValueError("transcript format must be a string")
+    if len(content.encode("utf-8")) > _MAX_TRANSCRIPT_BYTES:
+        raise ValueError("transcript content exceeds the 10 MiB limit")
+    content = content.replace("\r\n", "\n").replace("\r", "\n")
     normalized_format = fmt.lower().lstrip(".")
     if normalized_format in {"vtt", "webvtt", "srt"}:
         segments = _caption_blocks(content, source_id, "vtt" if normalized_format in {"vtt", "webvtt"} else "srt")
@@ -140,6 +143,9 @@ def import_transcript_into_registry(
     validated = validate_source_registry(registry)
     if not isinstance(source_id, str) or source_id not in {source["source_id"] for source in validated["sources"]}:
         raise ValueError("source_id must be registered before importing its transcript")
+    source_record = next(source for source in validated["sources"] if source["source_id"] == source_id)
+    if source_record["license_status"] in {"restricted", "permission_required"}:
+        raise ValueError("source rights status blocks transcript ingestion")
     updated = json.loads(json.dumps(validated, ensure_ascii=False))
     segments = parse_transcript_text(content, source_id, fmt)
     existing_ids = {segment["segment_id"] for segment in updated["transcript_segments"]}
