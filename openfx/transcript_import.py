@@ -144,8 +144,10 @@ def import_transcript_into_registry(
     if not isinstance(source_id, str) or source_id not in {source["source_id"] for source in validated["sources"]}:
         raise ValueError("source_id must be registered before importing its transcript")
     source_record = next(source for source in validated["sources"] if source["source_id"] == source_id)
-    if source_record["license_status"] in {"restricted", "permission_required"}:
-        raise ValueError("source rights status blocks transcript ingestion")
+    if source_record["license_status"] not in {"reviewed_permitted", "public_domain"}:
+        raise ValueError(
+            "transcript ingestion requires reviewed_permitted or public_domain rights status"
+        )
     updated = json.loads(json.dumps(validated, ensure_ascii=False))
     segments = parse_transcript_text(content, source_id, fmt)
     existing_ids = {segment["segment_id"] for segment in updated["transcript_segments"]}
