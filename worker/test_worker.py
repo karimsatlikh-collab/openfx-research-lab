@@ -1,12 +1,15 @@
 """Offline tests for the OpenFX VPS worker prototype."""
 import hashlib
+import tempfile
 import unittest
+from pathlib import Path
 
 from worker.openfx_worker import (
     JobValidationError,
     WorkerConfig,
     process_job,
     safe_poll,
+    state_file_lock,
     validate_job,
 )
 
@@ -149,6 +152,27 @@ class WorkerValidationTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(RuntimeError, "URL policy"):
             safe_poll(unsafe, "x" * 32)
+
+    def test_state_file_lock_blocks_concurrent_process_and_cleans_up(self):
+        with tempfile.TemporaryDirectory() as directory:
+            state_path = Path(directory) / "state.json"
+            lock_path = state_path.with_name(state_path.name + ".lock")
+            with state_file_lock(str(state_path)):
+                self.assertTrue(lock_path.exists())
+                with self.assertRaisesRegex(RuntimeError, "locked"):
+                    with state_file_lock(str(state_path)):
+                        pass
+            self.assertFalse(lock_path.exists())
+
+    def test_state_file_lock_detects_existing_stale_lock(self):
+        with tempfile.TemporaryDirectory() as directory:
+            state_path = Path(directory) / "state.json"
+            lock_path = state_path.with_name(state_path.name + ".lock")
+            lock_path.write_text("pid=123", encoding="ascii")
+            with self.assertRaisesRegex(RuntimeError, "inspect the lock"):
+                with state_file_lock(str(state_path)):
+                    pass
+            self.assertTrue(lock_path.exists())
 
 
 if __name__ == "__main__":
