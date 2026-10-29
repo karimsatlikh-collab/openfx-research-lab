@@ -6,6 +6,7 @@ from worker.openfx_worker import (
     JobValidationError,
     WorkerConfig,
     process_job,
+    safe_poll,
     validate_job,
 )
 
@@ -139,6 +140,15 @@ class WorkerValidationTests(unittest.TestCase):
         }
         with self.assertRaises(ValueError):
             WorkerConfig.from_mapping(config_data)
+
+    def test_safe_poll_rechecks_url_even_for_direct_config_instances(self):
+        from dataclasses import replace
+        unsafe = replace(
+            self.config,
+            control_plane_url="https://user:secret@control-plane-placeholder.invalid",
+        )
+        with self.assertRaisesRegex(RuntimeError, "URL policy"):
+            safe_poll(unsafe, "x" * 32)
 
 
 if __name__ == "__main__":
