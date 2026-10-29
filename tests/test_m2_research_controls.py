@@ -121,6 +121,21 @@ class RegistryTests(unittest.TestCase):
                 registry.append(event_id="e3", family_id="fam", trial_id="t1", outcome="failed")
             self.assertEqual(registry.trial_count("fam"), 1)
 
+    def test_invalid_outcome_type_is_rejected_cleanly(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            registry = LocalTrialRegistry(Path(tmp) / "trials.jsonl")
+            with self.assertRaisesRegex(TrialRegistryError, "unsupported trial outcome"):
+                registry.append(event_id="e1", family_id="fam", trial_id="t1", outcome=["failed"])
+
+    def test_stale_lock_times_out_without_deleting_lock(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "trials.jsonl"
+            registry = LocalTrialRegistry(path, lock_timeout_seconds=0.05)
+            registry.lock_path.write_text("owner metadata unavailable", encoding="utf-8")
+            with self.assertRaisesRegex(TrialRegistryError, "lock timeout"):
+                registry.append(event_id="e1", family_id="fam", trial_id="t1", outcome="pending")
+            self.assertTrue(registry.lock_path.exists())
+
     def test_tampering_is_detected(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "trials.jsonl"
