@@ -3,7 +3,7 @@
 ## Implemented foundation
 
 - `openfx/source_registry.py` validates stable source IDs, HTTPS URLs, source type, author/date metadata, rights-review status, access method, collection timestamp, and optional SHA-256 content hash. It can validate and atomically save/load a local registry.
-- `openfx/transcript_import.py` imports authorized local VTT, SRT, and plain-text files; it preserves timestamps when present, strips subtitle markup, creates deterministic segment IDs, and hashes the exact imported text. It rejects malformed or out-of-order subtitle cues and caps local files at 10 MiB.
+- `openfx/transcript_import.py` imports authorized local VTT, SRT, and plain-text files; it preserves timestamps when present, strips subtitle markup, creates deterministic segment IDs, and hashes the exact imported text. It rejects malformed or out-of-order subtitle cues, caps content at 10 MiB, and blocks sources marked `restricted` or `permission_required`.
 - A source marked `reviewed_permitted` must include a reference explaining the permission/license decision.
 - Transcript segments must reference a registered source and record extraction method, optional timestamps, confidence, and a SHA-256 hash of the exact text.
 - `openfx/transcript_quality.py` compares a reference transcript with extracted text and flags missing/changed numeric tokens, changed negation tokens, and low token similarity.
