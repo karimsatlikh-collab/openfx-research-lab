@@ -60,6 +60,8 @@ class WorkerConfig:
         if set(data) != required:
             raise ValueError("Configuration has missing or unknown keys.")
         url = data["control_plane_url"]
+        if not isinstance(url, str):
+            raise ValueError("control_plane_url must be a string.")
         parsed = urllib.parse.urlparse(url)
         if parsed.scheme != "https" or not parsed.netloc or parsed.hostname is None:
             raise ValueError("control_plane_url must be an HTTPS URL.")
@@ -118,7 +120,7 @@ def validate_job(job: Any, config: WorkerConfig) -> dict[str, Any]:
         raise JobValidationError("ea_sha256 must be a 64-character SHA-256 hex digest.")
     if not isinstance(job["symbol"], str) or not re.fullmatch(r"[A-Z0-9._-]{3,20}", job["symbol"]):
         raise JobValidationError("Invalid symbol.")
-    if job["timeframe"] not in ALLOWED_TIMEFRAMES:
+    if not isinstance(job["timeframe"], str) or job["timeframe"] not in ALLOWED_TIMEFRAMES:
         raise JobValidationError("Unsupported timeframe.")
     try:
         start = date.fromisoformat(job["start_date"])
@@ -129,7 +131,7 @@ def validate_job(job: Any, config: WorkerConfig) -> dict[str, Any]:
         raise JobValidationError("end_date must be after start_date.")
     if (end - start).days > config.max_backtest_days:
         raise JobValidationError("Date range exceeds the configured limit.")
-    if job["modeling_mode"] not in ALLOWED_MODELING:
+    if not isinstance(job["modeling_mode"], str) or job["modeling_mode"] not in ALLOWED_MODELING:
         raise JobValidationError("Unsupported modeling mode.")
     if not isinstance(job["parameters"], dict) or len(job["parameters"]) > 100:
         raise JobValidationError("parameters must be a JSON object with at most 100 entries.")
