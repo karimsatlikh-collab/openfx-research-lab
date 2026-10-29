@@ -102,11 +102,32 @@ def _execute_once(frozen: dict[str, Any], workspace: Path) -> dict[str, Any]:
     raw = canonical_bytes(record) + b"\n"
     artifact = workspace / "run_record.json"
     artifact.write_bytes(raw)
+
+    # Verify the persisted bytes, not merely the in-memory buffer. Re-open the
+    # exact path, compare bytes, parse JSON, and enforce the v1 record contract.
+    persisted = artifact.read_bytes()
+    if persisted != raw:
+        raise ValueError("persisted run artifact bytes differ from expected bytes")
+    try:
+        decoded = json.loads(persisted)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError("persisted run artifact is not valid JSON") from exc
+    required = {
+        "schema_version", "frozen_sha256", "trial_id", "evidence_level",
+        "engine", "engine_parameters", "result",
+    }
+    if not isinstance(decoded, dict) or set(decoded) != required:
+        raise ValueError("persisted run artifact does not match the strict v1 record shape")
+    if decoded.get("schema_version") != 1 or decoded.get("evidence_level") != "synthetic":
+        raise ValueError("persisted run artifact has unsupported schema/evidence level")
+    if decoded != record:
+        raise ValueError("persisted run artifact content differs from execution record")
+    persisted_hash = sha256_bytes(persisted)
     return {
-        "record": record,
+        "record": decoded,
         "artifact_path": str(artifact),
-        "artifact_sha256": sha256_bytes(raw),
-        "record_sha256": sha256_bytes(canonical_bytes(record)),
+        "artifact_sha256": persisted_hash,
+        "record_sha256": sha256_bytes(canonical_bytes(decoded)),
     }
 
 
