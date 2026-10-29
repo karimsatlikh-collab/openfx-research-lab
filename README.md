@@ -4,81 +4,67 @@
 **Tagline:** *Research. Test. Validate. Improve.*  
 **Project type:** Open, evidence-driven research and engineering for Forex trading strategies.
 
-> **OpenFX is a research project, not a promise of trading profits.** Its purpose is to build a reproducible process for discovering, implementing, testing, and independently validating strategies. A backtest or optimization result alone does not establish a durable trading edge.
+> **OpenFX is a research project, not a promise of trading profits.** A backtest or optimization result alone does not establish a durable trading edge.
 
 ## Mission
 
-Build an AI-assisted platform that can discover research sources, formalize trading ideas into precise rules, implement them, run reproducible experiments, and evaluate results independently. The long-term priority is reliable, repeatable Forex strategy research and large-scale backtesting/parameter optimization—not video collection for its own sake.
+Build an AI-assisted platform that can discover research sources, formalize trading ideas into precise rules, implement them, run reproducible experiments, and evaluate results independently. The priority is reliable, repeatable Forex strategy research and large-scale backtesting/parameter optimization.
 
-## Main workstreams
+## Current implementation
 
-1. **Strategy research and validation — primary**
-   - Define explicit, reviewable hypotheses and trading rules.
-   - Implement research prototypes and MetaTrader 5 / MQL5 Expert Advisors.
-   - Run baseline backtests, then controlled parameter searches.
-   - Validate with realistic trading costs, out-of-sample periods, walk-forward analysis, sensitivity checks, and independent review.
-   - Preserve negative, failed, interrupted, and superseded experiments.
+The repository now includes:
+- A Python startup/status scaffold.
+- Versioned experiment manifests with basic validation and state transitions.
+- A deterministic mock worker for testing the experiment lifecycle without MT5 or market data.
+- Unit tests for manifest validation, legal transitions, persistence, and mock-worker behavior.
+- A GitHub Actions workflow for running the standard-library test suite.
+- Documentation for experiment evidence requirements and the future secure execution boundary.
 
-2. **Source discovery and knowledge acquisition — supporting**
-   - Find permitted educational videos, transcripts, papers, documentation, datasets, and public code.
-   - Record source provenance, timestamps, licenses, permissions, and uncertainty.
-   - Check extraction quality before treating extracted text as evidence.
-   - Separate source-confirmed rules from interpretations and team hypotheses.
-
-3. **Backtest operations and reliability**
-   - Design versioned experiment manifests, job queues, result records, and artifact checks.
-   - Prepare for unattended MT5 Strategy Tester runs and broad parameter optimization on a compatible Windows host.
-   - Design secure, constrained communication with future infrastructure.
-   - Never report a test as run unless logs and artifacts demonstrate that it ran.
-
-4. **Open-source collaboration**
-   - Welcome useful contributions in MQL5, Python, testing, data quality, research methodology, documentation, and security.
-   - Prefer small, reproducible contributions with clear evidence.
-   - Review license and security implications before adopting external code or dependencies.
+The mock worker does **not** run a backtest, test a trading strategy, connect to a broker, or place trades. Do not treat its successful lifecycle as trading evidence. CI execution should be checked in the Actions tab before describing the tests as passed.
 
 ## Research lifecycle
 
-Research question → source and evidence review → explicit rule specification → implementation → baseline test → controlled optimization → independent validation → documented decision.
+Research question → source/evidence review → explicit rule specification → implementation → baseline test → controlled optimization → independent validation → documented decision.
 
-Every material claim should be labelled as one of:
-- **Observed / verified:** directly checked evidence.
-- **Source claim:** asserted by an external author or source, not independently reproduced.
-- **Hypothesis:** a proposed idea that still needs testing.
-- **Not tested / unknown:** no adequate execution or evidence yet.
+Claims should be labelled as:
+- **Verified:** directly checked evidence.
+- **Source claim:** asserted by a source, not independently reproduced.
+- **Hypothesis:** a proposed idea requiring testing.
+- **Unknown / not tested:** evidence or execution is not yet available.
 
-## Current status
+## Main workstreams
 
-The repository currently contains project specifications, research notes, workflow/templates, and early code skeletons. The project is still under development; not every documented capability is implemented or operational.
+1. **Strategy research and validation:** precise hypotheses, MQL5/MT5 implementation, cost-aware backtests, out-of-sample validation, walk-forward analysis, robustness checks.
+2. **Source discovery:** permitted videos, transcripts, papers, documentation, datasets, and public code; preserve provenance and licensing information.
+3. **Backtest operations:** experiment IDs, frozen manifests, queue state, logs, artifact hashes, and future unattended Strategy Tester runs on a compatible Windows host.
+4. **Open-source collaboration:** Python, MQL5, testing, data quality, methodology, documentation, and security.
 
-- The future Windows VPS purchase and MT5 installation are deferred until separately approved.
-- No VPS worker or ChatGPT-to-VPS connection is currently deployed.
-- Public GitHub research has identified projects worth reviewing, but those reviews do not prove strategy profitability.
-- A persistent self-hosted GitHub Actions runner must **not** be attached to this public repository. Any future privileged execution system must use a suitably restricted control plane and reviewed security design.
+## Experiment states
 
-## How to contribute
+QUEUED → RUNNING → COMPLETED or FAILED
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Good first contributions include:
-- Reproducible synthetic-data tests and bug reports.
-- Improving MQL5/Python test diagnostics and report provenance.
-- Reviewing public research tools and licenses.
-- Improving transcript extraction quality checks.
-- Documentation, experiment schemas, and artifact-validation tests.
+The current worker is mock-only. A future MT5 worker must record verifiable tester reports and logs, code/build hashes, data revision, symbol/timeframe, exact date range, modeling mode, costs, parameters, and development/validation/final out-of-sample splits. Failed, interrupted, and negative results must be retained.
 
-Please do not submit broker credentials, access tokens, private keys, account details, or other secrets. Do not include proprietary strategy details without authorization. Do not claim profitability without independently reproducible evidence.
+## Security boundaries
+
+- Do not commit credentials, broker logins, tokens, private keys, or personal data.
+- Do not attach a persistent self-hosted runner with secrets or broker access to this public repository.
+- Do not allow arbitrary shell or executable commands from public issues, pull requests, or job manifests.
+- Keep real remote execution disabled until a private, least-privilege control plane and threat model are reviewed.
+- Live trading is outside the default scope and requires separate explicit authorization.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md), [docs/EXPERIMENT_MANIFEST.md](docs/EXPERIMENT_MANIFEST.md), and [docs/SECURE_EXECUTION.md](docs/SECURE_EXECUTION.md).
+
+## Status and next boundary
+
+The future Windows VPS purchase and MT5 installation are intentionally deferred. No VPS worker or ChatGPT-to-VPS connection is deployed. Never claim that code was compiled, MT5 was run, or a backtest was completed unless logs and artifacts verify it.
 
 ## Principles
 
-- Reproducibility over impressive screenshots.
+- Reproducibility over screenshots.
 - Independent validation over self-confirmation.
 - Preserve negative results.
-- No look-ahead bias or hidden future information.
+- No look-ahead bias or future-bar leakage.
 - Realistic spread, commission, slippage, and execution assumptions.
 - Separate development, validation, and untouched final out-of-sample data.
-- No live trading unless separately and explicitly authorized.
-- Respect licenses, access controls, privacy, and source terms.
-- Never claim access, execution, compilation, or deployment without evidence.
-
-## Project identity
-
-The conversational invocation name is **OpenFX**. The formal project name is **OpenFX Research Lab**. The intended repository name is `openfx-research-lab`; the current GitHub repository URL may continue to contain the previous name until its owner changes it in GitHub repository settings.
-
+- Review third-party licenses and security before adopting code or dependencies.
