@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/karimsatlikh-collab/openfx-research-lab/blob/main/schemas/job-spec-v1.schema.json",
+  "title": "OpenFX JobSpec v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "job_id",
+    "strategy_spec_ref",
+    "implementation",
+    "data_profile_ref",
+    "cost_profile_ref",
+    "frozen_parameters",
+    "budget",
+    "requested_engine",
+    "created_at_utc"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "job_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"
+    },
+    "strategy_spec_ref": {
+      "$ref": "#/$defs/immutable_ref"
+    },
+    "implementation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_revision",
+        "build_sha256"
+      ],
+      "properties": {
+        "source_revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "build_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "data_profile_ref": {
+      "$ref": "#/$defs/immutable_ref"
+    },
+    "cost_profile_ref": {
+      "$ref": "#/$defs/immutable_ref"
+    },
+    "frozen_parameters": {
+      "type": "object"
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_trials",
+        "timeout_seconds"
+      ],
+      "properties": {
+        "max_trials": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "requested_engine": {
+      "enum": [
+        "mock",
+        "synthetic",
+        "mt5-demo"
+      ]
+    },
+    "created_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{64}$"
+    },
+    "immutable_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "sha256"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    }
+  }
+}
