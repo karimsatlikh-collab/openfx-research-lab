@@ -209,9 +209,17 @@ def record_event(state: dict[str, Any], job_id: str, status: str, detail: str) -
 
 def safe_poll(config: WorkerConfig, token: str) -> list[dict[str, Any]]:
     """Poll a future control plane; never follow redirects or call non-HTTPS URLs."""
-    parsed = urllib.parse.urlparse(config.control_plane_url)
-    hostname = parsed.hostname.lower().rstrip(".") if parsed.hostname else None
-    if hostname is None or hostname not in config.allowed_control_plane_hosts:
+    try:
+        parsed = urllib.parse.urlparse(config.control_plane_url)
+        hostname = parsed.hostname.lower().rstrip(".") if parsed.hostname else None
+        port = parsed.port
+    except ValueError:
+        raise RuntimeError("Control-plane URL has an invalid host or port.") from None
+    if (parsed.scheme != "https" or hostname is None
+            or parsed.username is not None or parsed.password is not None
+            or parsed.query or parsed.fragment or port == 0):
+        raise RuntimeError("Control-plane URL failed the HTTPS URL policy.")
+    if hostname not in config.allowed_control_plane_hosts:
         raise RuntimeError("Control-plane hostname is not on the configured allow-list.")
     if hostname.endswith(".invalid") or "PLACEHOLDER" in config.control_plane_url:
         raise RuntimeError("Control-plane URL is a placeholder; network polling is disabled.")
