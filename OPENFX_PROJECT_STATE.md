@@ -113,7 +113,7 @@ At the end of each meaningful work cycle, add:
 
 The evolving evidence-backed baseline report is saved at:
 `docs/OPENFX_AUDIT_BASELINE_2026-10-29.md`
-on branch `openfx-mission-state-docs`, latest report commit `bc78d86c726bb5aae814fa8e881c4f6bbe73b411`.
+on branch `openfx-mission-state-docs`, latest report commit `166a80cce48793acdc852d1701170c56508667bd`.
 
 ### Findings established so far
 - Main is at `25c1366097c2ddf3a7951111ca9e9a1e6e4928b6`; research/evidence modules introduced by PR #11/#12 are not in main.
