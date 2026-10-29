@@ -157,7 +157,9 @@ def validate_backtest_result(result: Any) -> dict[str, Any]:
         if not isinstance(path, str) or not path or "\\" in path:
             raise ValueError(f"artifacts[{index}].path must be a safe relative POSIX path")
         parsed_path = PurePosixPath(path)
-        if parsed_path.is_absolute() or any(part in {"", ".", ".."} for part in path.split("/")):
+        if (parsed_path.is_absolute() or re.match(r"^[A-Za-z]:", path)
+                or any(ord(ch) < 32 for ch in path)
+                or any(part in {"", ".", ".."} for part in path.split("/"))):
             raise ValueError(f"artifacts[{index}].path must not escape the artifact root")
         if path in artifact_paths:
             raise ValueError(f"duplicate artifact path: {path}")
