@@ -157,6 +157,17 @@ class TranscriptFidelityTests(unittest.TestCase):
         self.assertIn("missing_or_changed_numbers", result["flags"])
         self.assertIn("unexpected_numbers", result["flags"])
 
+    def test_percentage_symbol_change_is_flagged_as_numeric_change(self):
+        result = compare_transcript_fidelity("Risk limit is 5%.", "Risk limit is 5.")
+        self.assertIn("missing_or_changed_numbers", result["flags"])
+        self.assertIn("unexpected_numbers", result["flags"])
+        self.assertEqual(result["status"], "needs_human_review")
+
+    def test_persian_percent_symbol_change_is_flagged(self):
+        result = compare_transcript_fidelity("ریسک ۵٪ است", "ریسک ۵ است")
+        self.assertIn("missing_or_changed_numbers", result["flags"])
+        self.assertIn("unexpected_numbers", result["flags"])
+
     def test_empty_text_is_rejected(self):
         with self.assertRaises(ValueError):
             compare_transcript_fidelity("source words", "   ")
