@@ -63,12 +63,35 @@ def main(argv: list[str] | None = None) -> int:
         and metric_comparison.get("status") == "matched"
         else "incomplete"
     )
+    report_verified = (
+        report_parsing.get("status") == "parsed"
+        and metric_comparison.get("status") == "matched"
+        and artifacts["status"] == "artifact_bytes_verified"
+    )
+    verification_claims = {
+        "tester_report_parsed": {
+            "input_assertion": result["verification"]["tester_report_parsed"],
+            "status": "verified_by_cli" if report_verified else "not_verified_by_cli",
+        },
+    }
+    for key in (
+        "journal_complete",
+        "data_coverage_verified",
+        "costs_recorded",
+        "split_boundaries_verified",
+    ):
+        verification_claims[key] = {
+            "input_assertion": result["verification"][key],
+            "status": "declared_not_independently_verified",
+        }
+
     report = {
         "overall_status": overall,
         "metadata_validation": metadata,
         "artifact_verification": artifacts,
         "report_parsing": report_parsing,
         "metric_comparison": metric_comparison,
+        "verification_claims": verification_claims,
         "scope": "does_not_prove_data_quality_or_profitability",
     }
     print(json.dumps(report, indent=2, ensure_ascii=False))
