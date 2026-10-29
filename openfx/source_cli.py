@@ -108,7 +108,11 @@ def main(argv: list[str] | None = None) -> int:
                 relevance_language=args.relevance_language,
             )
             known_ids = {source["source_id"] for source in registry["sources"]}
-            new_records = [record for record in records if record["source_id"] not in known_ids]
+            new_records = []
+            for record in records:
+                if record["source_id"] not in known_ids:
+                    new_records.append(record)
+                    known_ids.add(record["source_id"])
             registry["sources"].extend(new_records)
             save_source_registry(registry, args.registry)
             print(f"Discovered {len(records)} videos; added {len(new_records)} new source records.")
