@@ -70,6 +70,27 @@ class WorkerValidationTests(unittest.TestCase):
         self.assertEqual(process_job(make_job(), self.config, state), "DUPLICATE")
         self.assertEqual(state["seen_jobs"]["test-job-001"]["status"], "VALIDATED_NOT_EXECUTED")
 
+    def test_rejects_impossible_and_non_iso_dates(self):
+        for start_date in ("2025-99-01", "20250101"):
+            with self.subTest(start_date=start_date):
+                with self.assertRaises(JobValidationError):
+                    validate_job({**make_job(), "start_date": start_date}, self.config)
+
+    def test_rejects_idempotency_key_reused_by_different_job(self):
+        state = {"seen_jobs": {}, "events": []}
+        first = make_job()
+        self.assertEqual(process_job(first, self.config, state), "VALIDATED_NOT_EXECUTED")
+        second = {**make_job(), "job_id": "test-job-002"}
+        self.assertEqual(process_job(second, self.config, state), "REJECTED")
+        self.assertNotIn("test-job-002", state["seen_jobs"])
+
+    def test_allows_distinct_idempotency_keys(self):
+        state = {"seen_jobs": {}, "events": []}
+        first = make_job()
+        self.assertEqual(process_job(first, self.config, state), "VALIDATED_NOT_EXECUTED")
+        second = {**make_job(), "job_id": "test-job-002", "idempotency_key": "test-key-002"}
+        self.assertEqual(process_job(second, self.config, state), "VALIDATED_NOT_EXECUTED")
+
 
 if __name__ == "__main__":
     unittest.main()
