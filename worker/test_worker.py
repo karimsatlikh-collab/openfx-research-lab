@@ -122,8 +122,23 @@ class WorkerValidationTests(unittest.TestCase):
             "execution_enabled": False,
         }
         with self.assertRaises(ValueError):
-            WorkerConfig.from_mapping(config_data
-        )
+            WorkerConfig.from_mapping(config_data)
+
+    def test_rejects_malformed_control_plane_port(self):
+        config_data = {
+            "control_plane_url": "https://control-plane-placeholder.invalid:bad",
+            "poll_interval_seconds": 30,
+            "request_timeout_seconds": 15,
+            "max_jobs_per_poll": 1,
+            "allowed_ea_ids": ["openfx-demo-ea"],
+            "allowed_control_plane_hosts": ["control-plane-placeholder.invalid"],
+            "max_backtest_days": 365,
+            "max_runtime_seconds": 1800,
+            "local_state_file": "worker_state.json",
+            "execution_enabled": False,
+        }
+        with self.assertRaises(ValueError):
+            WorkerConfig.from_mapping(config_data)
 
 
 if __name__ == "__main__":
