@@ -137,7 +137,19 @@ class BacktestResultTests(unittest.TestCase):
         for artifact in fixture["artifacts"]:
             path = root / artifact["path"]
             path.parent.mkdir(parents=True, exist_ok=True)
-            content = ("synthetic artifact: " + artifact["kind"]).encode("utf-8")
+            if artifact["kind"] == "tester_report":
+                content = b"""<html><table>
+                <tr><td>Total Net Profit:</td><td>250.00</td></tr>
+                <tr><td>Gross Profit:</td><td>500.00</td></tr>
+                <tr><td>Gross Loss:</td><td>-250.00</td></tr>
+                <tr><td>Profit Factor:</td><td>2.00</td></tr>
+                <tr><td>Expected Payoff:</td><td>2.50</td></tr>
+                <tr><td>Total Trades:</td><td>100</td></tr>
+                <tr><td>Maximal Drawdown:</td><td>1,200.00 (12.00%)</td></tr>
+                <tr><td>Relative Drawdown:</td><td>800.00 (8.00%)</td></tr>
+                </table></html>"""
+            else:
+                content = ("synthetic artifact: " + artifact["kind"]).encode("utf-8")
             path.write_bytes(content)
             artifact["size_bytes"] = len(content)
             artifact["sha256"] = hashlib.sha256(content).hexdigest()
