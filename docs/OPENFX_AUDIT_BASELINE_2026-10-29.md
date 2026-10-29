@@ -229,6 +229,14 @@ validated strategy rule -> compiled EA -> real MT5 Strategy Tester
 **Impact:** Two files with the same basename in different subdirectories are hard to distinguish in the record, and a future workflow cannot reliably map a record back to its local source path without re-scanning and matching hashes.  
 **Action:** Decide whether the metadata format should include a root-relative path (preferable to an absolute path) or a stable source locator that avoids leaking full local paths. Add duplicate-basename tests and document privacy implications before changing the contract.
 
+### F-14 — High-similarity transcript changes can remove rule conditions
+**Severity:** P1/P2 — research rule integrity  
+**Status:** Code-reviewed; conservative fix CI-confirmed on PR #20  
+**Evidence:** Before PR #20, `compare_transcript_fidelity("Buy only above 1.5 ATR.", "Buy above 1.5 ATR.")` could pass the selected checks because token similarity remained above 0.85 and the number/negation lists were unchanged.  
+**Impact:** Dropping a limiting word such as `only`, changing `unless` to `if`, or changing a temporal/threshold marker can alter a trading rule without necessarily tripping the previous checks.  
+**Action taken:** PR #20 adds a separate `condition_mismatch` flag for selected English/Persian condition and threshold markers and tests the high-similarity case. Exact-head CI run `40925516804` passed: 112 repository tests and 15 worker tests.  
+**Residual limitation:** The marker list is incomplete and can create false positives; it does not understand syntax, scope, synonyms, or semantic entailment. A labelled adversarial corpus and measured false-positive/false-negative rates remain necessary.
+
 ## 7. Security and operational observations
 
 - `worker/openfx_worker.py` explicitly avoids command execution and MT5 invocation. This is an appropriate prototype boundary, not production readiness.
@@ -247,8 +255,10 @@ validated strategy rule -> compiled EA -> real MT5 Strategy Tester
 - PR #15 exact-head schema contract checks passed; 8 dedicated schema tests, 117 repository tests, and 15 worker tests passed.
 - PR #16 exact-head CI passed with 110 repository tests and 15 worker tests.
 - PR #17 exact-head CI passed with 111 repository tests and 15 worker tests.
-- PR #18 exact-head CI passed; its data/project test run logged 18 tests and CodeQL completed successfully.
-- PR #19 test workflows passed in runs `40925003750` and `40925003699`; CodeQL was still in progress at the last check. No MT5 execution occurred.
+- PR #18 exact-head CI passed on commit `29f7fcf061bf8c274bda79787dc3c0eb0749d2ec`; project/unit tests and CodeQL completed successfully.
+- PR #19 test workflows and CodeQL all passed.
+- PR #20 exact-head CI run `40925516804` passed with 112 repository tests and 15 worker tests.
+- No MT5 execution occurred.
 
 ### Not performed / not established
 - No local test execution in this environment (network DNS prevented cloning the repository).
