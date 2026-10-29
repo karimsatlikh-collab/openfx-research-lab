@@ -91,6 +91,21 @@ class BacktestResultTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "finite number"):
             validate_backtest_result(fixture)
 
+
+    def test_ea_and_data_hashes_must_match_artifact_hashes(self):
+        fixture = make_result()
+        fixture["artifacts"][2]["sha256"] = "d" * 64
+        fixture["artifacts"][3]["sha256"] = "e" * 64
+        result = validate_backtest_result(fixture)
+        self.assertIn("ea_binary_hash_mismatch", result["blockers"])
+        self.assertIn("data_manifest_hash_mismatch", result["blockers"])
+
+    def test_empty_required_artifact_blocks_review(self):
+        fixture = make_result()
+        fixture["artifacts"][0]["size_bytes"] = 0
+        result = validate_backtest_result(fixture)
+        self.assertIn("empty_required_artifacts:tester_report", result["blockers"])
+
     def test_profit_factor_mismatch_is_a_warning_not_a_success_claim(self):
         fixture = make_result()
         fixture["metrics"]["profit_factor"] = 9.0
