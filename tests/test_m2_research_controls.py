@@ -63,6 +63,16 @@ class GateTests(unittest.TestCase):
         with self.assertRaises(GateConfigError):
             evaluate_synthetic_summary(summary, config, trial_count=1)
 
+    def test_unknown_gate_threshold_is_rejected(self):
+        summary = run_synthetic(seed=2, n=30)
+        config = {"frozen_before_trials": True,
+                  "trial_family_policy": {"max_trials": 5},
+                  "gate_id": "strict", "version": "1",
+                  "multiple_testing_method": "other_pre_registered",
+                  "acceptance_thresholds": {"mysterious_metric": 0.9}}
+        with self.assertRaises(GateConfigError):
+            evaluate_synthetic_summary(summary, config, trial_count=1)
+
 
 class RegistryTests(unittest.TestCase):
     def test_hash_chain_and_idempotent_retry(self):
