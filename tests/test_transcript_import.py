@@ -69,6 +69,22 @@ This valid cue must not be dropped.
         self.assertEqual(len(segments), 1)
         self.assertEqual(segments[0]["text"], "This valid cue must not be dropped.")
 
+    def test_cue_ids_equal_to_metadata_keywords_are_not_dropped(self):
+        content = """WEBVTT
+
+NOTE
+00:01.000 --> 00:02.000
+NOTE is a cue identifier here.
+
+STYLE
+00:02.000 --> 00:03.000
+STYLE is a cue identifier here.
+"""
+        segments = parse_transcript_text(content, "source-001", "vtt")
+        self.assertEqual(len(segments), 2)
+        self.assertEqual(segments[0]["text"], "NOTE is a cue identifier here.")
+        self.assertEqual(segments[1]["text"], "STYLE is a cue identifier here.")
+
     def test_plain_text_is_segmented_without_invented_timestamps(self):
         segments = parse_transcript_text("First paragraph.\n\nSecond paragraph.", "source-001", "txt")
         self.assertEqual(len(segments), 2)
