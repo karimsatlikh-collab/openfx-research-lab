@@ -47,3 +47,6 @@ jobs:
 
           print("Evaluation tests passed.")
           PY
+
+      - name: Run OpenFX experiment and data-collection tests
+        run: python -m unittest discover -s tests -v
