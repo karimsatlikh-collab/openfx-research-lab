@@ -17,6 +17,7 @@ def make_config():
         "request_timeout_seconds": 15,
         "max_jobs_per_poll": 1,
         "allowed_ea_ids": ["openfx-demo-ea"],
+        "allowed_control_plane_hosts": ["control-plane-placeholder.invalid"],
         "max_backtest_days": 365,
         "max_runtime_seconds": 1800,
         "local_state_file": "worker_state.json",
@@ -90,6 +91,39 @@ class WorkerValidationTests(unittest.TestCase):
         self.assertEqual(process_job(first, self.config, state), "VALIDATED_NOT_EXECUTED")
         second = {**make_job(), "job_id": "test-job-002", "idempotency_key": "test-key-002"}
         self.assertEqual(process_job(second, self.config, state), "VALIDATED_NOT_EXECUTED")
+
+    def test_rejects_control_plane_host_outside_allow_list(self):
+        config_data = {
+            "control_plane_url": "https://attacker.example",
+            "poll_interval_seconds": 30,
+            "request_timeout_seconds": 15,
+            "max_jobs_per_poll": 1,
+            "allowed_ea_ids": ["openfx-demo-ea"],
+            "allowed_control_plane_hosts": ["control-plane-placeholder.invalid"],
+            "max_backtest_days": 365,
+            "max_runtime_seconds": 1800,
+            "local_state_file": "worker_state.json",
+            "execution_enabled": False,
+        }
+        with self.assertRaises(ValueError):
+            WorkerConfig.from_mapping(config_data)
+
+    def test_rejects_control_plane_url_with_credentials(self):
+        config_data = {
+            "control_plane_url": "https://user:secret@control-plane-placeholder.invalid",
+            "poll_interval_seconds": 30,
+            "request_timeout_seconds": 15,
+            "max_jobs_per_poll": 1,
+            "allowed_ea_ids": ["openfx-demo-ea"],
+            "allowed_control_plane_hosts": ["control-plane-placeholder.invalid"],
+            "max_backtest_days": 365,
+            "max_runtime_seconds": 1800,
+            "local_state_file": "worker_state.json",
+            "execution_enabled": False,
+        }
+        with self.assertRaises(ValueError):
+            WorkerConfig.from_mapping(config_data
+        )
 
 
 if __name__ == "__main__":
