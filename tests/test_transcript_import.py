@@ -85,6 +85,17 @@ First.
         with self.assertRaisesRegex(ValueError, "ordered"):
             parse_transcript_text(content, "source-001", "srt")
 
+    def test_rejects_timestamp_less_block_instead_of_silently_dropping_text(self):
+        content = """1
+00:00:01,000 --> 00:00:02,000
+Do not enter.
+
+2
+The word not and the threshold 1.5 ATR were lost with this malformed block.
+"""
+        with self.assertRaisesRegex(ValueError, "no timestamp line"):
+            parse_transcript_text(content, "source-001", "srt")
+
     def test_rejects_non_string_format_argument(self):
         with self.assertRaisesRegex(ValueError, "format must be a string"):
             parse_transcript_text("content", "source-001", None)
