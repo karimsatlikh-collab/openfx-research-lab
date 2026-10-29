@@ -116,3 +116,20 @@ gate API that accepts only registrar-issued snapshots.
 
 These checks are semantic consistency controls, not engine attestation,
 authorization, statistical correction, or evidence of profitability.
+
+
+## Adversarial registry hardening increment
+
+The local registry's verification pass now checks more than hash-chain integrity:
+it validates required event fields and types, unique event identifiers, monotonic
+sequence/family-sequence values, stable trial indices, family ownership of trial
+IDs, supported outcomes, and event lifecycle consistency. This helps detect
+internally inconsistent ledgers even if the rows' hash chain is otherwise
+well-formed. It is not protection against an administrator who can rewrite the
+entire ledger and produce a fully consistent replacement.
+
+Additional adversarial tests cover unsupported outcome types and stale-lock
+behavior. A stale lock causes a bounded timeout and is deliberately not deleted
+automatically, because the prototype cannot safely determine whether its owner
+is still active. Concurrency across separate processes, power-loss durability,
+and trusted multi-host registration remain open verification/design work.
