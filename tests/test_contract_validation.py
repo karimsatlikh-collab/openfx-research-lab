@@ -108,8 +108,8 @@ class RegistrarOwnedCountTests(unittest.TestCase):
     def test_unique_trials_count_failures_and_duplicate_events_once(self):
         with tempfile.TemporaryDirectory() as tmp:
             registry = LocalTrialRegistry(Path(tmp) / "ledger.jsonl")
-            registry.append(event_id="e1", family_id="fam", trial_id="t1", outcome="failed")
-            registry.append(event_id="e2", family_id="fam", trial_id="t1", outcome="interrupted")
+            registry.append(event_id="e1", family_id="fam", trial_id="t1", outcome="pending")
+            registry.append(event_id="e2", family_id="fam", trial_id="t1", outcome="failed")
             registry.append(event_id="e3", family_id="fam", trial_id="t2", outcome="completed")
             self.assertEqual(registry.trial_count("fam"), 2)
             self.assertEqual(registry.next_trial_index("fam"), 3)
