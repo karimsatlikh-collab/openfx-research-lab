@@ -26,7 +26,7 @@ def run_mock(manifest_path: str | Path) -> dict:
         ) from None
     try:
         try:
-            os.write(lock_fd, f"pid={os.getpid()}\\n".encode("ascii"))
+            os.write(lock_fd, f"pid={os.getpid()}\n".encode("ascii"))
         finally:
             os.close(lock_fd)
 
