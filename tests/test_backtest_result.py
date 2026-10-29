@@ -116,6 +116,12 @@ class BacktestResultTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "modeling_mode"):
             validate_backtest_result(fixture)
 
+    def test_windows_drive_artifact_path_is_rejected(self):
+        fixture = make_result()
+        fixture["artifacts"][0]["path"] = "C:/private/report.html"
+        with self.assertRaisesRegex(ValueError, "relative|escape"):
+            validate_backtest_result(fixture)
+
 
 if __name__ == "__main__":
     unittest.main()
