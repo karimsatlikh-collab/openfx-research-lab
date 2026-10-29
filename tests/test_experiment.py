@@ -53,6 +53,7 @@ class ExperimentTests(unittest.TestCase):
             self.assertFalse(result["result"]["is_backtest"])
             self.assertFalse(result["result"]["is_trading_signal"])
             self.assertEqual(load_manifest(path)["status"], "COMPLETED")
+            self.assertFalse(path.with_name(path.name + ".lock").exists())
 
     def test_mock_worker_does_not_rerun_completed_job(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -169,6 +170,16 @@ class ExperimentTests(unittest.TestCase):
         manifest["execution"]["command"] = "not allowed"
         with self.assertRaises(ValueError):
             validate_manifest(manifest)
+
+    def test_mock_worker_refuses_existing_lock(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "experiment.json"
+            save_manifest(sample(), path)
+            lock_path = path.with_name(path.name + ".lock")
+            lock_path.write_text("synthetic stale lock", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "locked"):
+                run_mock(path)
+            self.assertEqual(load_manifest(path)["status"], "QUEUED")
 
 
 if __name__ == "__main__":
