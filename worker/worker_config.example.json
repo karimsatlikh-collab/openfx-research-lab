@@ -1,0 +1,13 @@
+{
+  "control_plane_url": "https://CONTROL-PLANE-PLACEHOLDER.invalid",
+  "poll_interval_seconds": 30,
+  "request_timeout_seconds": 15,
+  "max_jobs_per_poll": 1,
+  "allowed_ea_ids": [
+    "openfx-demo-ea"
+  ],
+  "max_backtest_days": 365,
+  "max_runtime_seconds": 1800,
+  "local_state_file": "worker_state.json",
+  "execution_enabled": false
+}
