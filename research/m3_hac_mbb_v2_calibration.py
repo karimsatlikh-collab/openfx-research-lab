@@ -379,14 +379,14 @@ def main() -> None:
         cell = run_marginal_cell(args.generator, False, plan_sha256,
                                  provenance['engine_revision'], runner_revision)
     elif args.phase == "marginal-mde":
-        cell = run_marginal_cell(args.generator, True, args.plan_sha256,
-                                 args.engine_revision, args.runner_revision)
+        cell = run_marginal_cell(args.generator, True, plan_sha256,
+                                 provenance['engine_revision'], runner_revision)
     elif args.phase == "family-null":
         cell = run_family_cell(args.generator, args.rho, False, plan_sha256,
                                provenance['engine_revision'], runner_revision)
     else:
-        cell = run_family_cell(args.generator, args.rho, True, args.plan_sha256,
-                               args.engine_revision, args.runner_revision)
+        cell = run_family_cell(args.generator, args.rho, True, plan_sha256,
+                               provenance['engine_revision'], runner_revision)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(cell, sort_keys=True, separators=(",", ":"),
                                  ensure_ascii=False, allow_nan=False) + "\n",
