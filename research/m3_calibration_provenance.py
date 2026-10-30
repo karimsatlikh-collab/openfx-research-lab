@@ -8,11 +8,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 FROZEN_ENGINE_REVISION = "087e66622f27350f1999d2e5b2ec82a9ead78982"
 EXPECTED_GIT_BLOBS = {
-    "docs/M3_HAC_MBB_V2_CALIBRATION_PLAN.md": "059baa1472aa9311d3fa5a1769484ce15901b535",
+    "docs/M3_HAC_MBB_V2_CALIBRATION_PLAN.md": "a4d1cbc6598c727600e7aa3af4bce22374a33791",
     "research/m3_hac_mbb_v2_calibration.py": "7b1d6d628cddf42ac126be7a6378583727d8e5e8",
     "openfx/selection_bias_v2.py": "72a69166e8121e7d866baa7cb77479975dd04161",
     "research/aggregate_m3_hac_mbb_v2.py": "42265c3396c3233181ac88f1c3aa213c9ab83032",
-    "research/validate_m3_v2_reference.py": "6c5af70028babcf454d922e7c85a1bd01a67b4b7",
+    "research/validate_m3_v2_reference.py": "5eee54aedcb0054e07f2f23fe7551057106d396a",
 }
 
 
