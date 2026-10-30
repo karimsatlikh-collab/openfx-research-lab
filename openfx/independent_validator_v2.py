@@ -365,10 +365,9 @@ def _validate_run(run: dict[str, Any], job: dict[str, Any],
 
 def validate_independently(job: dict[str, Any], run: dict[str, Any],
                            attestation: dict[str, Any], trust_store: dict[str, Any],
-                           artifact_root: str | Path, *,
-                           now_utc: str | None = None) -> dict[str, Any]:
+                           artifact_root: str | Path) -> dict[str, Any]:
     """Verify complete frozen JobSpec/RunRecord, executor signature, and output bytes."""
-    now = parse_utc(now_utc or datetime.now(timezone.utc).isoformat(), "now_utc")
+    now = datetime.now(timezone.utc)
     expected_outputs = _validate_job(job)
     run_digest, finished = _validate_run(run, job, expected_outputs)
     job_digest = sha256_bytes(canonical_bytes(job))
