@@ -52,6 +52,8 @@ class M3V2CalibrationContractTests(unittest.TestCase):
         self.assertIn('parser.add_argument("--plan-file", required=True)', runner)
         self.assertIn("verify_execution_bindings(", runner)
         self.assertIn("verify_benchmark_report(", runner)
+        self.assertIn("expected_estimate = mean * 151500 / 3600.0", provenance)
+        self.assertIn("benchmark_seed_ranges", provenance)
         self.assertIn('parser.add_argument("--benchmark-report", required=True)', runner)
         self.assertIn('parser.add_argument("--max-cpu-hours", type=float, required=True)', runner)
         self.assertNotIn("--runner-revision", runner)
