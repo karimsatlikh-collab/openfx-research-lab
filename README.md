@@ -12,7 +12,7 @@ This repository is public for viewing and project transparency, but its original
 
 ## Mission
 
-Build an AI-assisted platform that can discover research sources, formalize trading ideas into precise rules, implement them, run reproducible experiments, and evaluate results independently. The priority is reliable, repeatable Forex strategy research and large-scale backtesting/parameter optimization.
+Build an AI-assisted platform that can discover authorized research sources, preserve evidence provenance, formalize trading ideas into falsifiable hypotheses and precise rules, implement them, run reproducible experiments, and evaluate results independently. The priority is a trustworthy research process and a defensible, repeatable trading edge—not code volume or large-scale optimization.
 
 ## Current implementation
 
@@ -28,7 +28,7 @@ The mock worker does **not** run a backtest, test a trading strategy, connect to
 
 ## Research lifecycle
 
-Research question → source/evidence review → explicit rule specification → implementation → baseline test → controlled optimization → independent validation → documented decision.
+Research question → authorized source/evidence review → atomic claims → pre-registered Hypothesis Card → explicit rule specification → frozen experiment plan and trial-family registration → implementation → controlled development tests → validation → untouched final OOS → independent validation → documented decision.
 
 Claims should be labelled as:
 - **Verified:** directly checked evidence.
@@ -38,10 +38,22 @@ Claims should be labelled as:
 
 ## Main workstreams
 
-1. **Strategy research and validation:** precise hypotheses, MQL5/MT5 implementation, cost-aware backtests, out-of-sample validation, walk-forward analysis, robustness checks.
+1. **Strategy research and validation:** source-linked hypotheses, explicit falsification criteria, MQL5/MT5 implementation, cost-aware tests, separate development/validation/final OOS, robustness and independent replication.
 2. **Source discovery:** permitted videos, transcripts, papers, documentation, datasets, and public code; preserve provenance and licensing information.
 3. **Backtest operations:** experiment IDs, frozen manifests, queue state, logs, artifact hashes, and future unattended Strategy Tester runs on a compatible Windows host.
-4. **Project collaboration:** Python, MQL5, testing, data quality, methodology, documentation, and security, subject to the rights-reserved notice and explicit written permission.
+4. **Research governance and engineering:** trial accounting, statistical calibration, data quality, security, documentation, and independent review. Functional team labels do not imply separate agents or independent credentials.
+
+
+## Research controls and priority gates
+
+- Every strategy idea must have a versioned Hypothesis Card written and frozen before its results are inspected: source-linked rationale, falsifiable statement, predicted mechanism, exact rules/parameters, invalidation criteria, primary metrics, costs, data splits, trial-family ID, and trial budget.
+- Register every attempted trial, including failed, rejected, interrupted, and abandoned attempts. Do not reset a trial family to hide prior searches.
+- Calibrate the synthetic research harness against pre-registered null/no-edge generators, planted effects, and deliberate leakage fixtures. Report denominators and confidence intervals; a small green test suite is not statistical calibration.
+- Do not run broad parameter grids or select a winner until trial accounting, calibration, and selection-bias controls have passed independent review. Any multiple-testing method must actually be applied, not merely named in metadata.
+- Keep development, validation, and final out-of-sample data separate. The final OOS set remains inaccessible to the proposing/optimizing process; cap and log any validator feedback.
+- Separate author, executor, approver, and independent validator duties. An AI or worker must not approve its own job or certify its own result. Human-controlled approval must be bound to the exact frozen job/config/source/data/cost digests.
+- Treat mock and synthetic runs as harness evidence only. A CI pass, synthetic reproduction, or successful worker lifecycle is not an MT5 backtest and does not establish market edge or profitability.
+- Start with zero-cost local reproducibility. VPS, paid APIs/compute, broker credentials, and live trading remain disabled until separately approved.
 
 ## Experiment states
 
