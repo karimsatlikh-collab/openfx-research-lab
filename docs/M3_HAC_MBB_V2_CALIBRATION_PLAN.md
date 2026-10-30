@@ -74,7 +74,7 @@ For Gaussian innovation generators, each time step uses a common-factor innovati
 
 For Student-t generators, use a multivariate-t(5) innovation construction: correlated Gaussian factor innovations divided by a common chi-square scale per time step, scaled to unit marginal variance. AR(1) and GARCH recursions are applied after the correlated innovations are generated. The runner records realized average pairwise return correlation for every family; for GARCH it may differ from the innovation-correlation parameter rho.
 
-The runner must record the exact generation method, seed, return-series hash, family membership, and frozen engine/source revision for every generated family. The production evaluator additionally requires every trial validation payload to match the frozen source_revision exactly. This dependence construction is synthetic and does not claim to reproduce every empirical strategy-correlation structure.
+The independent calibration runner must record the exact generation method, seed, return-series hash, family membership, frozen M3 engine revision, and runner revision for every generated family. These engine/runner revisions identify the calibration implementation; they are not a strategy source revision. Separately, the production evaluator requires each real trial validation payload to match the strategy source_revision frozen in its family manifest. This dependence construction is synthetic and does not claim to reproduce every empirical strategy-correlation structure.
 
 ## 5. Deterministic seed map
 
