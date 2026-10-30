@@ -62,3 +62,36 @@ def assert_final_oos_access(*, split_name: str, audience: str) -> None:
         raise LeakageDetected("final-OOS data/metrics cannot be exposed to proposer or optimizer")
     if audience not in {"proposer", "optimizer", "independent_validator", "authorized_human"}:
         raise LeakageDetected("unknown audience; access denied")
+
+def run_declared_leakage_fixtures() -> list[dict[str, str]]:
+    """Execute and classify every finite in-scope leakage fixture in plan v1."""
+    checks = [
+        ("future_bar_timestamp", lambda: assert_available_by(
+            value_name="future_bar", available_at="2025-01-01T10:15:00+00:00",
+            decision_at="2025-01-01T10:00:00+00:00")),
+        ("timezone_omission", lambda: assert_available_by(
+            value_name="bar", available_at="2025-01-01T09:55:00",
+            decision_at="2025-01-01T10:00:00+00:00")),
+        ("target_availability", lambda: assert_available_by(
+            value_name="target", available_at="2025-01-02T00:00:00+00:00",
+            decision_at="2025-01-01T23:59:00+00:00")),
+        ("revised_historical_data", lambda: assert_available_by(
+            value_name="revised_bar", available_at="2025-01-03T12:00:00+00:00",
+            decision_at="2025-01-02T12:00:00+00:00")),
+        ("split_boundary_overlap", lambda: assert_ordered_splits(
+            development_end="2025-01-10T00:00:00+00:00",
+            validation_start="2025-01-09T00:00:00+00:00",
+            validation_end="2025-01-20T00:00:00+00:00",
+            final_oos_start="2025-01-21T00:00:00+00:00")),
+        ("final_oos_exposure", lambda: assert_final_oos_access(
+            split_name="final_oos", audience="optimizer")),
+    ]
+    results = []
+    for fixture_id, inject_and_check in checks:
+        try:
+            inject_and_check()
+        except LeakageDetected:
+            results.append({"fixture_id": fixture_id, "status": "detected"})
+        else:
+            results.append({"fixture_id": fixture_id, "status": "missed"})
+    return results
