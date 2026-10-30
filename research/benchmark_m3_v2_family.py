@@ -61,12 +61,12 @@ def run(plan_file: Path, families: int) -> dict:
         )
         if len(pvalues) != 20 or not all(0.0 <= float(p) <= 1.0 for p in pvalues):
             raise RuntimeError("benchmark produced invalid p-values")
-        timings.append(elapsed)
         pvalue_outputs.append([float(x) for x in pvalues])
         return_hashes.append(series_hashes)
         corr = np.corrcoef(values)
         realized_correlations.append(float(np.mean(corr[np.triu_indices(20, k=1)])))
         elapsed = time.perf_counter() - started
+        timings.append(elapsed)
 
     average = sum(timings) / len(timings)
     result = {
