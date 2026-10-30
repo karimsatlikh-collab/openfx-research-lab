@@ -246,7 +246,8 @@ def evaluate_registered_family(*, registry: Any,
     trial_count = snapshot.get("trial_count")
     event_hashes = snapshot.get("family_event_sha256")
     if (isinstance(event_count, bool) or not isinstance(event_count, int)
-            or event_count < len(trials) or trial_count != len(trials)
+            or event_count < len(trials) or isinstance(trial_count, bool)
+            or not isinstance(trial_count, int) or trial_count != len(trials)
             or not isinstance(event_hashes, list) or len(event_hashes) != event_count
             or any(not isinstance(value, str) or re.fullmatch(r"[0-9a-f]{64}", value) is None
                    for value in event_hashes)
