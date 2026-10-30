@@ -19,7 +19,7 @@ TRIAL_OUTCOME_TRANSITIONS = {"pending": TERMINAL_OUTCOMES}
 
 
 def canonical_json(value: Any) -> bytes:
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode("utf-8")
 
 
 def _event_hash(event_without_hash: dict[str, Any]) -> str:
@@ -67,7 +67,10 @@ class LocalTrialRegistry:
             supplied_hash = row.pop("event_sha256", None)
             if row.get("previous_event_sha256") != previous:
                 raise TrialRegistryError(f"broken previous hash at ledger line {line_number}")
-            expected = _event_hash(row)
+            try:
+                expected = _event_hash(row)
+            except (TypeError, ValueError) as exc:
+                raise TrialRegistryError(f"non-canonical JSON value at ledger line {line_number}") from exc
             if supplied_hash != expected:
                 raise TrialRegistryError(f"event hash mismatch at ledger line {line_number}")
             required = ("sequence", "family_sequence", "trial_index", "event_id",
@@ -196,7 +199,10 @@ class LocalTrialRegistry:
                 "outcome": outcome, "payload": payload or {},
                 "previous_event_sha256": rows[-1]["event_sha256"] if rows else GENESIS,
             }
-            event["event_sha256"] = _event_hash(event)
+            try:
+                event["event_sha256"] = _event_hash(event)
+            except (TypeError, ValueError) as exc:
+                raise TrialRegistryError("event payload must contain only canonical finite JSON values") from exc
             with self.path.open("a", encoding="utf-8", newline="\n") as stream:
                 stream.write(json.dumps(event, sort_keys=True, ensure_ascii=False) + "\n")
                 stream.flush()
