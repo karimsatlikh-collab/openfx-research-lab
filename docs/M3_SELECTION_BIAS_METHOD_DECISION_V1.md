@@ -150,7 +150,7 @@ Implemented in this prototype:
 - strict data/cost/validation-split/frequency binding, finite returns, common timestamp alignment, and return-series SHA-256 verification;
 - synchronized circular moving-block bootstrap, deterministic family-derived seed, one-sided studentized mean p-values, and Holm step-down;
 - auditable verdict with family/trial IDs, registry snapshot digest, raw/adjusted p-values, thresholds, exclusions, runtime and explicit limitations;
-- unit/adversarial tests for Holm ordering, failed-trial accounting, deterministic reproduction, timestamp misalignment, return-hash tampering, frozen-manifest enforcement, and registry history.
+- unit/adversarial tests (stdlib unittest; no new test dependency) for Holm ordering, failed-trial accounting, deterministic reproduction, timestamp misalignment, return-hash tampering, frozen-manifest enforcement, and registry history.
 
 Important prototype limitations:
 - the ledger remains local and can be rewritten in full by a privileged actor; it cannot authenticate family completeness;
