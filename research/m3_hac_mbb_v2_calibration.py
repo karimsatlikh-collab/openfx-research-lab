@@ -395,10 +395,10 @@ def main() -> None:
                                  provenance['engine_revision'], runner_revision, benchmark_info)
     elif args.phase == "family-null":
         cell = run_family_cell(args.generator, args.rho, False, plan_sha256,
-                               provenance['engine_revision'], runner_revision)
+                               provenance['engine_revision'], runner_revision, benchmark_info)
     else:
         cell = run_family_cell(args.generator, args.rho, True, plan_sha256,
-                               provenance['engine_revision'], runner_revision)
+                               provenance['engine_revision'], runner_revision, benchmark_info)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(cell, sort_keys=True, separators=(",", ":"),
                                  ensure_ascii=False, allow_nan=False) + "\n",
