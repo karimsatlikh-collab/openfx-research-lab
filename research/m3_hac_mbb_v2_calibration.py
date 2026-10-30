@@ -15,6 +15,10 @@ import random
 import sys
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from research.m3_calibration_provenance import verify_execution_bindings
 
 import numba
