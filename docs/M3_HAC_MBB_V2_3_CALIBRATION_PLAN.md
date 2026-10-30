@@ -146,7 +146,7 @@ Before launching any formal cell, run the performance preflight on the intended 
 python research/benchmark_m3_v2_family.py --plan-file docs/M3_HAC_MBB_V2_3_CALIBRATION_PLAN.md --families 3 --output artifacts/m3-v2.0.3/benchmark-preflight.json
 ```
 
-The preflight warms the JIT kernel separately, times full 9,999-replicate family workloads, records host/runtime/source provenance, and estimates CPU-hours. It is performance evidence only, never calibration evidence. Review the estimate and storage requirements before scheduling the campaign. Run independent cells as separate immutable jobs, initially limiting concurrency to at most four cells or the available CPU count, whichever is lower; adjust only after observing host memory/CPU behavior. Do not start the 40-cell campaign if the benchmark indicates the required wall-clock or storage budget is unavailable.
+The preflight warms the JIT kernel separately, times full 9,999-replicate family workloads, records host/runtime/source provenance, self-hashes the report, and estimates CPU-hours. It is performance evidence only, never calibration evidence. The report is mandatory for the reference check, every cell, and aggregation; all must use the same exact checkout, runtime, benchmark hash, and explicitly approved `--max-cpu-hours` budget. A cell is blocked if the benchmark estimate exceeds that budget. Review the estimate and storage requirements before scheduling the campaign. Run independent cells as separate immutable jobs, initially limiting concurrency to at most four cells or the available CPU count, whichever is lower; adjust only after observing host memory/CPU behavior. Do not start the 40-cell campaign if the benchmark indicates the required wall-clock or storage budget is unavailable.
 
 
 
@@ -182,7 +182,7 @@ Install optional pinned dependencies with `python -m pip install -r requirements
 First run the deterministic primitive-level reference check. It must pass before any cell is accepted:
 
 ```bash
-python research/validate_m3_v2_reference.py --plan-file docs/M3_HAC_MBB_V2_3_CALIBRATION_PLAN.md --engine-revision 087e66622f27350f1999d2e5b2ec82a9ead78982 --output artifacts/m3-v2.0.3/reference-check.json
+python research/validate_m3_v2_reference.py --plan-file docs/M3_HAC_MBB_V2_3_CALIBRATION_PLAN.md --engine-revision 087e66622f27350f1999d2e5b2ec82a9ead78982 --benchmark-report artifacts/m3-v2.0.3/benchmark-preflight.json --max-cpu-hours <approved_cpu_hour_budget> --output artifacts/m3-v2.0.3/reference-check.json
 ```
 
 Run each cell as a separate immutable artifact. Required filenames:
@@ -195,7 +195,7 @@ Run each cell as a separate immutable artifact. Required filenames:
 Example command:
 
 ```bash
-python research/m3_hac_mbb_v2_calibration.py --phase family-null --generator N3_AR1_GAUSSIAN --rho 0.5 --plan-file docs/M3_HAC_MBB_V2_3_CALIBRATION_PLAN.md --engine-revision 087e66622f27350f1999d2e5b2ec82a9ead78982 --output artifacts/m3-v2.0.3/family-null-N3_AR1_GAUSSIAN-rho-0p5.json
+python research/m3_hac_mbb_v2_calibration.py --phase family-null --generator N3_AR1_GAUSSIAN --rho 0.5 --plan-file docs/M3_HAC_MBB_V2_3_CALIBRATION_PLAN.md --engine-revision 087e66622f27350f1999d2e5b2ec82a9ead78982 --benchmark-report artifacts/m3-v2.0.3/benchmark-preflight.json --max-cpu-hours <approved_cpu_hour_budget> --output artifacts/m3-v2.0.3/family-null-N3_AR1_GAUSSIAN-rho-0p5.json
 ```
 
 Run all 40 cells (5 marginal-null + 5 marginal-MDE + 15 family-null + 15 family-MDE). Do not overwrite a cell artifact. A rerun must use a new campaign directory and preserve the original outcome.
@@ -203,7 +203,7 @@ Run all 40 cells (5 marginal-null + 5 marginal-MDE + 15 family-null + 15 family-
 After all 40 cell files exist, aggregate and validate them:
 
 ```bash
-python research/aggregate_m3_hac_mbb_v2.py --input-dir artifacts/m3-v2.0.3 --plan-file docs/M3_HAC_MBB_V2_3_CALIBRATION_PLAN.md --reference-check artifacts/m3-v2.0.3/reference-check.json --output artifacts/m3-v2.0.3/campaign-summary.json
+python research/aggregate_m3_hac_mbb_v2.py --input-dir artifacts/m3-v2.0.3 --plan-file docs/M3_HAC_MBB_V2_3_CALIBRATION_PLAN.md --reference-check artifacts/m3-v2.0.3/reference-check.json --benchmark-report artifacts/m3-v2.0.3/benchmark-preflight.json --max-cpu-hours <approved_cpu_hour_budget> --output artifacts/m3-v2.0.3/campaign-summary.json
 ```
 
 The runner computes the plan SHA-256 from the actual plan file and verifies that the plan, runner, and engine files match the clean Git checkout. The runner revision is taken from `HEAD`, not caller-supplied metadata; the engine revision must resolve to a commit containing the exact checked-out engine file. The reference check records the same provenance. The aggregator recomputes the plan hash, verifies the clean checkout and exact source bindings, and checks reference/cell provenance, cell hashes, complete seed sequences, return hashes, trial membership, realized family correlations, all cell counts, and frozen acceptance thresholds. A missing, failed, overwritten, or inconsistent cell prevents a valid campaign summary.
