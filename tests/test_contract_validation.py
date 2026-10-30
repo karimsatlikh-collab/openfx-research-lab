@@ -212,7 +212,8 @@ class RegistrarOwnedCountTests(unittest.TestCase):
                 "multiple_testing_method": "other_pre_registered",
                 "acceptance_thresholds": {"min_sample_size": 1},
             }
-            summary = {"sample_size": 100, "mean_return": 1.0, "evidence_level": "synthetic"}
+            summary = {"sample_size": 100, "mean_return": 1.0,
+                       "evidence_level": "synthetic", "is_market_backtest": False}
             result = evaluate_registered_synthetic_summary(summary, config, registry=registry, family_id="fam")
             self.assertEqual(result["trial_count"], 2)
             self.assertEqual(result["decision"], "fail")
