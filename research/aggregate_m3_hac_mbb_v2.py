@@ -121,7 +121,8 @@ def _check_family(cell: dict, phase: str, generator: str, generator_index: int, 
         correlation_index = CORRELATIONS.index(rho)
         data_base = 3_600_000_000 if phase == "mde" else 3_500_000_000
         expected_family_seed = data_base + generator_index * 1_000_000 + correlation_index * 10_000 + index
-        if row.get("family_seed") != expected_family_seed or row.get("bootstrap_seed") != 4_300_000_000 + generator_index * 1_000_000 + correlation_index * 10_000 + index:
+        expected_bootstrap_base = 4_400_000_000 if phase == "mde" else 4_300_000_000
+        if row.get("family_seed") != expected_family_seed or row.get("bootstrap_seed") != expected_bootstrap_base + generator_index * 1_000_000 + correlation_index * 10_000 + index:
             raise ValueError("family seed map mismatch")
         if row.get("status") != "completed":
             raise ValueError("family replicate is not completed")
