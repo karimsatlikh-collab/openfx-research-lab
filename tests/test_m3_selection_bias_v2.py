@@ -26,7 +26,7 @@ def _manifest(**overrides):
         "cost_profile_id": "cost-v1",
         "validation_split_id": "validation-v1",
         "return_frequency": "daily",
-        "source_revision": "abc123",
+        "source_revision": "a" * 40,
         "frozen_at_utc": "2026-01-01T00:00:00Z",
         "max_trials": 10,
         "alpha": 0.05,
@@ -46,7 +46,7 @@ def _timestamps(length):
             for i in range(length)]
 
 
-def _validation_payload(returns):
+def _validation_payload(returns, source_revision="a" * 40):
     return {
         "validation": {
             "returns": returns,
@@ -56,6 +56,7 @@ def _validation_payload(returns):
             "cost_profile_id": "cost-v1",
             "split_id": "validation-v1",
             "return_frequency": "daily",
+            "source_revision": source_revision,
         }
     }
 
@@ -123,6 +124,44 @@ class M3HACSelectionBiasTests(unittest.TestCase):
         self.assertEqual(verdict["hac_lag"], 7)
         self.assertEqual(verdict["block_length"], 7)
         self.assertTrue(verdict["verdict_sha256"])
+
+
+    def test_source_revision_mismatch_is_excluded_from_family(self):
+        returns = [0.01 + ((i % 7) - 3) * 0.002 for i in range(252)]
+        manifest = _manifest()
+        trials = [{
+            "trial_id": "wrong-source", "trial_index": 1, "outcome": "completed",
+            "payload": _validation_payload(returns, source_revision="b" * 40),
+        }]
+        verdict = evaluate_registered_family(
+            registry=FakeRegistry(trials, manifest), manifest=manifest
+        )
+        self.assertEqual(verdict["decision"], "BLOCKED")
+        self.assertEqual(verdict["exclusions"]["wrong-source"],
+                         "binding_mismatch:source_revision")
+
+    def test_manifest_requires_git_sha_source_revision(self):
+        manifest = _manifest(source_revision="abc123")
+        registry = FakeRegistry([
+            {"trial_id": "failed", "trial_index": 1, "outcome": "failed"}
+        ], manifest)
+        with self.assertRaises(SelectionBiasV2Error):
+            evaluate_registered_family(registry=registry, manifest=manifest)
+
+    def test_bootstrap_work_budget_blocks_oversized_family_before_sampling(self):
+        returns = [0.02 + ((i % 7) - 3) * 0.001 for i in range(252)]
+        manifest = _manifest(max_trials=60)
+        trials = [
+            {"trial_id": f"candidate-{i:02d}", "trial_index": i,
+             "outcome": "completed", "payload": _validation_payload(returns)}
+            for i in range(1, 61)
+        ]
+        verdict = evaluate_registered_family(
+            registry=FakeRegistry(trials, manifest), manifest=manifest
+        )
+        self.assertEqual(verdict["decision"], "BLOCKED")
+        self.assertEqual(verdict["reason"], "bootstrap_work_budget_exceeded")
+        self.assertGreater(verdict["estimated_bootstrap_work"], verdict["max_bootstrap_work"])
 
     def test_method_settings_are_frozen(self):
         manifest = _manifest(hac_lag_rule="caller-selected")
