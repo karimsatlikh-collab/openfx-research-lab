@@ -25,8 +25,8 @@ class M3V2CalibrationContractTests(unittest.TestCase):
         aggregator = (ROOT / "research/aggregate_m3_hac_mbb_v2.py").read_text(encoding="utf-8")
         expected = (
             "3_300_000_000", "3_400_000_000", "3_500_000_000",
-            "3_600_000_000", "3_700_000_000", "3_800_000_000",
-            "3_900_000_000",
+            "3_600_000_000", "4_100_000_000", "4_200_000_000",
+            "4_300_000_000",
         )
         for seed in expected:
             self.assertIn(seed, runner)
