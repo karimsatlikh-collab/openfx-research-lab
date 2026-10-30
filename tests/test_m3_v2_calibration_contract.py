@@ -71,6 +71,8 @@ class M3V2CalibrationContractTests(unittest.TestCase):
         self.assertIn("verify_benchmark_report(", aggregator)
         self.assertIn("research/benchmark_m3_v2_family.py", provenance)
         self.assertIn("performance_preflight_only_not_calibration", benchmark)
+        self.assertLess(benchmark.index("elapsed = time.perf_counter() - started"), benchmark.index("timings.append(elapsed)"))
+        self.assertIn('result["benchmark_sha256"]', benchmark)
         self.assertIn("TOTAL_FAMILY_EQUIVALENTS = 151_500", benchmark)
         self.assertIn("94.94%", plan)
         self.assertIn("5,000 independent families", plan)
