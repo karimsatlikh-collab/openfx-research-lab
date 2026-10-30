@@ -59,7 +59,6 @@ def run(plan_file: Path, families: int) -> dict:
             values, BENCHMARK_BOOTSTRAP_SEED_BASE + index + 1,
             replicates=BOOTSTRAP_REPLICATES,
         )
-        elapsed = time.perf_counter() - started
         if len(pvalues) != 20 or not all(0.0 <= float(p) <= 1.0 for p in pvalues):
             raise RuntimeError("benchmark produced invalid p-values")
         timings.append(elapsed)
@@ -67,6 +66,7 @@ def run(plan_file: Path, families: int) -> dict:
         return_hashes.append(series_hashes)
         corr = np.corrcoef(values)
         realized_correlations.append(float(np.mean(corr[np.triu_indices(20, k=1)])))
+        elapsed = time.perf_counter() - started
 
     average = sum(timings) / len(timings)
     result = {
