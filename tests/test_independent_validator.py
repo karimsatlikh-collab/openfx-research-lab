@@ -50,7 +50,7 @@ class IndependentValidatorTests(unittest.TestCase):
             "job_id": "job-001",
             "status": "COMPLETED",
             "evidence_level": "synthetic",
-            "timestamps": {"finished_at_utc": "2026-10-30T11:59:30Z"},
+            "timestamps": {"finished_at_utc": "2026-10-30T11:58:30Z"},
             "inputs": {
                 "job_spec_sha256": job_digest,
                 "implementation_sha256": "a" * 64,
