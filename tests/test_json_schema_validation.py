@@ -54,6 +54,16 @@ EXAMPLES = {
         "outputs": [{"name": "summary.json", "sha256": HASH, "media_type": "application/json"}],
         "error": None,
     },
+    "frozen-trial-v1.schema.json": {
+        "schema_version": 1, "evidence_level": "synthetic",
+        "source_ref": {"source_id": "source-1", "exact_locator": "fixture://source/1", "content_sha256": HASH},
+        "source_record_sha256": HASH, "claim_sha256": HASH, "hypothesis_sha256": HASH,
+        "claim_id": "claim-1", "hypothesis_id": "hyp-1", "hypothesis_status": "hypothesis",
+        "family_id": "family-1", "trial_id": "trial-1",
+        "engine": "openfx.synthetic_engine.run_synthetic",
+        "engine_parameters": {"seed": 1, "n": 20, "edge": 0.0, "noise": 1.0},
+        "gate_config": {"frozen_before_trials": True}, "frozen_sha256": HASH,
+    },
     "source-record-v1.schema.json": {
         "source_id": "fixture-source-1", "identity": "local fixture",
         "rights_basis": "owner_created", "permission_evidence": "created for tests",
