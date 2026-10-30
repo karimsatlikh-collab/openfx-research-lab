@@ -51,6 +51,9 @@ class M3V2CalibrationContractTests(unittest.TestCase):
         self.assertIn('"runner_revision": runner_revision', provenance)
         self.assertIn('parser.add_argument("--plan-file", required=True)', aggregator)
         self.assertIn('reference.get("runner_revision") != cells[0]["runner_revision"]', aggregator)
+        self.assertIn("aggregator_git_blob", aggregator)
+        self.assertIn("reference_check_git_blob", aggregator)
+        self.assertIn("source_provenance", aggregator)
         self.assertIn('git', provenance)
         self.assertIn("hash-object", provenance)
 
