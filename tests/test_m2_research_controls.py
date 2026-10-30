@@ -90,6 +90,47 @@ class GateTests(unittest.TestCase):
         with self.assertRaises(GateConfigError):
             evaluate_synthetic_summary(summary, config, trial_count=1)
 
+    def test_gate_rejects_boolean_trial_and_family_counts(self):
+        summary = run_synthetic(seed=3, n=30)
+        config = {"frozen_before_trials": True,
+                  "trial_family_policy": {"max_trials": 5},
+                  "gate_id": "strict", "version": "1",
+                  "multiple_testing_method": "other_pre_registered",
+                  "acceptance_thresholds": {"min_sample_size": 10}}
+        with self.assertRaisesRegex(GateConfigError, "trial_count"):
+            evaluate_synthetic_summary(summary, config, trial_count=True)
+        config["trial_family_policy"]["max_trials"] = True
+        with self.assertRaisesRegex(GateConfigError, "max_trials"):
+            evaluate_synthetic_summary(summary, config, trial_count=1)
+
+    def test_gate_rejects_non_numeric_and_non_finite_thresholds(self):
+        summary = run_synthetic(seed=4, n=30)
+        config = {"frozen_before_trials": True,
+                  "trial_family_policy": {"max_trials": 5},
+                  "gate_id": "strict", "version": "1",
+                  "multiple_testing_method": "other_pre_registered",
+                  "acceptance_thresholds": {"min_mean_return": "0.1"}}
+        with self.assertRaisesRegex(GateConfigError, "finite number"):
+            evaluate_synthetic_summary(summary, config, trial_count=1)
+        config["acceptance_thresholds"]["min_mean_return"] = float("nan")
+        with self.assertRaisesRegex(GateConfigError, "finite number"):
+            evaluate_synthetic_summary(summary, config, trial_count=1)
+
+    def test_gate_rejects_invalid_summary_metrics(self):
+        summary = run_synthetic(seed=5, n=30)
+        config = {"frozen_before_trials": True,
+                  "trial_family_policy": {"max_trials": 5},
+                  "gate_id": "strict", "version": "1",
+                  "multiple_testing_method": "other_pre_registered",
+                  "acceptance_thresholds": {"min_mean_return": 0.1}}
+        summary["mean_return"] = float("inf")
+        with self.assertRaisesRegex(GateConfigError, "summary mean_return"):
+            evaluate_synthetic_summary(summary, config, trial_count=1)
+        summary["mean_return"] = 0.2
+        summary["sample_size"] = True
+        with self.assertRaisesRegex(GateConfigError, "sample_size"):
+            evaluate_synthetic_summary(summary, config, trial_count=1)
+
 
 class RegistryTests(unittest.TestCase):
     def test_hash_chain_and_idempotent_retry(self):
