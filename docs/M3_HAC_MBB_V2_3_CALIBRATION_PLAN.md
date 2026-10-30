@@ -77,7 +77,7 @@ This replaces the empirical-p-value copula as the primary family-level acceptanc
 For Gaussian innovation generators, each time step uses a common-factor innovation construction:
 `epsilon[j,t] = sqrt(rho)*factor[t] + sqrt(1-rho)*idiosyncratic[j,t]`.
 
-For Student-t generators, use a multivariate-t(5) innovation construction: correlated Gaussian factor innovations divided by a common chi-square scale per time step, scaled to unit marginal variance. AR(1) and GARCH recursions are applied after the correlated innovations are generated. The runner records realized average pairwise return correlation for every family; for GARCH it may differ from the innovation-correlation parameter rho.
+For Student-t generators, use a multivariate-t(5) innovation construction: correlated Gaussian factor innovations divided by a common chi-square scale per time step, scaled to unit marginal variance. Because the common chi-square scale is shared across trials, rho=0 means zero linear correlation, not full statistical independence; the multivariate-t cells intentionally retain common-scale tail dependence. AR(1) and GARCH recursions are applied after the correlated innovations are generated. The runner records realized average pairwise return correlation for every family; for GARCH it may differ from the innovation-correlation parameter rho.
 
 The independent calibration runner must record the exact generation method, seed, return-series hash, family membership, frozen M3 engine revision, and runner revision for every generated family. These engine/runner revisions identify the calibration implementation; they are not a strategy source revision. Separately, the production evaluator requires each real trial validation payload to match the strategy source_revision frozen in its family manifest. This dependence construction is synthetic and does not claim to reproduce every empirical strategy-correlation structure.
 
@@ -179,7 +179,7 @@ Run each cell as a separate immutable artifact. Required filenames:
 Example command:
 
 ```bash
-python research/m3_hac_mbb_v2_calibration.py --phase family-null --generator N3_AR1_GAUSSIAN --rho 0.5 --plan-file docs/M3_HAC_MBB_V2_CALIBRATION_PLAN.md --engine-revision 087e66622f27350f1999d2e5b2ec82a9ead78982 --output artifacts/m3-v2/family-null-N3_AR1_GAUSSIAN-rho-0p5.json
+python research/m3_hac_mbb_v2_calibration.py --phase family-null --generator N3_AR1_GAUSSIAN --rho 0.5 --plan-file docs/M3_HAC_MBB_V2_3_CALIBRATION_PLAN.md --engine-revision 087e66622f27350f1999d2e5b2ec82a9ead78982 --output artifacts/m3-v2.0.3/family-null-N3_AR1_GAUSSIAN-rho-0p5.json
 ```
 
 Run all 40 cells (5 marginal-null + 5 marginal-MDE + 15 family-null + 15 family-MDE). Do not overwrite a cell artifact. A rerun must use a new campaign directory and preserve the original outcome.
@@ -187,7 +187,7 @@ Run all 40 cells (5 marginal-null + 5 marginal-MDE + 15 family-null + 15 family-
 After all 40 cell files exist, aggregate and validate them:
 
 ```bash
-python research/aggregate_m3_hac_mbb_v2.py --input-dir artifacts/m3-v2 --plan-file docs/M3_HAC_MBB_V2_CALIBRATION_PLAN.md --reference-check artifacts/m3-v2/reference-check.json --output artifacts/m3-v2/campaign-summary.json
+python research/aggregate_m3_hac_mbb_v2.py --input-dir artifacts/m3-v2 --plan-file docs/M3_HAC_MBB_V2_3_CALIBRATION_PLAN.md --reference-check artifacts/m3-v2.0.3/reference-check.json --output artifacts/m3-v2.0.3/campaign-summary.json
 ```
 
 The runner computes the plan SHA-256 from the actual plan file and verifies that the plan, runner, and engine files match the clean Git checkout. The runner revision is taken from `HEAD`, not caller-supplied metadata; the engine revision must resolve to a commit containing the exact checked-out engine file. The reference check records the same provenance. The aggregator recomputes the plan hash, verifies the clean checkout and exact source bindings, and checks reference/cell provenance, cell hashes, complete seed sequences, return hashes, trial membership, realized family correlations, all cell counts, and frozen acceptance thresholds. A missing, failed, overwritten, or inconsistent cell prevents a valid campaign summary.
