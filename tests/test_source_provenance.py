@@ -117,6 +117,31 @@ class ClaimAndHypothesisBindingTests(unittest.TestCase):
         self.assertFalse(card["is_verified_rule"])
         self.assertEqual(card["linked_claims"][0]["source_ref"], claim["source_ref"])
 
+    def test_hypothesis_rejects_missing_claim_id_and_unverified_claim_state(self):
+        valid = {
+            "claim_kind": "source_backed",
+            "claim_id": "claim-valid",
+            "provenance_state": "test_confirmed",
+            "source_ref": {
+                "source_id": "source-valid",
+                "exact_locator": LOCATOR,
+                "content_sha256": "a" * 64,
+            },
+        }
+        missing_id = dict(valid)
+        missing_id.pop("claim_id")
+        with self.assertRaisesRegex(ProvenanceError, "claim_id"):
+            build_hypothesis_card(
+                hypothesis_id="hyp-4", title="T", falsifiable_statement="F",
+                linked_claims=[missing_id], predicted_mechanism="M", invalidation_criteria="I",
+            )
+        unverified = dict(valid, provenance_state="hypothesis")
+        with self.assertRaisesRegex(ProvenanceError, "source-backed"):
+            build_hypothesis_card(
+                hypothesis_id="hyp-5", title="T", falsifiable_statement="F",
+                linked_claims=[unverified], predicted_mechanism="M", invalidation_criteria="I",
+            )
+
     def test_hypothesis_rejects_unlinked_or_non_source_claim(self):
         with self.assertRaisesRegex(ProvenanceError, "at least one"):
             build_hypothesis_card(

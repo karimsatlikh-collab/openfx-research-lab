@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -49,13 +50,16 @@ def freeze_trial(*, source_record: dict[str, Any], source_content: bytes,
         for item in hypothesis["linked_claims"]
     ):
         raise ValueError("hypothesis does not bind the supplied claim")
-    if not family_id or not trial_id:
-        raise ValueError("family_id and trial_id are required")
+    if (not isinstance(family_id, str) or not family_id.strip()
+            or not isinstance(trial_id, str) or not trial_id.strip()):
+        raise ValueError("family_id and trial_id must be non-empty strings")
     if isinstance(seed, bool) or not isinstance(seed, int) or isinstance(n, bool) or not isinstance(n, int) or n < 1:
         raise ValueError("seed must be an integer and n must be a positive integer")
-    if not isinstance(edge, (int, float)) or not isinstance(noise, (int, float)) or noise < 0:
-        raise ValueError("edge/noise parameters are invalid")
-    if gate_config.get("frozen_before_trials") is not True:
+    if (isinstance(edge, bool) or not isinstance(edge, (int, float)) or not math.isfinite(float(edge))
+            or isinstance(noise, bool) or not isinstance(noise, (int, float))
+            or not math.isfinite(float(noise)) or noise < 0):
+        raise ValueError("edge/noise parameters must be finite numbers and noise must be non-negative")
+    if not isinstance(gate_config, dict) or gate_config.get("frozen_before_trials") is not True:
         raise ValueError("gate configuration must be frozen before trials")
     body = {
         "schema_version": 1,
