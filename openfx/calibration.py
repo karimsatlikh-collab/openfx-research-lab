@@ -161,7 +161,8 @@ def run_campaign() -> dict[str, Any]:
     """Run all 20,000 pre-registered replicates and return raw plus aggregate data."""
     cells = []
     for allocation in seed_cells():
-        cells.append(run_cell(**allocation))
+        cell_args = {key: value for key, value in allocation.items() if key != "seed_end"}
+        cells.append(run_cell(**cell_args))
     null_ok = all(cell["acceptance"] is True for cell in cells if cell["kind"] == "null")
     mde_ok = all(cell["acceptance"] is True for cell in cells
                  if cell["kind"] == "power" and cell["effect"] == MDE)
