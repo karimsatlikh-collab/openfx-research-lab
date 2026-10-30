@@ -158,8 +158,14 @@ def _validate_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
         raise SelectionBiasError("frozen_at_utc must be ISO-8601") from exc
     if frozen_at.tzinfo is None or frozen_at.utcoffset() is None:
         raise SelectionBiasError("frozen_at_utc must include an explicit timezone")
-    if not isinstance(manifest["family_id"], str) or not isinstance(manifest["max_trials"], int) or isinstance(manifest["max_trials"], bool) or manifest["max_trials"] < 1:
-        raise SelectionBiasError("invalid family_id or max_trials")
+    string_fields = ("family_id", "data_profile_id", "cost_profile_id",
+                     "validation_split_id", "return_frequency", "source_revision")
+    if any(not isinstance(manifest[key], str) or not manifest[key].strip()
+           for key in string_fields):
+        raise SelectionBiasError("family and input binding fields must be non-empty strings")
+    if (not isinstance(manifest["max_trials"], int)
+            or isinstance(manifest["max_trials"], bool) or manifest["max_trials"] < 1):
+        raise SelectionBiasError("max_trials must be a positive integer")
     alpha = manifest.get("alpha", DEFAULT_ALPHA)
     reps = manifest.get("bootstrap_replicates", DEFAULT_REPLICATES)
     minimum = manifest.get("min_observations", DEFAULT_MIN_OBSERVATIONS)
@@ -180,6 +186,8 @@ def evaluate_registered_family(*, registry: Any, manifest: dict[str, Any]) -> di
     snapshot = registry.family_snapshot(manifest["family_id"])
     if not isinstance(snapshot, dict) or snapshot.get("valid") is not True:
         raise SelectionBiasError("registry family snapshot is invalid")
+    if snapshot.get("family_id") != manifest["family_id"]:
+        raise SelectionBiasError("registry snapshot family_id does not match the frozen manifest")
     trials = snapshot.get("trials")
     if not isinstance(trials, list) or not trials:
         raise SelectionBiasError("family has no registered trials")
@@ -188,7 +196,11 @@ def evaluate_registered_family(*, registry: Any, manifest: dict[str, Any]) -> di
     trial_ids = [row.get("trial_id") for row in trials if isinstance(row, dict)]
     if len(trial_ids) != len(trials) or len(set(trial_ids)) != len(trial_ids):
         raise SelectionBiasError("registry snapshot contains malformed or duplicate trial IDs")
-    ordered_trials = sorted(trials, key=lambda row: (row.get("trial_index", 0), row["trial_id"]))
+    indices = [row.get("trial_index") for row in trials]
+    if any(isinstance(index, bool) or not isinstance(index, int) or index < 1
+           for index in indices) or sorted(indices) != list(range(1, len(trials) + 1)):
+        raise SelectionBiasError("registry trial_index values must be unique and contiguous from one")
+    ordered_trials = sorted(trials, key=lambda row: (row["trial_index"], row["trial_id"]))
     manifest_digest = sha256_json(manifest)
     for row in ordered_trials:
         registration = row.get("registration_payload")
