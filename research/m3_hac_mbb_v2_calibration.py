@@ -10,6 +10,7 @@ import argparse
 import hashlib
 import json
 import math
+import os
 import platform
 import random
 import sys
@@ -19,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from research.m3_calibration_provenance import verify_execution_bindings
+from research.m3_calibration_provenance import verify_execution_bindings, verify_benchmark_report
 
 import numba
 import numpy as np
@@ -224,7 +225,7 @@ def _wilson(successes: int, total: int) -> dict:
 
 def run_marginal_cell(generator_id: str, alternative: bool,
                       plan_sha256: str, engine_revision: str,
-                      runner_revision: str) -> dict:
+                      runner_revision: str, benchmark_info: dict) -> dict:
     gi = GENERATORS.index(generator_id)
     count = MARGINAL_MDE_REPLICATES if alternative else MARGINAL_NULL_REPLICATES
     data_base = 3_400_000_000 if alternative else 3_300_000_000
@@ -255,7 +256,7 @@ def run_marginal_cell(generator_id: str, alternative: bool,
         "phase": "marginal_mde" if alternative else "marginal_null",
         "generator": generator_id, "effect": MDE if alternative else 0.0,
         "engine_revision": engine_revision, "runner_revision": runner_revision,
-        "plan_sha256": plan_sha256, "runtime": _runtime(),
+        "plan_sha256": plan_sha256, **benchmark_info, "runtime": _runtime(),
         "settings": {"n": N, "alpha": ALPHA, "bootstrap_replicates": BOOTSTRAP_REPLICATES,
                      "block_length": BLOCK_LENGTH, "hac_lag": HAC_LAG,
                      "max_observations": 100_000, "max_trials": 10_000,
@@ -271,7 +272,7 @@ def run_marginal_cell(generator_id: str, alternative: bool,
 
 def run_family_cell(generator_id: str, rho: float, alternative: bool,
                     plan_sha256: str, engine_revision: str,
-                    runner_revision: str) -> dict:
+                    runner_revision: str, benchmark_info: dict) -> dict:
     gi = GENERATORS.index(generator_id)
     ci = CORRELATIONS.index(rho)
     data_base = 3_600_000_000 if alternative else 3_500_000_000
@@ -353,7 +354,8 @@ def run_family_cell(generator_id: str, rho: float, alternative: bool,
 
 def _runtime() -> dict:
     return {"python": sys.version.split()[0], "numpy": np.__version__,
-            "numba": numba.__version__, "platform": platform.platform()}
+            "numba": numba.__version__, "platform": platform.platform(),
+            "cpu_count": os.cpu_count()}
 
 
 def main() -> None:
@@ -364,6 +366,8 @@ def main() -> None:
     parser.add_argument("--rho", type=float, choices=CORRELATIONS)
     parser.add_argument("--plan-file", required=True)
     parser.add_argument("--engine-revision", required=True)
+    parser.add_argument("--benchmark-report", required=True)
+    parser.add_argument("--max-cpu-hours", type=float, required=True)
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
     output = Path(args.output)
@@ -373,6 +377,9 @@ def main() -> None:
     )
     plan_sha256 = provenance["plan_sha256"]
     runner_revision = provenance["runner_revision"]
+    benchmark_info = verify_benchmark_report(
+        Path(args.benchmark_report), provenance, _runtime(), args.max_cpu_hours
+    )
     if output.exists():
         raise SystemExit(f"refusing to overwrite existing cell artifact: {output}")
     family_phase = args.phase.startswith("family-")
@@ -382,7 +389,7 @@ def main() -> None:
         raise SystemExit("--rho is only valid for family phases")
     if args.phase == "marginal-null":
         cell = run_marginal_cell(args.generator, False, plan_sha256,
-                                 provenance['engine_revision'], runner_revision)
+                                 provenance['engine_revision'], runner_revision, benchmark_info)
     elif args.phase == "marginal-mde":
         cell = run_marginal_cell(args.generator, True, plan_sha256,
                                  provenance['engine_revision'], runner_revision)
