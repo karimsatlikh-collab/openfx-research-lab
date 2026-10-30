@@ -45,6 +45,7 @@ def _check_marginal(cell: dict, phase: str, generator: str, generator_index: int
     expected_count = 5000 if phase == "null" else 1000
     if (cell.get("phase") != expected_phase or cell.get("generator") != generator
             or cell.get("plan_id") != "M3-HAC-MBB-CALIBRATION-V2-1"
+            or cell.get("method_id") != "M3-HOLM-HAC-MBB-V2"
             or cell.get("method_version") != "2.0.1"):
         raise ValueError("marginal cell identity/method version mismatch")
     if cell.get("failed_replicates") != 0:
@@ -157,6 +158,10 @@ def aggregate(input_dir: Path, output_path: Path, reference_path: Path) -> dict:
     plan_hash = cells[0]["plan_sha256"]
     if not isinstance(plan_hash, str) or len(plan_hash) != 64:
         raise ValueError("invalid plan SHA-256")
+    for key in ("engine_revision", "runner_revision"):
+        revision = cells[0][key]
+        if not isinstance(revision, str) or len(revision) not in (40, 64) or any(ch not in "0123456789abcdef" for ch in revision):
+            raise ValueError(f"invalid {key} Git SHA")
 
     marginal_null_checks = {}
     for generator, cell in marginal_null.items():
