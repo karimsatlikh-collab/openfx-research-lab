@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from openfx.selection_bias import (
@@ -30,9 +31,15 @@ def _manifest(**overrides):
     return value
 
 
+def _timestamps(length, start="2025-01-01"):
+    origin = datetime.fromisoformat(start).replace(tzinfo=timezone.utc)
+    return [(origin + timedelta(days=i)).isoformat().replace("+00:00", "Z")
+            for i in range(length)]
+
+
 def _payload(returns, *, timestamps=None, **overrides):
     if timestamps is None:
-        timestamps = [f"2025-01-{i + 1:02d}T00:00:00Z" for i in range(len(returns))]
+        timestamps = _timestamps(len(returns))
     validation = {
         "returns": returns,
         "returns_sha256": sha256_json([float(x) for x in returns]),
@@ -117,8 +124,8 @@ class M3SelectionBiasTests(unittest.TestCase):
     def test_alignment_mismatch_is_excluded_not_silently_used(self):
         a = [0.1 + ((i % 5) - 2) * 0.03 for i in range(70)]
         b = [0.2 + ((i % 5) - 2) * 0.03 for i in range(70)]
-        times_a = [f"2025-02-{i + 1:02d}" for i in range(70)]
-        times_b = [f"2025-03-{i + 1:02d}" for i in range(70)]
+        times_a = _timestamps(70, "2025-02-01")
+        times_b = _timestamps(70, "2025-03-01")
         trials = [
             {"trial_id": "a", "trial_index": 1, "outcome": "completed",
              "payload": _payload(a, timestamps=times_a)},
@@ -146,6 +153,31 @@ class M3SelectionBiasTests(unittest.TestCase):
             verdict["exclusions"]["tampered"],
             "return_artifact_hash_mismatch_counted_with_p1",
         )
+
+    def test_invalid_or_non_monotonic_timestamps_are_ineligible(self):
+        returns = [0.1 + ((i % 7) - 3) * 0.01 for i in range(80)]
+        invalid = _timestamps(80)
+        invalid[12] = "2025-99-99T00:00:00Z"
+        manifest = _manifest()
+        registry = FakeRegistry([{
+            "trial_id": "bad-time", "trial_index": 1, "outcome": "completed",
+            "payload": _payload(returns, timestamps=invalid),
+        }], manifest)
+        verdict = evaluate_registered_family(registry=registry, manifest=manifest)
+        self.assertEqual(verdict["decision"], "BLOCKED")
+        self.assertEqual(verdict["exclusions"]["bad-time"],
+                         "invalid_or_degenerate_returns_counted_with_p1")
+
+        duplicate = _timestamps(80)
+        duplicate[20] = duplicate[19]
+        registry = FakeRegistry([{
+            "trial_id": "duplicate-time", "trial_index": 1, "outcome": "completed",
+            "payload": _payload(returns, timestamps=duplicate),
+        }], manifest)
+        verdict = evaluate_registered_family(registry=registry, manifest=manifest)
+        self.assertEqual(verdict["decision"], "BLOCKED")
+        self.assertEqual(verdict["exclusions"]["duplicate-time"],
+                         "invalid_or_degenerate_returns_counted_with_p1")
 
     def test_manifest_requires_frozen_configuration(self):
         manifest = _manifest(frozen_before_trials=False)
