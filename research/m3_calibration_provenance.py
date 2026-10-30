@@ -8,11 +8,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 FROZEN_ENGINE_REVISION = "087e66622f27350f1999d2e5b2ec82a9ead78982"
 EXPECTED_GIT_BLOBS = {
-    "docs/M3_HAC_MBB_V2_CALIBRATION_PLAN.md": "a4d1cbc6598c727600e7aa3af4bce22374a33791",
-    "research/m3_hac_mbb_v2_calibration.py": "7b1d6d628cddf42ac126be7a6378583727d8e5e8",
+    "docs/M3_HAC_MBB_V2_3_CALIBRATION_PLAN.md": "c88a2a9c5e74d988feac70465e04e5689eb53492",
+    "research/m3_hac_mbb_v2_calibration.py": "0a952e210e38db28e319b2d43e8e1ec776173ee3",
     "openfx/selection_bias_v2.py": "72a69166e8121e7d866baa7cb77479975dd04161",
-    "research/aggregate_m3_hac_mbb_v2.py": "72e0a78f3850d8041b303cac049df3f2426fbc16",
+    "research/aggregate_m3_hac_mbb_v2.py": "1d46f40bbcb0e06f1a240cc6fca9b28e1653e9a2",
     "research/validate_m3_v2_reference.py": "5eee54aedcb0054e07f2f23fe7551057106d396a",
+    "research/benchmark_m3_v2_family.py": "885d748eeb211cf62bbc86b5f590bf87ac393c73",
 }
 
 
@@ -37,7 +38,7 @@ def verify_execution_bindings(
     aggregator_file = ROOT / "research" / "aggregate_m3_hac_mbb_v2.py"
     reference_file = ROOT / "research" / "validate_m3_v2_reference.py"
     paths = [p.relative_to(ROOT).as_posix() for p in
-             (plan_file, runner_file, engine_file, aggregator_file, reference_file)]
+             (plan_file, runner_file, engine_file, aggregator_file, reference_file,\n              ROOT / "research" / "benchmark_m3_v2_family.py")]
     for path in paths:
         worktree_blob = _git("hash-object", path)
         committed_blob = _git("rev-parse", f"HEAD:{path}")
@@ -65,4 +66,5 @@ def verify_execution_bindings(
         "runner_git_blob": _git("rev-parse", f"HEAD:{paths[1]}"),
         "aggregator_git_blob": _git("rev-parse", f"HEAD:{paths[3]}"),
         "reference_check_git_blob": _git("rev-parse", f"HEAD:{paths[4]}"),
+        "benchmark_git_blob": _git("rev-parse", f"HEAD:{paths[5]}"),
     }
