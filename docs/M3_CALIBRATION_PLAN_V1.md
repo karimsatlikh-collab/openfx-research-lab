@@ -64,8 +64,8 @@ This copula stress is a **p-value dependence model**, not a substitute for direc
 
 - Null data seeds: `10,000,000 + generator_index*100,000 + replicate_index`.
 - Alternative data seeds: `20,000,000 + generator_index*100,000 + replicate_index`.
-- Bootstrap resampling seeds are deterministically derived from the corresponding replicate seed plus the fixed bootstrap-seed offset in the runner.
-- Copula seeds: `30,000,000 + generator_index*1,000,000 + family_size_index*100,000 + correlation_index*10,000 + replicate_index`.
+- Bootstrap resampling seed for each replicate: `40,000,000 + corresponding data seed`.
+- Copula seed per cell: `30,000,000 + generator_index*1,000,000 + family_size_index*100,000 + correlation_index*10,000`; one PCG64 stream per cell generates family indices 0 through 99,999 in order.
 - Generator order is N1, N2, N3, N4, N5; replicate indices are 0 through 999; correlation order is 0.0, 0.5, 0.9; family-size order is 5, 20.
 
 No seed is dropped or replaced. Failed replicates remain in the raw ledger with a failure reason and count toward the denominator; a campaign with any failed replicate is not accepted until rerun under a new campaign ID with all original outcomes preserved.
