@@ -123,9 +123,9 @@ class M3SelectionBiasTests(unittest.TestCase):
 
     def test_alignment_mismatch_is_excluded_not_silently_used(self):
         a = [0.1 + ((i % 5) - 2) * 0.03 for i in range(260)]
-        b = [0.2 + ((i % 5) - 2) * 0.03 for i in range(70)]
+        b = [0.2 + ((i % 5) - 2) * 0.03 for i in range(260)]
         times_a = _timestamps(260, "2025-02-01")
-        times_b = _timestamps(70, "2025-03-01")
+        times_b = _timestamps(260, "2025-03-01")
         trials = [
             {"trial_id": "a", "trial_index": 1, "outcome": "completed",
              "payload": _payload(a, timestamps=times_a)},
@@ -155,7 +155,7 @@ class M3SelectionBiasTests(unittest.TestCase):
         )
 
     def test_invalid_or_non_monotonic_timestamps_are_ineligible(self):
-        returns = [0.1 + ((i % 7) - 3) * 0.01 for i in range(80)]
+        returns = [0.1 + ((i % 7) - 3) * 0.01 for i in range(260)]
         invalid = _timestamps(260)
         invalid[12] = "2025-99-99T00:00:00Z"
         manifest = _manifest()
@@ -168,7 +168,7 @@ class M3SelectionBiasTests(unittest.TestCase):
         self.assertEqual(verdict["exclusions"]["bad-time"],
                          "invalid_or_degenerate_returns_counted_with_p1")
 
-        duplicate = _timestamps(80)
+        duplicate = _timestamps(260)
         duplicate[20] = duplicate[19]
         registry = FakeRegistry([{
             "trial_id": "duplicate-time", "trial_index": 1, "outcome": "completed",
@@ -178,6 +178,20 @@ class M3SelectionBiasTests(unittest.TestCase):
         self.assertEqual(verdict["decision"], "BLOCKED")
         self.assertEqual(verdict["exclusions"]["duplicate-time"],
                          "invalid_or_degenerate_returns_counted_with_p1")
+
+    def test_v1_rejects_mutated_statistical_parameters(self):
+        for changes in (
+            {"alpha": 0.01},
+            {"bootstrap_replicates": 999},
+            {"min_observations": 100},
+        ):
+            manifest = _manifest(**changes)
+            registry = FakeRegistry([{
+                "trial_id": "failed", "trial_index": 1, "outcome": "failed",
+            }], manifest)
+            with self.subTest(changes=changes):
+                with self.assertRaises(SelectionBiasError):
+                    evaluate_registered_family(registry=registry, manifest=manifest)
 
     def test_manifest_requires_frozen_configuration(self):
         manifest = _manifest(frozen_before_trials=False)
