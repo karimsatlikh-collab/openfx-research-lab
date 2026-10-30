@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/karimsatlikh-collab/openfx-research-lab/blob/main/schemas/atomic-claim-v1.schema.json",
+  "title": "OpenFX AtomicClaim v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "claim_id",
+    "statement",
+    "source_ref",
+    "provenance_state",
+    "claim_kind"
+  ],
+  "properties": {
+    "claim_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "statement": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id",
+        "exact_locator",
+        "content_sha256"
+      ],
+      "properties": {
+        "source_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "exact_locator": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "provenance_state": {
+      "enum": [
+        "observed",
+        "test_confirmed",
+        "independently_reproduced",
+        "code_reviewed_only"
+      ]
+    },
+    "claim_kind": {
+      "const": "source_backed"
+    }
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/karimsatlikh-collab/openfx-research-lab/blob/main/schemas/hypothesis-card-v1.schema.json",
+  "title": "OpenFX HypothesisCard v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "hypothesis_id",
+    "title",
+    "falsifiable_statement",
+    "linked_claims",
+    "predicted_mechanism",
+    "invalidation_criteria",
+    "epistemic_status",
+    "is_verified_rule",
+    "limitations"
+  ],
+  "properties": {
+    "hypothesis_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "falsifiable_statement": {
+      "type": "string",
+      "minLength": 1
+    },
+    "linked_claims": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "claim_id",
+          "source_ref",
+          "claim_provenance_state"
+        ],
+        "properties": {
+          "claim_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_ref": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "source_id",
+              "exact_locator",
+              "content_sha256"
+            ],
+            "properties": {
+              "source_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "exact_locator": {
+                "type": "string",
+                "minLength": 1
+              },
+              "content_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          },
+          "claim_provenance_state": {
+            "enum": [
+              "observed",
+              "test_confirmed",
+              "independently_reproduced",
+              "code_reviewed_only"
+            ]
+          }
+        }
+      }
+    },
+    "predicted_mechanism": {
+      "type": "string",
+      "minLength": 1
+    },
+    "invalidation_criteria": {
+      "type": "string",
+      "minLength": 1
+    },
+    "epistemic_status": {
+      "const": "hypothesis"
+    },
+    "is_verified_rule": {
+      "const": false
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

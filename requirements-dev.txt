@@ -1,0 +1,2 @@
+# Development/test dependencies for contract validation.
+jsonschema>=4.22,<5

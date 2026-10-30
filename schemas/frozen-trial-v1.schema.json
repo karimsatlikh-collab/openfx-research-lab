@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenFX FrozenTrial v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "evidence_level",
+    "source_ref",
+    "source_record_sha256",
+    "claim_sha256",
+    "hypothesis_sha256",
+    "claim_id",
+    "hypothesis_id",
+    "hypothesis_status",
+    "family_id",
+    "trial_id",
+    "engine",
+    "engine_parameters",
+    "gate_config",
+    "frozen_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "evidence_level": {
+      "const": "synthetic"
+    },
+    "source_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id",
+        "exact_locator",
+        "content_sha256"
+      ],
+      "properties": {
+        "source_id": {
+          "type": "string"
+        },
+        "exact_locator": {
+          "type": "string"
+        },
+        "content_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "source_record_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "claim_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "hypothesis_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "claim_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "hypothesis_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "hypothesis_status": {
+      "const": "hypothesis"
+    },
+    "family_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "trial_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "engine": {
+      "const": "openfx.synthetic_engine.run_synthetic"
+    },
+    "engine_parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "seed",
+        "n",
+        "edge",
+        "noise"
+      ],
+      "properties": {
+        "seed": {
+          "type": "integer"
+        },
+        "n": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "edge": {
+          "type": "number"
+        },
+        "noise": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "gate_config": {
+      "type": "object",
+      "minProperties": 1
+    },
+    "frozen_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

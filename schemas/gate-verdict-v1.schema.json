@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/karimsatlikh-collab/openfx-research-lab/blob/main/schemas/gate-verdict-v1.schema.json",
+  "title": "OpenFX Gate Verdict v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "verdict_id",
+    "run_id",
+    "decision",
+    "gate_version",
+    "gate_config_sha256",
+    "trial_family_id",
+    "trial_count_at_decision",
+    "checks",
+    "created_at_utc",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "verdict_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "decision": {
+      "enum": [
+        "pass",
+        "fail",
+        "inconclusive",
+        "not_evaluated"
+      ]
+    },
+    "gate_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "gate_config_sha256": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{64}$"
+    },
+    "trial_family_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "trial_count_at_decision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "check_id",
+          "status",
+          "description"
+        ],
+        "properties": {
+          "check_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "enum": [
+              "pass",
+              "fail",
+              "not_run",
+              "inconclusive"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "observed_value": {},
+          "threshold": {}
+        }
+      }
+    },
+    "created_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}
