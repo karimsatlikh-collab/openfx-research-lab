@@ -12,6 +12,7 @@ import math
 import platform
 import random
 import sys
+from datetime import datetime
 from numbers import Real
 from typing import Any
 
@@ -33,6 +34,25 @@ def canonical_json(value: Any) -> bytes:
 
 def sha256_json(value: Any) -> str:
     return hashlib.sha256(canonical_json(value)).hexdigest()
+
+
+def _timestamp_vector(values: Any, expected_length: int) -> list[str]:
+    if not isinstance(values, list) or len(values) != expected_length:
+        raise SelectionBiasError("timestamps must align one-to-one with returns")
+    parsed = []
+    for value in values:
+        if not isinstance(value, str) or not value:
+            raise SelectionBiasError("timestamps must be non-empty ISO-8601 strings")
+        try:
+            stamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise SelectionBiasError("timestamp is not valid ISO-8601") from exc
+        if stamp.tzinfo is None or stamp.utcoffset() is None:
+            raise SelectionBiasError("timestamps must include an explicit timezone")
+        parsed.append(stamp)
+    if any(right <= left for left, right in zip(parsed, parsed[1:])):
+        raise SelectionBiasError("timestamps must be unique and strictly increasing")
+    return values
 
 
 def _finite_vector(values: Any) -> list[float]:
@@ -131,6 +151,12 @@ def _validate_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
     for key in required:
         if key not in manifest or manifest[key] in (None, ""):
             raise SelectionBiasError(f"manifest missing {key}")
+    try:
+        frozen_at = datetime.fromisoformat(str(manifest["frozen_at_utc"]).replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise SelectionBiasError("frozen_at_utc must be ISO-8601") from exc
+    if frozen_at.tzinfo is None or frozen_at.utcoffset() is None:
+        raise SelectionBiasError("frozen_at_utc must include an explicit timezone")
     if not isinstance(manifest["family_id"], str) or not isinstance(manifest["max_trials"], int) or isinstance(manifest["max_trials"], bool) or manifest["max_trials"] < 1:
         raise SelectionBiasError("invalid family_id or max_trials")
     alpha = manifest.get("alpha", DEFAULT_ALPHA)
@@ -203,13 +229,8 @@ def evaluate_registered_family(*, registry: Any, manifest: dict[str, Any]) -> di
             if len(values) < settings["min_observations"]:
                 exclusions[trial_id] = "insufficient_observations_counted_with_p1"
                 continue
-            timestamps = validation.get("timestamps")
-            if not isinstance(timestamps, list) or len(timestamps) != len(values) or any(not isinstance(t, str) or not t for t in timestamps):
-                exclusions[trial_id] = "invalid_timestamps_counted_with_p1"
-                continue
-            if timestamps_ref is None:
-                timestamps_ref = timestamps
-            elif timestamps != timestamps_ref:
+            timestamps = _timestamp_vector(validation.get("timestamps"), len(values))
+            if timestamps_ref is not None and timestamps != timestamps_ref:
                 exclusions[trial_id] = "unaligned_timestamps_counted_with_p1"
                 continue
             digest = sha256_json(values)
@@ -220,6 +241,8 @@ def evaluate_registered_family(*, registry: Any, manifest: dict[str, Any]) -> di
         except (SelectionBiasError, TypeError):
             exclusions[trial_id] = "invalid_or_degenerate_returns_counted_with_p1"
             continue
+        if timestamps_ref is None:
+            timestamps_ref = timestamps
         eligible_series[trial_id] = values
         artifact_hashes[trial_id] = digest
     if not eligible_series:
