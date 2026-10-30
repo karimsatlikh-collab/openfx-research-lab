@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import hashlib
+import json
+import math
 import subprocess
 from pathlib import Path
 
@@ -67,4 +69,53 @@ def verify_execution_bindings(
         "aggregator_git_blob": _git("rev-parse", f"HEAD:{paths[3]}"),
         "reference_check_git_blob": _git("rev-parse", f"HEAD:{paths[4]}"),
         "benchmark_git_blob": _git("rev-parse", f"HEAD:{paths[5]}"),
+    }
+
+
+
+def verify_benchmark_report(
+    report_file: Path,
+    provenance: dict,
+    runtime: dict,
+    max_cpu_hours: float,
+) -> dict:
+    """Require a same-host, same-source, hashed performance preflight."""
+    if (isinstance(max_cpu_hours, bool) or not isinstance(max_cpu_hours, (int, float))
+            or not math.isfinite(float(max_cpu_hours)) or float(max_cpu_hours) <= 0):
+        raise ValueError("max_cpu_hours must be a finite positive number")
+    report = json.loads(Path(report_file).read_text(encoding="utf-8"))
+    claimed = report.get("benchmark_sha256")
+    unhashed = dict(report)
+    unhashed.pop("benchmark_sha256", None)
+    canonical = json.dumps(unhashed, sort_keys=True, separators=(",", ":"),
+                           ensure_ascii=False, allow_nan=False).encode("utf-8")
+    actual = hashlib.sha256(canonical).hexdigest()
+    if claimed != actual:
+        raise ValueError("benchmark report hash is invalid")
+    if (report.get("evidence_class") != "performance_preflight_only_not_calibration"
+            or report.get("plan_id") != "M3-HAC-MBB-CALIBRATION-V2-3"):
+        raise ValueError("benchmark report is not the required v2.0.3 performance preflight")
+    provenance_keys = (
+        "plan_sha256", "engine_revision", "runner_revision", "plan_git_blob",
+        "engine_git_blob", "runner_git_blob", "aggregator_git_blob",
+        "reference_check_git_blob", "benchmark_git_blob",
+    )
+    if any(report.get(key) != provenance.get(key) for key in provenance_keys):
+        raise ValueError("benchmark report source/plan provenance does not match this checkout")
+    if report.get("runtime") != runtime or report.get("platform") != runtime.get("platform"):
+        raise ValueError("benchmark and calibration runtime/platform must match exactly")
+    if (report.get("timed_bootstrap_replicates") != 9999
+            or isinstance(report.get("timed_families"), bool)
+            or not isinstance(report.get("timed_families"), int)
+            or report["timed_families"] < 3):
+        raise ValueError("benchmark must time at least three full 9999-replicate families")
+    estimate = report.get("estimated_campaign_cpu_hours")
+    if isinstance(estimate, bool) or not isinstance(estimate, (int, float)) or not math.isfinite(estimate) or estimate <= 0:
+        raise ValueError("benchmark CPU-hour estimate is missing or invalid")
+    if estimate > float(max_cpu_hours):
+        raise ValueError("benchmark CPU-hour estimate exceeds the explicitly approved budget")
+    return {
+        "benchmark_sha256": claimed,
+        "benchmark_estimated_cpu_hours": float(estimate),
+        "approved_max_cpu_hours": float(max_cpu_hours),
     }
