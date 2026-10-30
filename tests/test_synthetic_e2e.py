@@ -5,7 +5,11 @@ from unittest import mock
 from pathlib import Path
 
 from openfx.source_provenance import build_source_record, build_atomic_claim, build_hypothesis_card
-from openfx.synthetic_e2e import freeze_trial, run_synthetic_reproduction, verify_frozen_trial
+from openfx.synthetic_e2e import (
+    canonical_bytes, freeze_trial, run_synthetic_reproduction,
+    sha256_bytes, verify_frozen_trial,
+)
+from openfx.statistical_gate import GateConfigError
 from openfx.trial_registry import LocalTrialRegistry
 
 CONTENT = b"OpenFX local synthetic source fixture."
@@ -106,6 +110,21 @@ class SyntheticEndToEndTests(unittest.TestCase):
         spec["source_ref"]["content_sha256"] = "0" * 64
         with self.assertRaisesRegex(ValueError, "hash mismatch"):
             verify_frozen_trial(spec)
+
+    def test_gate_input_error_is_preserved_and_trial_is_marked_failed(self):
+        spec = frozen()
+        spec["gate_config"]["acceptance_thresholds"]["min_sample_size"] = True
+        body = {key: value for key, value in spec.items() if key != "frozen_sha256"}
+        spec["frozen_sha256"] = sha256_bytes(canonical_bytes(body))
+        with tempfile.TemporaryDirectory() as tmp:
+            registry = LocalTrialRegistry(Path(tmp) / "registry.jsonl")
+            with self.assertRaisesRegex(GateConfigError, "min_sample_size"):
+                run_synthetic_reproduction(
+                    frozen=spec, registry=registry, workspace=Path(tmp) / "runs"
+                )
+            rows = registry._read_and_verify()
+            self.assertEqual([row["outcome"] for row in rows], ["pending", "failed"])
+            self.assertEqual(rows[-1]["event_id"], "trial-e2e-1-failed")
 
 
 if __name__ == "__main__":
