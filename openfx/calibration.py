@@ -94,7 +94,9 @@ def wilson_interval(successes: int, trials: int, *, z: float = WILSON_Z_95) -> t
     radius = (z / denominator) * math.sqrt(
         p * (1.0 - p) / trials + z2 / (4.0 * trials * trials)
     )
-    return max(0.0, center - radius), min(1.0, center + radius)
+    lower = 0.0 if successes == 0 else max(0.0, center - radius)
+    upper = 1.0 if successes == trials else min(1.0, center + radius)
+    return lower, upper
 
 
 def seed_cells() -> list[dict[str, Any]]:
