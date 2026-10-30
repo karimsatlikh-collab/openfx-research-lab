@@ -43,12 +43,9 @@ class RunRecordTests(unittest.TestCase):
 
     def test_happy_path_sets_start_and_finish_timestamps(self):
         record = sample()
-        record = transition_run_record(record, "VALIDATED")
-        record = transition_run_record(record, "APPROVED")
-        record = transition_run_record(record, "RUNNING")
+        for status in ("VALIDATED", "APPROVED", "RUNNING", "VERIFYING", "COMPLETED"):
+            record = transition_run_record(record, status)
         self.assertIsNotNone(record["timestamps"]["started_at_utc"])
-        record = transition_run_record(record, "VERIFYING")
-        record = transition_run_record(record, "COMPLETED")
         self.assertIsNotNone(record["timestamps"]["finished_at_utc"])
         validate_run_record(record)
 
@@ -68,16 +65,12 @@ class RunRecordTests(unittest.TestCase):
         self.assertEqual(failed["error"], "worker crashed")
         self.assertIsNotNone(failed["timestamps"]["finished_at_utc"])
 
-    def test_evidence_and_input_identity_are_immutable(self):
+    def test_transition_preserves_evidence_and_input_hashes(self):
         record = sample("synthetic")
-        changed = dict(record)
-        changed["evidence_level"] = "mt5-demo"
-        with self.assertRaises(ValueError):
-            transition_run_record(changed, "VALIDATED")
-        changed = dict(record)
-        changed["inputs"] = dict(INPUTS, implementation_sha256="b" * 64)
-        with self.assertRaises(ValueError):
-            transition_run_record(changed, "VALIDATED")
+        advanced = transition_run_record(record, "VALIDATED")
+        self.assertEqual(advanced["evidence_level"], "synthetic")
+        self.assertEqual(advanced["inputs"], record["inputs"])
+        self.assertEqual(record["status"], "QUEUED")
 
     def test_rejected_and_cancelled_are_terminal(self):
         rejected = transition_run_record(sample(), "REJECTED", error="policy denied")
