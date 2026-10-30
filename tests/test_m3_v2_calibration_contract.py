@@ -90,6 +90,28 @@ class M3V2CalibrationContractTests(unittest.TestCase):
         self.assertIn("hash-object", provenance)
 
 
+
+    def test_all_data_bootstrap_and_benchmark_seed_intervals_are_disjoint(self):
+        bands = {
+            "marginal_null_data": (3_300_000_000, 3_300_404_999),
+            "marginal_mde_data": (3_400_000_000, 3_400_400_999),
+            "family_null_data": (3_500_000_000, 3_504_024_999),
+            "family_mde_data": (3_600_000_000, 3_604_024_999),
+            "benchmark_family": (3_950_000_000, 3_950_000_020),
+            "benchmark_bootstrap": (3_960_000_000, 3_960_000_020),
+            "marginal_null_bootstrap": (4_100_000_000, 4_100_404_999),
+            "marginal_mde_bootstrap": (4_200_000_000, 4_200_400_999),
+            "family_null_bootstrap": (4_300_000_000, 4_304_024_999),
+            "family_mde_bootstrap": (4_400_000_000, 4_404_024_999),
+        }
+        items = list(bands.items())
+        for index, (left_name, (left_min, left_max)) in enumerate(items):
+            for right_name, (right_min, right_max) in items[index + 1:]:
+                self.assertFalse(
+                    max(left_min, right_min) <= min(left_max, right_max),
+                    f"seed intervals overlap: {left_name} and {right_name}",
+                )
+
     def test_benchmark_report_is_self_hashed_and_budget_gated(self):
         provenance = {
             "plan_sha256": "a" * 64,
