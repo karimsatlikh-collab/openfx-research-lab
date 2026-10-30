@@ -106,7 +106,7 @@ def _check_family(cell: dict, phase: str, generator: str, generator_index: int, 
                          "family_size_secondary": 5,
                          "estimated_bootstrap_work_per_family": 9999 * 20 * 252 * 8}
     if any(settings.get(key) != value for key, value in expected_settings.items()):
-        raise ValueError("family cell settings do not match frozen v2.0.2 plan")
+        raise ValueError("family cell settings do not match frozen v2.0.3 plan")
     if cell.get("failed_families") != 0:
         raise ValueError("family cell contains failed families")
     rows = cell.get("families")
