@@ -10,6 +10,7 @@ from pathlib import Path
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from jsonschema import Draft202012Validator
 
 from openfx.independent_validator import (
     DOMAIN, ValidationError, canonical_bytes, sha256_bytes, validate_independently,
@@ -107,6 +108,18 @@ class IndependentValidatorTests(unittest.TestCase):
         self.assertEqual(result["decision"], "PASS")
         self.assertEqual(result["verified_artifact_count"], 1)
         self.assertNotIn("synthetic_result", json.dumps(result))
+
+    def test_job_and_run_envelopes_match_versioned_schemas(self):
+        root = Path(__file__).resolve().parents[1] / "schemas"
+        for filename, document in (
+            ("independent-job-v1.schema.json", self.job),
+            ("independent-run-v1.schema.json", self.run),
+            ("executor-attestation-v1.schema.json", self.attestation),
+            ("executor-trust-store-v1.schema.json", self.trust_store),
+        ):
+            schema = json.loads((root / filename).read_text(encoding="utf-8"))
+            Draft202012Validator.check_schema(schema)
+            Draft202012Validator(schema).validate(document)
 
     def test_modified_signed_claim_is_rejected(self):
         self.attestation["engine"] = "mt5-demo"
