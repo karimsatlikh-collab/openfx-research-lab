@@ -114,3 +114,17 @@ Stop and mark the campaign inconclusive if:
 - a code change is needed after the campaign starts.
 
 A code fix requires a new source revision, a new calibration plan version, and a new campaign ID. The original campaign and its failures must remain preserved.
+
+## 9. Reproduction command
+
+The independent runner is `research/m3_calibration_v1.py`; it does not import the production gate. Install only the optional pinned research dependencies with `python -m pip install -r requirements-m3-calibration.txt`. Then run:
+
+```bash
+python research/m3_calibration_v1.py \\
+  --plan-sha256 <SHA256_OF_THIS_PLAN_FILE> \\
+  --engine-revision c08035e1de8d3047323b906011b56bb328cd2270 \\
+  --runner-revision <EXACT_RUNNER_COMMIT_SHA> \\
+  --output artifacts/m3_calibration_v1.json
+```
+
+The runner refuses to overwrite an existing artifact. Preserve the original artifact and use a new output path/campaign ID for any rerun. The runner uses an independent NumPy/Numba implementation of circular block resampling and Holm; exact random streams differ from the production module, while the resampling distribution and frozen statistical procedure are the same. This independence is intended to reduce the risk of validating an implementation with itself.
