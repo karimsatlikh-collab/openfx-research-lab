@@ -1,4 +1,4 @@
-"""Static contract checks preventing plan/runner/aggregator drift for M3 v2.0.2."""
+"""Static contract checks preventing plan/runner/aggregator drift for M3 v2.0.3."""
 from pathlib import Path
 import unittest
 
@@ -10,10 +10,12 @@ class M3V2CalibrationContractTests(unittest.TestCase):
         plan = (ROOT / "docs/M3_HAC_MBB_V2_CALIBRATION_PLAN.md").read_text(encoding="utf-8")
         runner = (ROOT / "research/m3_hac_mbb_v2_calibration.py").read_text(encoding="utf-8")
         aggregator = (ROOT / "research/aggregate_m3_hac_mbb_v2.py").read_text(encoding="utf-8")
-        self.assertIn("M3-HAC-MBB-CALIBRATION-V2-2", plan)
-        self.assertIn('"plan_id": "M3-HAC-MBB-CALIBRATION-V2-2"', runner)
+        self.assertIn("M3-HAC-MBB-CALIBRATION-V2-3", plan)
+        self.assertIn('"plan_id": "M3-HAC-MBB-CALIBRATION-V2-3"', runner)
         self.assertIn('"method_version": "2.0.2"', runner)
-        self.assertIn('"M3-HAC-MBB-CALIBRATION-V2-2"', aggregator)
+        self.assertIn("FAMILY_REPLICATES = 5000", runner)
+        self.assertIn('"families": 5000', aggregator)
+        self.assertIn('"M3-HAC-MBB-CALIBRATION-V2-3"', aggregator)
         self.assertIn('"2.0.2"', aggregator)
         self.assertNotIn("M3-HAC-MBB-CALIBRATION-V2-1", runner + aggregator)
         self.assertNotIn('"method_version": "2.0.1"', runner + aggregator)
@@ -22,9 +24,9 @@ class M3V2CalibrationContractTests(unittest.TestCase):
         runner = (ROOT / "research/m3_hac_mbb_v2_calibration.py").read_text(encoding="utf-8")
         aggregator = (ROOT / "research/aggregate_m3_hac_mbb_v2.py").read_text(encoding="utf-8")
         expected = (
-            "2_300_000_000", "2_400_000_000", "2_500_000_000",
-            "2_600_000_000", "2_700_000_000", "2_800_000_000",
-            "2_900_000_000",
+            "3_300_000_000", "3_400_000_000", "3_500_000_000",
+            "3_600_000_000", "3_700_000_000", "3_800_000_000",
+            "3_900_000_000",
         )
         for seed in expected:
             self.assertIn(seed, runner)
