@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import numpy as np
 import platform
 import sys
 import time
@@ -48,6 +49,7 @@ def run(plan_file: Path, families: int) -> dict:
     timings = []
     pvalue_outputs = []
     return_hashes = []
+    realized_correlations = []
     for index in range(families):
         seed = BENCHMARK_FAMILY_SEED_BASE + index + 1
         started = time.perf_counter()
@@ -63,6 +65,8 @@ def run(plan_file: Path, families: int) -> dict:
         timings.append(elapsed)
         pvalue_outputs.append([float(x) for x in pvalues])
         return_hashes.append(series_hashes)
+        corr = np.corrcoef(values)
+        realized_correlations.append(float(np.mean(corr[np.triu_indices(20, k=1)])))
 
     average = sum(timings) / len(timings)
     result = {
@@ -89,6 +93,7 @@ def run(plan_file: Path, families: int) -> dict:
         "return_hashes_sha256": __import__("hashlib").sha256(
             json.dumps(return_hashes, separators=(",", ":"), allow_nan=False).encode("utf-8")
         ).hexdigest(),
+        "realized_correlations": realized_correlations,
         "limitations": [
             "This measures one declared family generator on this host only.",
             "It excludes cell serialization, storage, aggregation, and process startup.",
