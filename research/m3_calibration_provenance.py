@@ -11,7 +11,7 @@ EXPECTED_GIT_BLOBS = {
     "docs/M3_HAC_MBB_V2_CALIBRATION_PLAN.md": "a4d1cbc6598c727600e7aa3af4bce22374a33791",
     "research/m3_hac_mbb_v2_calibration.py": "7b1d6d628cddf42ac126be7a6378583727d8e5e8",
     "openfx/selection_bias_v2.py": "72a69166e8121e7d866baa7cb77479975dd04161",
-    "research/aggregate_m3_hac_mbb_v2.py": "42265c3396c3233181ac88f1c3aa213c9ab83032",
+    "research/aggregate_m3_hac_mbb_v2.py": "72e0a78f3850d8041b303cac049df3f2426fbc16",
     "research/validate_m3_v2_reference.py": "5eee54aedcb0054e07f2f23fe7551057106d396a",
 }
 
