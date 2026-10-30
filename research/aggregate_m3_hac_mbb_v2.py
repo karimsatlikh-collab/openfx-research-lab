@@ -43,8 +43,10 @@ def _check_runtime_and_revisions(cells: list[dict]) -> None:
 def _check_marginal(cell: dict, phase: str, generator: str, generator_index: int) -> None:
     expected_phase = "marginal_null" if phase == "null" else "marginal_mde"
     expected_count = 5000 if phase == "null" else 1000
-    if cell.get("phase") != expected_phase or cell.get("generator") != generator:
-        raise ValueError("marginal cell identity mismatch")
+    if (cell.get("phase") != expected_phase or cell.get("generator") != generator
+            or cell.get("plan_id") != "M3-HAC-MBB-CALIBRATION-V2-1"
+            or cell.get("method_version") != "2.0.1"):
+        raise ValueError("marginal cell identity/method version mismatch")
     if cell.get("failed_replicates") != 0:
         raise ValueError("marginal cell contains failed replicates")
     rows = cell.get("replicates")
@@ -56,12 +58,14 @@ def _check_marginal(cell: dict, phase: str, generator: str, generator_index: int
         if isinstance(index, bool) or not isinstance(index, int) or not 0 <= index < expected_count or index in seen:
             raise ValueError("marginal replicate indices are malformed")
         seen.add(index)
-        data_base = 400_000_000 if phase == "mde" else 300_000_000
-        bootstrap_base = 900_000_000 if phase == "mde" else 800_000_000
+        data_base = 1_400_000_000 if phase == "mde" else 1_300_000_000
+        bootstrap_base = 1_900_000_000 if phase == "mde" else 1_800_000_000
         expected_data_seed = data_base + generator_index * 100_000 + index
         if (row.get("data_seed") != expected_data_seed
                 or row.get("bootstrap_seed") != bootstrap_base + expected_data_seed):
             raise ValueError("marginal seed map mismatch")
+        if row.get("source_revision") != cell.get("engine_revision"):
+            raise ValueError("marginal source revision does not match frozen engine revision")
         if row.get("status") != "completed" or not isinstance(row.get("returns_sha256"), str) or len(row["returns_sha256"]) != 64:
             raise ValueError("marginal replicate missing completed evidence")
         p = row.get("p_value")
@@ -73,8 +77,11 @@ def _check_marginal(cell: dict, phase: str, generator: str, generator_index: int
 
 def _check_family(cell: dict, phase: str, generator: str, generator_index: int, rho: float) -> None:
     expected_phase = "family_null" if phase == "null" else "family_mde"
-    if cell.get("phase") != expected_phase or cell.get("generator") != generator or cell.get("rho") != rho:
-        raise ValueError("family cell identity mismatch")
+    if (cell.get("phase") != expected_phase or cell.get("generator") != generator
+            or cell.get("rho") != rho
+            or cell.get("plan_id") != "M3-HAC-MBB-CALIBRATION-V2-1"
+            or cell.get("method_version") != "2.0.1"):
+        raise ValueError("family cell identity/method version mismatch")
     if cell.get("failed_families") != 0:
         raise ValueError("family cell contains failed families")
     rows = cell.get("families")
@@ -87,9 +94,9 @@ def _check_family(cell: dict, phase: str, generator: str, generator_index: int, 
             raise ValueError("family indices are malformed")
         seen.add(index)
         correlation_index = CORRELATIONS.index(rho)
-        data_base = 600_000_000 if phase == "mde" else 500_000_000
+        data_base = 1_600_000_000 if phase == "mde" else 1_500_000_000
         expected_family_seed = data_base + generator_index * 1_000_000 + correlation_index * 10_000 + index
-        if row.get("family_seed") != expected_family_seed or row.get("bootstrap_seed") != 700_000_000 + expected_family_seed:
+        if row.get("family_seed") != expected_family_seed or row.get("bootstrap_seed") != 1_700_000_000 + expected_family_seed:
             raise ValueError("family seed map mismatch")
         if row.get("status") != "completed":
             raise ValueError("family replicate is not completed")
@@ -97,6 +104,8 @@ def _check_family(cell: dict, phase: str, generator: str, generator_index: int, 
         pvalues = row.get("raw_p_values")
         if row.get("trial_ids") != [f"trial_{i:02d}" for i in range(20)]:
             raise ValueError("family trial membership/order mismatch")
+        if row.get("trial_source_revisions") != [cell.get("engine_revision")] * 20:
+            raise ValueError("family trial source revisions do not match frozen engine revision")
         if not isinstance(hashes, list) or len(hashes) != 20 or any(not isinstance(x, str) or len(x) != 64 for x in hashes):
             raise ValueError("family trial return hashes are incomplete")
         if not isinstance(pvalues, list) or len(pvalues) != 20:
@@ -188,7 +197,7 @@ def aggregate(input_dir: Path, output_path: Path, reference_path: Path) -> dict:
     }
     acceptance["accepted"] = all(acceptance.values())
     result = {
-        "plan_id": "M3-HAC-MBB-CALIBRATION-V2",
+        "plan_id": "M3-HAC-MBB-CALIBRATION-V2-1",
         "plan_sha256": plan_hash,
         "engine_revision": cells[0]["engine_revision"],
         "runner_revision": cells[0]["runner_revision"],
