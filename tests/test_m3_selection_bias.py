@@ -24,8 +24,8 @@ def _manifest(**overrides):
         "frozen_at_utc": "2026-01-01T00:00:00Z",
         "max_trials": 10,
         "alpha": 0.05,
-        "bootstrap_replicates": 199,
-        "min_observations": 30,
+        "bootstrap_replicates": 9999,
+        "min_observations": 252,
     }
     value.update(overrides)
     return value
@@ -94,7 +94,7 @@ class M3SelectionBiasTests(unittest.TestCase):
         self.assertAlmostEqual(stopped["c"]["holm_adjusted_p_value"], 0.06)
 
     def test_complete_family_counts_failed_trials_as_p_one(self):
-        returns = [0.15 + ((i % 7) - 3) * 0.01 for i in range(80)]
+        returns = [0.15 + ((i % 7) - 3) * 0.01 for i in range(260)]
         trials = [
             {"trial_id": "t1", "trial_index": 1, "outcome": "completed",
              "payload": _payload(returns)},
@@ -110,7 +110,7 @@ class M3SelectionBiasTests(unittest.TestCase):
         self.assertEqual(verdict["evidence_level"], "synthetic")
 
     def test_same_inputs_reproduce_identical_verdict(self):
-        returns = [0.1 + ((i % 9) - 4) * 0.02 for i in range(90)]
+        returns = [0.1 + ((i % 9) - 4) * 0.02 for i in range(260)]
         manifest = _manifest()
         registry = FakeRegistry([{
             "trial_id": "trial-1", "trial_index": 1, "outcome": "completed",
@@ -122,9 +122,9 @@ class M3SelectionBiasTests(unittest.TestCase):
         self.assertTrue(first["verdict_sha256"])
 
     def test_alignment_mismatch_is_excluded_not_silently_used(self):
-        a = [0.1 + ((i % 5) - 2) * 0.03 for i in range(70)]
+        a = [0.1 + ((i % 5) - 2) * 0.03 for i in range(260)]
         b = [0.2 + ((i % 5) - 2) * 0.03 for i in range(70)]
-        times_a = _timestamps(70, "2025-02-01")
+        times_a = _timestamps(260, "2025-02-01")
         times_b = _timestamps(70, "2025-03-01")
         trials = [
             {"trial_id": "a", "trial_index": 1, "outcome": "completed",
@@ -139,7 +139,7 @@ class M3SelectionBiasTests(unittest.TestCase):
         self.assertIn("unaligned_timestamps", verdict["trials"][1]["exclusion_reason"])
 
     def test_changed_returns_hash_fails_closed_to_p_one(self):
-        returns = [0.1 + ((i % 6) - 2) * 0.02 for i in range(60)]
+        returns = [0.1 + ((i % 6) - 2) * 0.02 for i in range(260)]
         payload = _payload(returns)
         payload["validation"]["returns_sha256"] = "0" * 64
         manifest = _manifest()
@@ -156,7 +156,7 @@ class M3SelectionBiasTests(unittest.TestCase):
 
     def test_invalid_or_non_monotonic_timestamps_are_ineligible(self):
         returns = [0.1 + ((i % 7) - 3) * 0.01 for i in range(80)]
-        invalid = _timestamps(80)
+        invalid = _timestamps(260)
         invalid[12] = "2025-99-99T00:00:00Z"
         manifest = _manifest()
         registry = FakeRegistry([{
@@ -201,7 +201,7 @@ class M3SelectionBiasTests(unittest.TestCase):
                             outcome="pending", payload=binding)
             registry.append(event_id="e4", family_id="family-A", trial_id="done-1",
                             outcome="completed",
-                            payload=_payload([0.1 + (i % 3) * 0.01 for i in range(40)]))
+                            payload=_payload([0.1 + (i % 3) * 0.01 for i in range(260)]))
             snapshot = registry.family_snapshot("family-A")
             self.assertTrue(snapshot["valid"])
             self.assertEqual(snapshot["trial_count"], 2)
