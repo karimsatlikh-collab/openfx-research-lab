@@ -10,12 +10,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 FROZEN_ENGINE_REVISION = "087e66622f27350f1999d2e5b2ec82a9ead78982"
 EXPECTED_GIT_BLOBS = {
-    "docs/M3_HAC_MBB_V2_3_CALIBRATION_PLAN.md": "8ba4deedfd90bcaaf489311fe7a83a025f492556",
-    "research/m3_hac_mbb_v2_calibration.py": "dccab5919636f1c1fac5d83a28336d9e15024ecb",
+    "docs/M3_HAC_MBB_V2_3_CALIBRATION_PLAN.md": "62b852f958caa7b767c35d1e7cd47a73c5c067ad",
+    "research/m3_hac_mbb_v2_calibration.py": "c2716d85c22a3eb415996ac7a26883276c7c63ba",
     "openfx/selection_bias_v2.py": "72a69166e8121e7d866baa7cb77479975dd04161",
-    "research/aggregate_m3_hac_mbb_v2.py": "0338898cb460fc2a644a00b20e59e41b18cdb3c1",
-    "research/validate_m3_v2_reference.py": "5eee54aedcb0054e07f2f23fe7551057106d396a",
-    "research/benchmark_m3_v2_family.py": "0fc0dc099a82933862ecaad1395d316d78768ab4",
+    "research/aggregate_m3_hac_mbb_v2.py": "0e8639be7316d177ab2064f302cbaa3cc24a36cb",
+    "research/validate_m3_v2_reference.py": "0ce7599e5e4ba3f17f4f10001da96103314f080b",
+    "research/benchmark_m3_v2_family.py": "5e41bebe553a54dfbdc1e7c6684bfa5774a48164",
 }
 
 
