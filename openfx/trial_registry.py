@@ -125,6 +125,34 @@ class LocalTrialRegistry:
         rows = self._read_and_verify()
         return len({row["trial_id"] for row in rows if row["family_id"] == family_id})
 
+    def family_snapshot(self, family_id: str) -> dict[str, Any]:
+        """Return every unique trial in a family, including its latest outcome/payload.
+
+        This snapshot is derived from the complete verified local ledger. It is
+        not independently authenticated against a privileged full-ledger rewrite.
+        """
+        if not isinstance(family_id, str) or not family_id.strip():
+            raise TrialRegistryError("family_id must be non-empty")
+        rows = self._read_and_verify()
+        family_rows = [row for row in rows if row["family_id"] == family_id]
+        latest: dict[str, dict[str, Any]] = {}
+        for row in family_rows:
+            latest[row["trial_id"]] = row
+        trials = sorted(
+            (dict(row) for row in latest.values()),
+            key=lambda row: (row["trial_index"], row["trial_id"]),
+        )
+        return {
+            "valid": True,
+            "family_id": family_id,
+            "event_count": len(family_rows),
+            "trial_count": len(trials),
+            "trials": trials,
+            "family_event_sha256": [row["event_sha256"] for row in family_rows],
+            "evidence_level": "unverified",
+            "trust": "local_prototype_not_independently_authenticated",
+        }
+
     def next_trial_index(self, family_id: str) -> int:
         """Return the next one-based index for a family; callers must still append under lock."""
         if not isinstance(family_id, str) or not family_id.strip():
