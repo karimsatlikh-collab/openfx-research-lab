@@ -5,6 +5,9 @@ Status: **pre-registered plan; formal campaign not yet run**.
 - Plan ID: `M3-HAC-MBB-CALIBRATION-V2-2`
 - Method ID/version: `M3-HOLM-HAC-MBB-V2` / `2.0.2`
 - Implementation: `openfx/selection_bias_v2.py`
+- Frozen engine revision: `087e66622f27350f1999d2e5b2ec82a9ead78982` (the checked-out engine file must match this commit byte-for-byte).
+- Runner revision: automatically bound to the clean Git `HEAD`; it is never caller-supplied.
+- Plan hash: SHA-256 of the exact plan file bytes, computed by the runner and aggregator (not caller-supplied).
 - Freeze date: 2026-10-30 UTC
 - Evidence class: synthetic only.
 - This plan is separate from M3 v1. It supersedes the unexecuted v2.0.0 and v2.0.1 drafts. No formal v2 cells were run; all earlier seed ranges are retired and are not reused.
@@ -159,7 +162,7 @@ First run the deterministic primitive-level reference check. It must pass before
 ```bash
 python research/validate_m3_v2_reference.py \\
   --plan-file docs/M3_HAC_MBB_V2_CALIBRATION_PLAN.md \\
-  --engine-revision <ENGINE_COMMIT_SHA> \\
+  --engine-revision 087e66622f27350f1999d2e5b2ec82a9ead78982 \\
   --output artifacts/m3-v2/reference-check.json
 ```
 
@@ -175,9 +178,8 @@ Example command:
 ```bash
 python research/m3_hac_mbb_v2_calibration.py \
   --phase family-null --generator N3_AR1_GAUSSIAN --rho 0.5 \
-  --plan-sha256 <PLAN_SHA256> \
-  --engine-revision <ENGINE_COMMIT_SHA> \
-  --runner-revision <RUNNER_COMMIT_SHA> \
+  --plan-file docs/M3_HAC_MBB_V2_CALIBRATION_PLAN.md \\
+  --engine-revision 087e66622f27350f1999d2e5b2ec82a9ead78982 \\
   --output artifacts/m3-v2/family-null-N3_AR1_GAUSSIAN-rho-0p5.json
 ```
 
@@ -188,7 +190,7 @@ After all 40 cell files exist, aggregate and validate them:
 ```bash
 python research/aggregate_m3_hac_mbb_v2.py \
   --input-dir artifacts/m3-v2 \
-  --expected-plan-sha256 <PLAN_SHA256> \
+  --plan-file docs/M3_HAC_MBB_V2_CALIBRATION_PLAN.md \\
   --reference-check artifacts/m3-v2/reference-check.json \
   --output artifacts/m3-v2/campaign-summary.json
 ```
