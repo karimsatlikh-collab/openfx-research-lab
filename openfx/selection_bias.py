@@ -127,7 +127,7 @@ def _validate_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(manifest, dict) or manifest.get("frozen_before_trials") is not True:
         raise SelectionBiasError("a frozen family manifest is required")
     required = ("family_id", "data_profile_id", "cost_profile_id", "validation_split_id",
-                "return_frequency", "source_revision", "max_trials")
+                "return_frequency", "source_revision", "max_trials", "frozen_at_utc")
     for key in required:
         if key not in manifest or manifest[key] in (None, ""):
             raise SelectionBiasError(f"manifest missing {key}")
@@ -163,6 +163,16 @@ def evaluate_registered_family(*, registry: Any, manifest: dict[str, Any]) -> di
     if len(trial_ids) != len(trials) or len(set(trial_ids)) != len(trial_ids):
         raise SelectionBiasError("registry snapshot contains malformed or duplicate trial IDs")
     ordered_trials = sorted(trials, key=lambda row: (row.get("trial_index", 0), row["trial_id"]))
+    manifest_digest = sha256_json(manifest)
+    for row in ordered_trials:
+        registration = row.get("registration_payload")
+        if (row.get("registration_outcome") != "pending"
+                or not isinstance(registration, dict)
+                or registration.get("family_manifest_sha256") != manifest_digest
+                or registration.get("registered_before_execution") is not True):
+            raise SelectionBiasError(
+                "every trial must have a pending pre-execution registration bound to the frozen family manifest"
+            )
     pvalues = {row["trial_id"]: 1.0 for row in ordered_trials}
     eligible_series: dict[str, list[float]] = {}
     artifact_hashes: dict[str, str] = {}
@@ -222,7 +232,6 @@ def evaluate_registered_family(*, registry: Any, manifest: dict[str, Any]) -> di
             "limitations": ["Local registry is not an independently trusted registrar.",
                             "No eligible validation return series; no statistical pass is possible."],
         }
-    manifest_digest = sha256_json(manifest)
     seed_material = (manifest_digest + METHOD_ID + METHOD_VERSION).encode("utf-8")
     seed = int.from_bytes(hashlib.sha256(seed_material).digest()[:8], "big")
     raw = _bootstrap_pvalues(eligible_series, replicates=settings["bootstrap_replicates"], seed=seed)
