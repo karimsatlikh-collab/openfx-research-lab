@@ -12,7 +12,7 @@ This plan supersedes the preserved v2.0.2 plan solely to correct the family-leve
 - Plan hash: SHA-256 of the exact plan file bytes, computed by the runner and aggregator (not caller-supplied).
 - Freeze date: 2026-10-30 UTC
 - Evidence class: synthetic only.
-- This plan is separate from M3 v1. It supersedes the unexecuted v2.0.0, v2.0.1, and v2.0.2 calibration plans. No formal v2 cells were run; all earlier seed ranges are retired and are not reused.
+- This plan is separate from M3 v1. It supersedes the unexecuted v2.0.0, v2.0.1, and v2.0.2 calibration plans. No formal v2 cells were run; all earlier seed ranges are retired and are not reused. Data streams use disjoint 3.3–3.6 billion bands; bootstrap streams use disjoint 4.1–4.3 billion bands; benchmark-only seeds use 3.95–3.96 billion.
 
 ## 1. Frozen method settings
 
@@ -87,11 +87,11 @@ Generator order: N1, N2, N3, N4, N5. Replicate/family indices start at zero.
 
 - Marginal null data: `3,300,000,000 + generator_index*100,000 + replicate_index`.
 - Marginal MDE data: `3,400,000,000 + generator_index*100,000 + replicate_index`.
-- Marginal null bootstrap seed: `3,800,000,000 + marginal_null_data_seed`.
-- Marginal MDE bootstrap seed: `3,900,000,000 + marginal_mde_data_seed`.
+- Marginal null bootstrap seed: `4,100,000,000 + generator_index*100,000 + replicate_index`.
+- Marginal MDE bootstrap seed: `4,200,000,000 + generator_index*100,000 + replicate_index`.
 - Global-null family seed: `3,500,000,000 + generator_index*1,000,000 + correlation_index*10,000 + family_index`.
 - One-MDE family seed: `3,600,000,000 + generator_index*1,000,000 + correlation_index*10,000 + family_index`.
-- Bootstrap resampling seed for a family: `3,700,000,000 + family_seed`.
+- Bootstrap resampling seed for a family: `4,300,000,000 + generator_index*1,000,000 + correlation_index*10,000 + family_index`.
 - Correlation order: 0.0, 0.5, 0.9.
 - Trial IDs and ordering are deterministic; the signal candidate is always the first trial in MDE families.
 
