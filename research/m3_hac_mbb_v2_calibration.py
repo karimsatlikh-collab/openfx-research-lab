@@ -228,13 +228,13 @@ def run_marginal_cell(generator_id: str, alternative: bool,
     gi = GENERATORS.index(generator_id)
     count = MARGINAL_MDE_REPLICATES if alternative else MARGINAL_NULL_REPLICATES
     data_base = 3_400_000_000 if alternative else 3_300_000_000
-    bootstrap_base = 3_900_000_000 if alternative else 3_800_000_000
+    bootstrap_base = 4_200_000_000 if alternative else 4_100_000_000
     rows = []
     successes = 0
     failures = 0
     for replicate in range(count):
         data_seed = data_base + gi * 100_000 + replicate
-        bootstrap_seed = bootstrap_base + data_seed
+        bootstrap_seed = bootstrap_base + gi * 100_000 + replicate
         try:
             values = _generate_marginal(generator_id, data_seed, MDE if alternative else 0.0)
             series_hash = _series_sha256(values)
@@ -279,7 +279,7 @@ def run_family_cell(generator_id: str, rho: float, alternative: bool,
     fwer5 = fwer20 = power5 = power20 = failures = 0
     for family_index in range(FAMILY_REPLICATES):
         family_seed = data_base + gi * 1_000_000 + ci * 10_000 + family_index
-        bootstrap_seed = 3_700_000_000 + family_seed
+        bootstrap_seed = 4_300_000_000 + gi * 1_000_000 + ci * 10_000 + family_index
         hashes = None
         try:
             values = _generate_family(generator_id, family_seed, rho, alternative)
