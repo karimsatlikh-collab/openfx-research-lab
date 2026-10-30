@@ -148,6 +148,7 @@ def run_synthetic_reproduction(*, frozen: dict[str, Any], registry: LocalTrialRe
         outcome="pending", payload={"frozen_sha256": frozen_hash, "evidence_level": "synthetic"},
         max_trials=max_trials,
     )
+    terminal_outcome_recorded = False
     try:
         a = _execute_once(frozen, first)
         b = _execute_once(frozen, second)
@@ -155,6 +156,14 @@ def run_synthetic_reproduction(*, frozen: dict[str, Any], registry: LocalTrialRe
             raise ValueError("independent replay artifacts differ")
         if a["record"] != b["record"]:
             raise ValueError("independent replay records differ")
+
+        # Validate the frozen gate against the registered pending trial before
+        # writing the terminal execution outcome. A malformed gate therefore
+        # produces a failed trial rather than a completed->failed contradiction.
+        summary = a["record"]["result"]
+        verdict = evaluate_registered_synthetic_summary(
+            summary, frozen["gate_config"], registry=registry, family_id=family_id
+        )
         registry.append(
             event_id=f"{trial_id}-completed", family_id=family_id, trial_id=trial_id,
             outcome="completed",
@@ -163,13 +172,11 @@ def run_synthetic_reproduction(*, frozen: dict[str, Any], registry: LocalTrialRe
                 "replay_a_sha256": a["artifact_sha256"],
                 "replay_b_sha256": b["artifact_sha256"],
                 "reproduced": True,
+                "gate_decision": verdict["decision"],
                 "evidence_level": "synthetic",
             },
         )
-        summary = a["record"]["result"]
-        verdict = evaluate_registered_synthetic_summary(
-            summary, frozen["gate_config"], registry=registry, family_id=family_id
-        )
+        terminal_outcome_recorded = True
         return {
             "status": "synthetic_reproduced",
             "evidence_level": "synthetic",
@@ -188,10 +195,17 @@ def run_synthetic_reproduction(*, frozen: dict[str, Any], registry: LocalTrialRe
             ],
         }
     except Exception as exc:
-        registry.append(
-            event_id=f"{trial_id}-failed", family_id=family_id, trial_id=trial_id,
-            outcome="failed",
-            payload={"frozen_sha256": frozen_hash, "error": str(exc)[:500],
-                     "evidence_level": "synthetic"},
-        )
+        # Once a terminal event is recorded, never attempt to rewrite the trial
+        # outcome. Preserve the original failure if failure registration itself
+        # also encounters a registry error.
+        if not terminal_outcome_recorded:
+            try:
+                registry.append(
+                    event_id=f"{trial_id}-failed", family_id=family_id, trial_id=trial_id,
+                    outcome="failed",
+                    payload={"frozen_sha256": frozen_hash, "error": str(exc)[:500],
+                             "evidence_level": "synthetic"},
+                )
+            except Exception as registry_exc:
+                raise exc from registry_exc
         raise
