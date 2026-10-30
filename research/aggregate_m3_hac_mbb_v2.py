@@ -119,7 +119,8 @@ def aggregate(input_dir: Path, output_path: Path, reference_path: Path) -> dict:
     reference_unhashed.pop("validation_sha256", None)
     if reference.get("status") != "PASS" or reference_hash != _sha256(reference_unhashed):
         raise ValueError("independent production-vs-runner reference check is missing or invalid")
-    if reference.get("bootstrap_replicates") != 199 or reference.get("series_count") != 3:
+    if (reference.get("bootstrap_replicates") != 199 or reference.get("series_count") != 3
+            or reference.get("family_fixture_count") != 15):
         raise ValueError("reference check fixture contract mismatch")
     cells = []
     marginal_null = {}
