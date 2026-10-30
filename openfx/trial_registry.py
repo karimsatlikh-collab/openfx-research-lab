@@ -136,12 +136,17 @@ class LocalTrialRegistry:
         rows = self._read_and_verify()
         family_rows = [row for row in rows if row["family_id"] == family_id]
         latest: dict[str, dict[str, Any]] = {}
+        first: dict[str, dict[str, Any]] = {}
         for row in family_rows:
             latest[row["trial_id"]] = row
-        trials = sorted(
-            (dict(row) for row in latest.values()),
-            key=lambda row: (row["trial_index"], row["trial_id"]),
-        )
+            first.setdefault(row["trial_id"], row)
+        trials = []
+        for trial_id, row in latest.items():
+            item = dict(row)
+            item["registration_outcome"] = first[trial_id]["outcome"]
+            item["registration_payload"] = first[trial_id]["payload"]
+            trials.append(item)
+        trials.sort(key=lambda row: (row["trial_index"], row["trial_id"]))
         return {
             "valid": True,
             "family_id": family_id,
