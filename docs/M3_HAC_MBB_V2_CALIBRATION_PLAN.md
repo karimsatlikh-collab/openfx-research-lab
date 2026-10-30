@@ -66,10 +66,10 @@ This replaces the empirical-p-value copula as the primary family-level acceptanc
 
 ### Dependence construction
 
-For Gaussian innovation generators, each time step uses a common-factor construction:
+For Gaussian innovation generators, each time step uses a common-factor innovation construction:
 `epsilon[j,t] = sqrt(rho)*factor[t] + sqrt(1-rho)*idiosyncratic[j,t]`.
 
-For Student-t generators, use a multivariate-t(5) innovation construction: correlated Gaussian factor innovations divided by a common chi-square scale per time step, scaled to unit marginal variance. AR(1) and GARCH recursions are applied after the correlated innovations are generated.
+For Student-t generators, use a multivariate-t(5) innovation construction: correlated Gaussian factor innovations divided by a common chi-square scale per time step, scaled to unit marginal variance. AR(1) and GARCH recursions are applied after the correlated innovations are generated. The runner records realized average pairwise return correlation for every family; for GARCH it may differ from the innovation-correlation parameter rho.
 
 The runner must record the exact generation method, seed, return-series hash, and family membership for every generated family. This dependence construction is synthetic and does not claim to reproduce every empirical strategy-correlation structure.
 
