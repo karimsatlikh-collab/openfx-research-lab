@@ -80,15 +80,37 @@ def parse_utc(value: Any, field: str) -> datetime:
 def _read_json(path: str | Path, label: str) -> dict[str, Any]:
     target = Path(path)
     try:
-        info = target.stat()
-        if not stat.S_ISREG(info.st_mode) or info.st_size > MAX_INPUT_JSON_BYTES:
-            raise ValidationError("INPUT_SIZE_OR_TYPE", f"{label} must be a regular JSON file within the size limit")
-        raw = target.read_bytes()
-        value = json.loads(raw.decode("utf-8"))
+        if target.is_symlink():
+            raise ValidationError("INPUT_SYMLINK", f"{label} must not be a symlink")
+        resolved = target.resolve(strict=True)
+        descriptor = _open_beneath(resolved.parent, (resolved.name,))
+        try:
+            before = os.fstat(descriptor)
+            if not stat.S_ISREG(before.st_mode) or before.st_size > MAX_INPUT_JSON_BYTES:
+                raise ValidationError("INPUT_SIZE_OR_TYPE", f"{label} must be a regular JSON file within the size limit")
+            chunks = bytearray()
+            with os.fdopen(descriptor, "rb", closefd=False) as stream:
+                while True:
+                    chunk = stream.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    chunks.extend(chunk)
+                    if len(chunks) > MAX_INPUT_JSON_BYTES:
+                        raise ValidationError("INPUT_TOO_LARGE", f"{label} exceeds the JSON size limit")
+            after = os.fstat(descriptor)
+            before_state = (before.st_dev, before.st_ino, before.st_size,
+                            before.st_mtime_ns, before.st_ctime_ns)
+            after_state = (after.st_dev, after.st_ino, after.st_size,
+                           after.st_mtime_ns, after.st_ctime_ns)
+            if before_state != after_state or len(chunks) != after.st_size:
+                raise ValidationError("INPUT_CHANGED_DURING_READ", f"{label} changed while being read")
+        finally:
+            os.close(descriptor)
+        value = json.loads(bytes(chunks).decode("utf-8"))
     except ValidationError:
         raise
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-        raise ValidationError("INPUT_READ_FAILED", f"could not read {label} JSON") from exc
+        raise ValidationError("INPUT_READ_FAILED", f"could not read {label} JSON safely") from exc
     if not isinstance(value, dict):
         raise ValidationError("INVALID_INPUT_SHAPE", f"{label} root must be an object")
     return value
