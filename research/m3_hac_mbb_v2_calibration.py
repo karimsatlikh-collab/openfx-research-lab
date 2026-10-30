@@ -279,7 +279,8 @@ def run_family_cell(generator_id: str, rho: float, alternative: bool,
     fwer5 = fwer20 = power5 = power20 = failures = 0
     for family_index in range(FAMILY_REPLICATES):
         family_seed = data_base + gi * 1_000_000 + ci * 10_000 + family_index
-        bootstrap_seed = 4_300_000_000 + gi * 1_000_000 + ci * 10_000 + family_index
+        bootstrap_base = 4_400_000_000 if alternative else 4_300_000_000
+        bootstrap_seed = bootstrap_base + gi * 1_000_000 + ci * 10_000 + family_index
         hashes = None
         try:
             values = _generate_family(generator_id, family_seed, rho, alternative)
