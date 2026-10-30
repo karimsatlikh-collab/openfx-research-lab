@@ -160,10 +160,7 @@ Install optional pinned dependencies with `python -m pip install -r requirements
 First run the deterministic primitive-level reference check. It must pass before any cell is accepted:
 
 ```bash
-python research/validate_m3_v2_reference.py \\
-  --plan-file docs/M3_HAC_MBB_V2_CALIBRATION_PLAN.md \\
-  --engine-revision 087e66622f27350f1999d2e5b2ec82a9ead78982 \\
-  --output artifacts/m3-v2/reference-check.json
+python research/validate_m3_v2_reference.py --plan-file docs/M3_HAC_MBB_V2_CALIBRATION_PLAN.md --engine-revision 087e66622f27350f1999d2e5b2ec82a9ead78982 --output artifacts/m3-v2/reference-check.json
 ```
 
 Run each cell as a separate immutable artifact. Required filenames:
@@ -176,11 +173,7 @@ Run each cell as a separate immutable artifact. Required filenames:
 Example command:
 
 ```bash
-python research/m3_hac_mbb_v2_calibration.py \
-  --phase family-null --generator N3_AR1_GAUSSIAN --rho 0.5 \
-  --plan-file docs/M3_HAC_MBB_V2_CALIBRATION_PLAN.md \\
-  --engine-revision 087e66622f27350f1999d2e5b2ec82a9ead78982 \\
-  --output artifacts/m3-v2/family-null-N3_AR1_GAUSSIAN-rho-0p5.json
+python research/m3_hac_mbb_v2_calibration.py --phase family-null --generator N3_AR1_GAUSSIAN --rho 0.5 --plan-file docs/M3_HAC_MBB_V2_CALIBRATION_PLAN.md --engine-revision 087e66622f27350f1999d2e5b2ec82a9ead78982 --output artifacts/m3-v2/family-null-N3_AR1_GAUSSIAN-rho-0p5.json
 ```
 
 Run all 40 cells (5 marginal-null + 5 marginal-MDE + 15 family-null + 15 family-MDE). Do not overwrite a cell artifact. A rerun must use a new campaign directory and preserve the original outcome.
@@ -188,11 +181,7 @@ Run all 40 cells (5 marginal-null + 5 marginal-MDE + 15 family-null + 15 family-
 After all 40 cell files exist, aggregate and validate them:
 
 ```bash
-python research/aggregate_m3_hac_mbb_v2.py \
-  --input-dir artifacts/m3-v2 \
-  --plan-file docs/M3_HAC_MBB_V2_CALIBRATION_PLAN.md \\
-  --reference-check artifacts/m3-v2/reference-check.json \
-  --output artifacts/m3-v2/campaign-summary.json
+python research/aggregate_m3_hac_mbb_v2.py --input-dir artifacts/m3-v2 --plan-file docs/M3_HAC_MBB_V2_CALIBRATION_PLAN.md --reference-check artifacts/m3-v2/reference-check.json --output artifacts/m3-v2/campaign-summary.json
 ```
 
 The runner computes the plan SHA-256 from the actual plan file and verifies that the plan, runner, and engine files match the clean Git checkout. The runner revision is taken from `HEAD`, not caller-supplied metadata; the engine revision must resolve to a commit containing the exact checked-out engine file. The reference check records the same provenance. The aggregator recomputes the plan hash, verifies the clean checkout and exact source bindings, and checks reference/cell provenance, cell hashes, complete seed sequences, return hashes, trial membership, realized family correlations, all cell counts, and frozen acceptance thresholds. A missing, failed, overwritten, or inconsistent cell prevents a valid campaign summary.
