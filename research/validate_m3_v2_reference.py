@@ -7,6 +7,8 @@ import json
 import sys
 from pathlib import Path
 
+from research.m3_calibration_provenance import verify_execution_bindings
+
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -41,7 +43,11 @@ def _fixture_series() -> dict[str, list[float]]:
     return result
 
 
-def validate() -> dict:
+def validate(plan_file: Path, engine_revision: str) -> dict:
+    provenance = verify_execution_bindings(
+        plan_file, engine_revision, Path(__file__).resolve().parents[1] / "research" / "m3_hac_mbb_v2_calibration.py",
+        Path(__file__).resolve().parents[1] / "openfx" / "selection_bias_v2.py",
+    )
     series = _fixture_series()
     seed = 424242
     replicates = 199
@@ -123,6 +129,7 @@ def validate() -> dict:
 
     result = {
         "status": "PASS",
+        **provenance,
         "fixture_seed": seed,
         "bootstrap_replicates": replicates,
         "series_count": len(series),
@@ -146,9 +153,11 @@ def validate() -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--plan-file", required=True)
+    parser.add_argument("--engine-revision", required=True)
     parser.add_argument("--output")
     args = parser.parse_args()
-    result = validate()
+    result = validate(Path(args.plan_file), args.engine_revision)
     payload = json.dumps(result, sort_keys=True, separators=(",", ":"),
                          ensure_ascii=False, allow_nan=False) + "\n"
     if args.output:
