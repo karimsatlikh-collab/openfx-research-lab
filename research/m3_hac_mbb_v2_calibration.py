@@ -313,7 +313,7 @@ def run_family_cell(generator_id: str, rho: float, alternative: bool,
             record["global_null_fwer_m20"] = bool(fwer20_result)
         records.append(record)
     cell = {
-        "plan_id": "M3-HAC-MBB-CALIBRATION-V2",
+        "plan_id": "M3-HAC-MBB-CALIBRATION-V2-1",
         "phase": "family_mde" if alternative else "family_null",
         "generator": generator_id, "rho": rho,
         "engine_revision": engine_revision, "runner_revision": runner_revision,
