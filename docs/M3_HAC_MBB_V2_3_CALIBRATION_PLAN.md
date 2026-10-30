@@ -77,7 +77,7 @@ This replaces the empirical-p-value copula as the primary family-level acceptanc
 For Gaussian innovation generators, each time step uses a common-factor innovation construction:
 `epsilon[j,t] = sqrt(rho)*factor[t] + sqrt(1-rho)*idiosyncratic[j,t]`.
 
-For Student-t generators, use a multivariate-t(5) innovation construction: correlated Gaussian factor innovations divided by a common chi-square scale per time step, scaled to unit marginal variance. Because the common chi-square scale is shared across trials, rho=0 means zero linear correlation, not full statistical independence; the multivariate-t cells intentionally retain common-scale tail dependence. AR(1) and GARCH recursions are applied after the correlated innovations are generated. The runner records realized average pairwise return correlation for every family; for GARCH it may differ from the innovation-correlation parameter rho.
+For Student-t generators, use a multivariate-t(5) innovation construction: correlated Gaussian factor innovations divided by a common chi-square scale per time step, scaled to unit marginal variance. Because the common chi-square scale is shared across trials, rho=0 means zero linear correlation, not full statistical independence; the multivariate-t cells intentionally retain common-scale tail dependence. Because the common chi-square scale is shared across trials, rho=0 means zero linear correlation, not full statistical independence; the multivariate-t cells intentionally retain common-scale tail dependence. AR(1) and GARCH recursions are applied after the correlated innovations are generated. The runner records realized average pairwise return correlation for every family; for GARCH it may differ from the innovation-correlation parameter rho.
 
 The independent calibration runner must record the exact generation method, seed, return-series hash, family membership, frozen M3 engine revision, and runner revision for every generated family. These engine/runner revisions identify the calibration implementation; they are not a strategy source revision. Separately, the production evaluator requires each real trial validation payload to match the strategy source_revision frozen in its family manifest. This dependence construction is synthetic and does not claim to reproduce every empirical strategy-correlation structure.
 
@@ -133,6 +133,21 @@ The evaluator blocks before sampling if estimated work `9,999 × eligible_trials
 A failure of any criterion means M3 method v2.0.2 remains **not accepted** under calibration plan V2-3. No threshold, generator, seed, family size, correlation cell, or MDE may be removed after results are seen.
 
 ## 7. Computational execution boundary
+
+The revised 40-cell campaign is materially larger than v2.0.2. The frozen workload is approximately:
+- Direct family cells: 150,000 families × 9,999 bootstrap replicates × 20 trials × 252 observations × 8 HAC terms = 60,473,952,000,000 estimated work units.
+- Marginal cells: 30,000 single-trial series × 9,999 × 252 × 8 = 604,739,520,000 estimated work units.
+- Total: 61,078,691,520,000 estimated work units (about 151,500 full-family-equivalent workloads).
+
+Before launching any formal cell, run the performance preflight on the intended research host:
+
+```bash
+python research/benchmark_m3_v2_family.py --plan-file docs/M3_HAC_MBB_V2_3_CALIBRATION_PLAN.md --families 3 --output artifacts/m3-v2.0.3/benchmark-preflight.json
+```
+
+The preflight warms the JIT kernel separately, times full 9,999-replicate family workloads, records host/runtime/source provenance, and estimates CPU-hours. It is performance evidence only, never calibration evidence. Review the estimate and storage requirements before scheduling the campaign. Run independent cells as separate immutable jobs, initially limiting concurrency to at most four cells or the available CPU count, whichever is lower; adjust only after observing host memory/CPU behavior. Do not start the 40-cell campaign if the benchmark indicates the required wall-clock or storage budget is unavailable.
+
+
 
 This is a deliberately substantial calibration campaign. It must be run on a reproducible research host with sufficient time and memory; it is not part of normal unit-test CI. The runner must support resumable, immutable cell artifacts without overwriting prior outputs. A partial campaign is not acceptance evidence.
 
