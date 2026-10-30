@@ -44,9 +44,9 @@ def _check_marginal(cell: dict, phase: str, generator: str, generator_index: int
     expected_phase = "marginal_null" if phase == "null" else "marginal_mde"
     expected_count = 5000 if phase == "null" else 1000
     if (cell.get("phase") != expected_phase or cell.get("generator") != generator
-            or cell.get("plan_id") != "M3-HAC-MBB-CALIBRATION-V2-1"
+            or cell.get("plan_id") != "M3-HAC-MBB-CALIBRATION-V2-2"
             or cell.get("method_id") != "M3-HOLM-HAC-MBB-V2"
-            or cell.get("method_version") != "2.0.1"):
+            or cell.get("method_version") != "2.0.2"):
         raise ValueError("marginal cell identity/method version mismatch")
     settings = cell.get("settings", {})
     expected_settings = {"n": 252, "alpha": 0.05, "bootstrap_replicates": 9999,
@@ -54,7 +54,7 @@ def _check_marginal(cell: dict, phase: str, generator: str, generator_index: int
                          "max_trials": 10_000, "max_bootstrap_work": 1_000_000_000,
                          "replicates": expected_count}
     if any(settings.get(key) != value for key, value in expected_settings.items()):
-        raise ValueError("marginal cell settings do not match frozen v2.0.1 plan")
+        raise ValueError("marginal cell settings do not match frozen v2.0.2 plan")
     if cell.get("failed_replicates") != 0:
         raise ValueError("marginal cell contains failed replicates")
     rows = cell.get("replicates")
@@ -66,8 +66,8 @@ def _check_marginal(cell: dict, phase: str, generator: str, generator_index: int
         if isinstance(index, bool) or not isinstance(index, int) or not 0 <= index < expected_count or index in seen:
             raise ValueError("marginal replicate indices are malformed")
         seen.add(index)
-        data_base = 1_400_000_000 if phase == "mde" else 1_300_000_000
-        bootstrap_base = 1_900_000_000 if phase == "mde" else 1_800_000_000
+        data_base = 2_400_000_000 if phase == "mde" else 2_300_000_000
+        bootstrap_base = 2_900_000_000 if phase == "mde" else 2_800_000_000
         expected_data_seed = data_base + generator_index * 100_000 + index
         if (row.get("data_seed") != expected_data_seed
                 or row.get("bootstrap_seed") != bootstrap_base + expected_data_seed):
@@ -87,8 +87,9 @@ def _check_family(cell: dict, phase: str, generator: str, generator_index: int, 
     expected_phase = "family_null" if phase == "null" else "family_mde"
     if (cell.get("phase") != expected_phase or cell.get("generator") != generator
             or cell.get("rho") != rho
-            or cell.get("plan_id") != "M3-HAC-MBB-CALIBRATION-V2-1"
-            or cell.get("method_version") != "2.0.1"):
+            or cell.get("plan_id") != "M3-HAC-MBB-CALIBRATION-V2-2"
+            or cell.get("method_id") != "M3-HOLM-HAC-MBB-V2"
+            or cell.get("method_version") != "2.0.2"):
         raise ValueError("family cell identity/method version mismatch")
     settings = cell.get("settings", {})
     expected_settings = {"n": 252, "alpha": 0.05, "bootstrap_replicates": 9999,
@@ -98,7 +99,7 @@ def _check_family(cell: dict, phase: str, generator: str, generator_index: int, 
                          "family_size_secondary": 5,
                          "estimated_bootstrap_work_per_family": 9999 * 20 * 252 * 8}
     if any(settings.get(key) != value for key, value in expected_settings.items()):
-        raise ValueError("family cell settings do not match frozen v2.0.1 plan")
+        raise ValueError("family cell settings do not match frozen v2.0.2 plan")
     if cell.get("failed_families") != 0:
         raise ValueError("family cell contains failed families")
     rows = cell.get("families")
@@ -111,9 +112,9 @@ def _check_family(cell: dict, phase: str, generator: str, generator_index: int, 
             raise ValueError("family indices are malformed")
         seen.add(index)
         correlation_index = CORRELATIONS.index(rho)
-        data_base = 1_600_000_000 if phase == "mde" else 1_500_000_000
+        data_base = 2_600_000_000 if phase == "mde" else 2_500_000_000
         expected_family_seed = data_base + generator_index * 1_000_000 + correlation_index * 10_000 + index
-        if row.get("family_seed") != expected_family_seed or row.get("bootstrap_seed") != 1_700_000_000 + expected_family_seed:
+        if row.get("family_seed") != expected_family_seed or row.get("bootstrap_seed") != 2_700_000_000 + expected_family_seed:
             raise ValueError("family seed map mismatch")
         if row.get("status") != "completed":
             raise ValueError("family replicate is not completed")
@@ -136,7 +137,7 @@ def _check_family(cell: dict, phase: str, generator: str, generator_index: int, 
         raise ValueError("family replicate sequence is incomplete")
 
 
-def aggregate(input_dir: Path, output_path: Path, reference_path: Path) -> dict:
+def aggregate(input_dir: Path, output_path: Path, reference_path: Path, expected_plan_sha256: str) -> dict:
     if output_path.exists():
         raise FileExistsError(f"refusing to overwrite {output_path}")
     reference = json.loads(reference_path.read_text(encoding="utf-8"))
@@ -157,7 +158,7 @@ def aggregate(input_dir: Path, output_path: Path, reference_path: Path) -> dict:
     for generator in GENERATORS:
         for phase, target in (("null", marginal_null), ("mde", marginal_mde)):
             path = input_dir / f"marginal-{phase}-{generator}.json"
-            cell = _load_cell(path)
+            cell = _load_cell(path, expected_plan_sha256)
             _check_marginal(cell, phase, generator, GENERATORS.index(generator))
             target[generator] = cell
             cells.append(cell)
@@ -165,7 +166,7 @@ def aggregate(input_dir: Path, output_path: Path, reference_path: Path) -> dict:
             tag = str(rho).replace(".", "p")
             for phase, target in (("null", family_null), ("mde", family_mde)):
                 path = input_dir / f"family-{phase}-{generator}-rho-{tag}.json"
-                cell = _load_cell(path)
+                cell = _load_cell(path, expected_plan_sha256)
                 _check_family(cell, phase, generator, GENERATORS.index(generator), rho)
                 target[(generator, rho)] = cell
                 cells.append(cell)
@@ -218,7 +219,7 @@ def aggregate(input_dir: Path, output_path: Path, reference_path: Path) -> dict:
     }
     acceptance["accepted"] = all(acceptance.values())
     result = {
-        "plan_id": "M3-HAC-MBB-CALIBRATION-V2-1",
+        "plan_id": "M3-HAC-MBB-CALIBRATION-V2-2",
         "plan_sha256": plan_hash,
         "engine_revision": cells[0]["engine_revision"],
         "runner_revision": cells[0]["runner_revision"],
@@ -261,14 +262,14 @@ def aggregate(input_dir: Path, output_path: Path, reference_path: Path) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input-dir", required=True)
-    parser.add_argument("--expected-plan-sha256")
+    parser.add_argument("--expected-plan-sha256", required=True)
     parser.add_argument("--reference-check", required=True)
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
-    result = aggregate(Path(args.input_dir), Path(args.output), Path(args.reference_check))
-    if args.expected_plan_sha256 and result["plan_sha256"] != args.expected_plan_sha256:
-        Path(args.output).unlink(missing_ok=True)
-        raise SystemExit("aggregated plan hash does not match --expected-plan-sha256")
+    if not args.expected_plan_sha256:
+        raise SystemExit("--expected-plan-sha256 is required for a frozen calibration run")
+    result = aggregate(Path(args.input_dir), Path(args.output), Path(args.reference_check),
+                       args.expected_plan_sha256)
     print(json.dumps({"output": args.output, "campaign_sha256": result["campaign_sha256"],
                       "acceptance": result["acceptance"]}, sort_keys=True))
 
