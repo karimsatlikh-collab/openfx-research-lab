@@ -102,16 +102,48 @@ def verify_benchmark_report(
     )
     if any(report.get(key) != provenance.get(key) for key in provenance_keys):
         raise ValueError("benchmark report source/plan provenance does not match this checkout")
-    if report.get("runtime") != runtime or report.get("platform") != runtime.get("platform"):
-        raise ValueError("benchmark and calibration runtime/platform must match exactly")
+    if (report.get("runtime") != runtime or report.get("platform") != runtime.get("platform")
+            or report.get("cpu_count") != runtime.get("cpu_count")):
+        raise ValueError("benchmark and calibration runtime/platform/CPU count must match exactly")
     if (report.get("timed_bootstrap_replicates") != 9999
             or isinstance(report.get("timed_families"), bool)
             or not isinstance(report.get("timed_families"), int)
             or report["timed_families"] < 3):
         raise ValueError("benchmark must time at least three full 9999-replicate families")
+    family_seconds = report.get("family_seconds")
+    if (not isinstance(family_seconds, list) or len(family_seconds) != report["timed_families"]
+            or any(isinstance(x, bool) or not isinstance(x, (int, float))
+                   or not math.isfinite(x) or x <= 0 for x in family_seconds)):
+        raise ValueError("benchmark per-family timings are incomplete or invalid")
+    mean = report.get("mean_seconds_per_family")
+    if isinstance(mean, bool) or not isinstance(mean, (int, float)) or not math.isfinite(mean) or mean <= 0:
+        raise ValueError("benchmark mean family runtime is invalid")
+    computed_mean = sum(family_seconds) / len(family_seconds)
+    if abs(computed_mean - mean) > max(1e-9, abs(mean) * 1e-9):
+        raise ValueError("benchmark mean runtime does not match per-family timings")
+    if report.get("estimated_total_family_equivalents") != 151500:
+        raise ValueError("benchmark total-workload equivalent count is invalid")
     estimate = report.get("estimated_campaign_cpu_hours")
     if isinstance(estimate, bool) or not isinstance(estimate, (int, float)) or not math.isfinite(estimate) or estimate <= 0:
         raise ValueError("benchmark CPU-hour estimate is missing or invalid")
+    expected_estimate = mean * 151500 / 3600.0
+    if abs(expected_estimate - estimate) > max(1e-9, abs(expected_estimate) * 1e-9):
+        raise ValueError("benchmark CPU-hour estimate does not match measured family runtime")
+    expected_seeds = {
+        "family": [3_950_000_000, 3_950_000_000 + report["timed_families"]],
+        "bootstrap": [3_960_000_000, 3_960_000_000 + report["timed_families"]],
+    }
+    if report.get("benchmark_seed_ranges") != expected_seeds:
+        raise ValueError("benchmark-only seed ranges are invalid")
+    for key in ("pvalue_output_sha256", "return_hashes_sha256"):
+        value = report.get(key)
+        if not isinstance(value, str) or len(value) != 64 or any(c not in "0123456789abcdef" for c in value):
+            raise ValueError(f"benchmark digest is invalid: {key}")
+    correlations = report.get("realized_correlations")
+    if (not isinstance(correlations, list) or len(correlations) != report["timed_families"]
+            or any(not isinstance(x, (int, float)) or not math.isfinite(x) or not -1 <= x <= 1
+                   for x in correlations)):
+        raise ValueError("benchmark realized correlations are incomplete or invalid")
     if estimate > float(max_cpu_hours):
         raise ValueError("benchmark CPU-hour estimate exceeds the explicitly approved budget")
     return {
