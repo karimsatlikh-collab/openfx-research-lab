@@ -110,9 +110,17 @@ def _check_family(cell: dict, phase: str, generator: str, generator_index: int, 
         raise ValueError("family replicate sequence is incomplete")
 
 
-def aggregate(input_dir: Path, output_path: Path) -> dict:
+def aggregate(input_dir: Path, output_path: Path, reference_path: Path) -> dict:
     if output_path.exists():
         raise FileExistsError(f"refusing to overwrite {output_path}")
+    reference = json.loads(reference_path.read_text(encoding="utf-8"))
+    reference_hash = reference.get("validation_sha256")
+    reference_unhashed = dict(reference)
+    reference_unhashed.pop("validation_sha256", None)
+    if reference.get("status") != "PASS" or reference_hash != _sha256(reference_unhashed):
+        raise ValueError("independent production-vs-runner reference check is missing or invalid")
+    if reference.get("bootstrap_replicates") != 199 or reference.get("series_count") != 3:
+        raise ValueError("reference check fixture contract mismatch")
     cells = []
     marginal_null = {}
     marginal_mde = {}
@@ -184,6 +192,7 @@ def aggregate(input_dir: Path, output_path: Path) -> dict:
         "engine_revision": cells[0]["engine_revision"],
         "runner_revision": cells[0]["runner_revision"],
         "runtime": cells[0]["runtime"],
+        "reference_validation_sha256": reference_hash,
         "cell_count": len(cells),
         "expected_cell_count": 40,
         "acceptance": acceptance,
@@ -222,9 +231,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input-dir", required=True)
     parser.add_argument("--expected-plan-sha256")
+    parser.add_argument("--reference-check", required=True)
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
-    result = aggregate(Path(args.input_dir), Path(args.output))
+    result = aggregate(Path(args.input_dir), Path(args.output), Path(args.reference_check))
     if args.expected_plan_sha256 and result["plan_sha256"] != args.expected_plan_sha256:
         Path(args.output).unlink(missing_ok=True)
         raise SystemExit("aggregated plan hash does not match --expected-plan-sha256")
