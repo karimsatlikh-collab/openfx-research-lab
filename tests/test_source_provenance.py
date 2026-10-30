@@ -67,6 +67,12 @@ class SourceAdmissibilityTests(unittest.TestCase):
         with self.assertRaisesRegex(ProvenanceError, "hash mismatch"):
             validate_source_record(source(), CONTENT + b" altered")
 
+    def test_non_utc_offset_is_rejected_for_utc_timestamp_field(self):
+        record = source()
+        record["retrieved_at_utc"] = "2026-10-30T13:00:00+03:00"
+        with self.assertRaisesRegex(ProvenanceError, "timestamp"):
+            validate_source_record(record, CONTENT)
+
     def test_invalid_timestamp_and_provenance_are_rejected(self):
         record = source()
         record["retrieved_at_utc"] = "yesterday"
