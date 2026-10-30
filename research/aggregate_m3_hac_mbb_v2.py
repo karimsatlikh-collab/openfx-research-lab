@@ -41,7 +41,8 @@ def _load_cell(path: Path, expected_plan: str | None = None) -> dict:
 
 
 def _check_runtime_and_revisions(cells: list[dict]) -> None:
-    for key in ("plan_sha256", "engine_revision", "runner_revision", "runtime",\n                "benchmark_sha256", "benchmark_estimated_cpu_hours", "approved_max_cpu_hours"):
+    for key in ("plan_sha256", "engine_revision", "runner_revision", "runtime",
+                "benchmark_sha256", "benchmark_estimated_cpu_hours", "approved_max_cpu_hours"):
         values = {json.dumps(cell.get(key), sort_keys=True) for cell in cells}
         if len(values) != 1:
             raise ValueError(f"calibration cells disagree on {key}")
@@ -145,7 +146,8 @@ def _check_family(cell: dict, phase: str, generator: str, generator_index: int, 
         raise ValueError("family replicate sequence is incomplete")
 
 
-def aggregate(input_dir: Path, output_path: Path, reference_path: Path, plan_file: Path,\n              benchmark_file: Path, max_cpu_hours: float) -> dict:
+def aggregate(input_dir: Path, output_path: Path, reference_path: Path, plan_file: Path,
+              benchmark_file: Path, max_cpu_hours: float) -> dict:
     if output_path.exists():
         raise FileExistsError(f"refusing to overwrite {output_path}")
     expected_plan_sha256 = hashlib.sha256(plan_file.read_bytes()).hexdigest()
