@@ -2,17 +2,20 @@
 from __future__ import annotations
 
 import hashlib
+import json
+import math
 import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 FROZEN_ENGINE_REVISION = "087e66622f27350f1999d2e5b2ec82a9ead78982"
 EXPECTED_GIT_BLOBS = {
-    "docs/M3_HAC_MBB_V2_CALIBRATION_PLAN.md": "a4d1cbc6598c727600e7aa3af4bce22374a33791",
-    "research/m3_hac_mbb_v2_calibration.py": "7b1d6d628cddf42ac126be7a6378583727d8e5e8",
+    "docs/M3_HAC_MBB_V2_3_CALIBRATION_PLAN.md": "62b852f958caa7b767c35d1e7cd47a73c5c067ad",
+    "research/m3_hac_mbb_v2_calibration.py": "c2716d85c22a3eb415996ac7a26883276c7c63ba",
     "openfx/selection_bias_v2.py": "72a69166e8121e7d866baa7cb77479975dd04161",
-    "research/aggregate_m3_hac_mbb_v2.py": "72e0a78f3850d8041b303cac049df3f2426fbc16",
-    "research/validate_m3_v2_reference.py": "5eee54aedcb0054e07f2f23fe7551057106d396a",
+    "research/aggregate_m3_hac_mbb_v2.py": "0e8639be7316d177ab2064f302cbaa3cc24a36cb",
+    "research/validate_m3_v2_reference.py": "0ce7599e5e4ba3f17f4f10001da96103314f080b",
+    "research/benchmark_m3_v2_family.py": "3f71a48d7fd1adfaea08f7bbc8383dfd3e6e1e0c",
 }
 
 
@@ -37,7 +40,7 @@ def verify_execution_bindings(
     aggregator_file = ROOT / "research" / "aggregate_m3_hac_mbb_v2.py"
     reference_file = ROOT / "research" / "validate_m3_v2_reference.py"
     paths = [p.relative_to(ROOT).as_posix() for p in
-             (plan_file, runner_file, engine_file, aggregator_file, reference_file)]
+             (plan_file, runner_file, engine_file, aggregator_file, reference_file, ROOT / "research" / "benchmark_m3_v2_family.py")]
     for path in paths:
         worktree_blob = _git("hash-object", path)
         committed_blob = _git("rev-parse", f"HEAD:{path}")
@@ -65,4 +68,86 @@ def verify_execution_bindings(
         "runner_git_blob": _git("rev-parse", f"HEAD:{paths[1]}"),
         "aggregator_git_blob": _git("rev-parse", f"HEAD:{paths[3]}"),
         "reference_check_git_blob": _git("rev-parse", f"HEAD:{paths[4]}"),
+        "benchmark_git_blob": _git("rev-parse", f"HEAD:{paths[5]}"),
+    }
+
+
+
+def verify_benchmark_report(
+    report_file: Path,
+    provenance: dict,
+    runtime: dict,
+    max_cpu_hours: float,
+) -> dict:
+    """Require a same-host, same-source, hashed performance preflight."""
+    if (isinstance(max_cpu_hours, bool) or not isinstance(max_cpu_hours, (int, float))
+            or not math.isfinite(float(max_cpu_hours)) or float(max_cpu_hours) <= 0):
+        raise ValueError("max_cpu_hours must be a finite positive number")
+    report = json.loads(Path(report_file).read_text(encoding="utf-8"))
+    claimed = report.get("benchmark_sha256")
+    unhashed = dict(report)
+    unhashed.pop("benchmark_sha256", None)
+    canonical = json.dumps(unhashed, sort_keys=True, separators=(",", ":"),
+                           ensure_ascii=False, allow_nan=False).encode("utf-8")
+    actual = hashlib.sha256(canonical).hexdigest()
+    if claimed != actual:
+        raise ValueError("benchmark report hash is invalid")
+    if (report.get("evidence_class") != "performance_preflight_only_not_calibration"
+            or report.get("plan_id") != "M3-HAC-MBB-CALIBRATION-V2-3"):
+        raise ValueError("benchmark report is not the required v2.0.3 performance preflight")
+    provenance_keys = (
+        "plan_sha256", "engine_revision", "runner_revision", "plan_git_blob",
+        "engine_git_blob", "runner_git_blob", "aggregator_git_blob",
+        "reference_check_git_blob", "benchmark_git_blob",
+    )
+    if any(report.get(key) != provenance.get(key) for key in provenance_keys):
+        raise ValueError("benchmark report source/plan provenance does not match this checkout")
+    if (report.get("runtime") != runtime or report.get("platform") != runtime.get("platform")
+            or report.get("cpu_count") != runtime.get("cpu_count")):
+        raise ValueError("benchmark and calibration runtime/platform/CPU count must match exactly")
+    if (report.get("timed_bootstrap_replicates") != 9999
+            or isinstance(report.get("timed_families"), bool)
+            or not isinstance(report.get("timed_families"), int)
+            or report["timed_families"] < 3):
+        raise ValueError("benchmark must time at least three full 9999-replicate families")
+    family_seconds = report.get("family_seconds")
+    if (not isinstance(family_seconds, list) or len(family_seconds) != report["timed_families"]
+            or any(isinstance(x, bool) or not isinstance(x, (int, float))
+                   or not math.isfinite(x) or x <= 0 for x in family_seconds)):
+        raise ValueError("benchmark per-family timings are incomplete or invalid")
+    mean = report.get("mean_seconds_per_family")
+    if isinstance(mean, bool) or not isinstance(mean, (int, float)) or not math.isfinite(mean) or mean <= 0:
+        raise ValueError("benchmark mean family runtime is invalid")
+    computed_mean = sum(family_seconds) / len(family_seconds)
+    if abs(computed_mean - mean) > max(1e-9, abs(mean) * 1e-9):
+        raise ValueError("benchmark mean runtime does not match per-family timings")
+    if report.get("estimated_total_family_equivalents") != 151500:
+        raise ValueError("benchmark total-workload equivalent count is invalid")
+    estimate = report.get("estimated_campaign_cpu_hours")
+    if isinstance(estimate, bool) or not isinstance(estimate, (int, float)) or not math.isfinite(estimate) or estimate <= 0:
+        raise ValueError("benchmark CPU-hour estimate is missing or invalid")
+    expected_estimate = mean * 151500 / 3600.0
+    if abs(expected_estimate - estimate) > max(1e-9, abs(expected_estimate) * 1e-9):
+        raise ValueError("benchmark CPU-hour estimate does not match measured family runtime")
+    expected_seeds = {
+        "family": [3_950_000_000, 3_950_000_000 + report["timed_families"]],
+        "bootstrap": [3_960_000_000, 3_960_000_000 + report["timed_families"]],
+    }
+    if report.get("benchmark_seed_ranges") != expected_seeds:
+        raise ValueError("benchmark-only seed ranges are invalid")
+    for key in ("pvalue_output_sha256", "return_hashes_sha256"):
+        value = report.get(key)
+        if not isinstance(value, str) or len(value) != 64 or any(c not in "0123456789abcdef" for c in value):
+            raise ValueError(f"benchmark digest is invalid: {key}")
+    correlations = report.get("realized_correlations")
+    if (not isinstance(correlations, list) or len(correlations) != report["timed_families"]
+            or any(not isinstance(x, (int, float)) or not math.isfinite(x) or not -1 <= x <= 1
+                   for x in correlations)):
+        raise ValueError("benchmark realized correlations are incomplete or invalid")
+    if estimate > float(max_cpu_hours):
+        raise ValueError("benchmark CPU-hour estimate exceeds the explicitly approved budget")
+    return {
+        "benchmark_sha256": claimed,
+        "benchmark_estimated_cpu_hours": float(estimate),
+        "approved_max_cpu_hours": float(max_cpu_hours),
     }
