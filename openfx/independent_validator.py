@@ -266,6 +266,9 @@ def validate_independently(
     _require(root.is_dir(), "ARTIFACT_ROOT_INVALID", "artifact root must be a directory")
 
     verified_identity = _verify_attestation(attestation, trust_store, job, run, job_digest, now)
+    issued_at = parse_utc(attestation.get("issued_at_utc"), "attestation.issued_at_utc")
+    _require(issued_at >= finished, "ATTESTATION_PRECEDES_RUN_COMPLETION",
+             "executor attestation must be issued after run completion")
     outputs = run.get("outputs")
     _require(isinstance(outputs, list) and len(outputs) > 0,
              "RUN_OUTPUTS_MISSING", "RunRecord must declare at least one output artifact")
@@ -273,6 +276,7 @@ def validate_independently(
     seen_paths = set()
     for record in outputs:
         _require(isinstance(record, dict), "ARTIFACT_RECORD_INVALID", "artifact record must be an object")
+        _require(isinstance(record.get("path"), str), "ARTIFACT_PATH_INVALID", "artifact path must be a string")
         _require(record.get("path") not in seen_paths, "ARTIFACT_DUPLICATE_PATH", "duplicate artifact path")
         seen_paths.add(record.get("path"))
         verified_artifacts.append(_hash_artifact(root, record))
@@ -322,6 +326,13 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({
             "schema_version": 1, "valid": False, "decision": "FAIL",
             "reason_codes": [exc.reason_code],
+        }, sort_keys=True))
+        return 2
+    except Exception:
+        # Fail closed without leaking filesystem paths, payloads, or tracebacks.
+        print(json.dumps({
+            "schema_version": 1, "valid": False, "decision": "FAIL",
+            "reason_codes": ["VALIDATOR_INTERNAL_ERROR"],
         }, sort_keys=True))
         return 2
 
