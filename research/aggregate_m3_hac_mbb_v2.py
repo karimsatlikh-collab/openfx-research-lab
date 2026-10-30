@@ -193,6 +193,16 @@ def aggregate(input_dir: Path, output_path: Path) -> dict:
             "direct_family_global_null_fwer": family_null_checks,
             "direct_family_mde_power": family_mde_checks,
         },
+        "summaries": {
+            "marginal_null": {key: value["summary"] for key, value in marginal_null.items()},
+            "marginal_mde_power": {key: value["summary"] for key, value in marginal_mde.items()},
+            "direct_family_global_null_fwer": {
+                f"{key[0]}|rho={key[1]}": value["summary"] for key, value in family_null.items()
+            },
+            "direct_family_mde_power": {
+                f"{key[0]}|rho={key[1]}": value["summary"] for key, value in family_mde.items()
+            },
+        },
         "cell_hashes": sorted(cell["cell_sha256"] for cell in cells),
         "limitations": [
             "Synthetic calibration only; not market evidence or a profitability guarantee.",
