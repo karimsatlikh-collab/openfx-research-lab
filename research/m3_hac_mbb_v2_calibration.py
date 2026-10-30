@@ -226,8 +226,8 @@ def run_marginal_cell(generator_id: str, alternative: bool,
         bootstrap_seed = bootstrap_base + data_seed
         try:
             values = _generate_marginal(generator_id, data_seed, MDE if alternative else 0.0)
-            pvalue = float(_bootstrap_pvalues(values.reshape(1, N), bootstrap_seed)[0])
             series_hash = _series_sha256(values)
+            pvalue = float(_bootstrap_pvalues(values.reshape(1, N), bootstrap_seed)[0])
             status, error = "completed", None
         except (ValueError, FloatingPointError, OverflowError) as exc:
             pvalue, series_hash = 1.0, None
@@ -264,6 +264,7 @@ def run_family_cell(generator_id: str, rho: float, alternative: bool,
     for family_index in range(FAMILY_REPLICATES):
         family_seed = data_base + gi * 1_000_000 + ci * 10_000 + family_index
         bootstrap_seed = 700_000_000 + family_seed
+        hashes = None
         try:
             values = _generate_family(generator_id, family_seed, rho, alternative)
             hashes = [_series_sha256(values[i]) for i in range(FAMILY_SIZE)]
@@ -277,7 +278,6 @@ def run_family_cell(generator_id: str, rho: float, alternative: bool,
             power20_result = bool(rejected20[0]) if alternative else False
             status, error = "completed", None
         except (ValueError, FloatingPointError, OverflowError) as exc:
-            hashes = None
             pvalues = [1.0] * FAMILY_SIZE
             fwer5_result = fwer20_result = power5_result = power20_result = False
             status, error = "failed", f"{type(exc).__name__}: {exc}"
