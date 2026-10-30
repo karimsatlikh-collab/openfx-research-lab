@@ -113,6 +113,34 @@ def _relative_parts(relative: Any) -> tuple[str, ...]:
     return tuple(raw_parts)
 
 
+def _open_root_directory(root: Path, nofollow: int, directory: int) -> int:
+    # Resolve the configured root once, then pin every canonical path component
+    # from / using directory-relative no-follow opens.
+    if not root.is_absolute():
+        raise ValidationError("ARTIFACT_ROOT_INVALID", "artifact root must resolve to an absolute path")
+    current_fd = os.open(os.sep, os.O_RDONLY | directory | nofollow)
+    try:
+        for part in root.parts[1:]:
+            next_fd = os.open(part, os.O_RDONLY | directory | nofollow, dir_fd=current_fd)
+            os.close(current_fd)
+            current_fd = next_fd
+        if not stat.S_ISDIR(os.fstat(current_fd).st_mode):
+            raise ValidationError("ARTIFACT_ROOT_INVALID", "artifact root is not a directory")
+        result = current_fd
+        current_fd = None
+        return result
+    except ValidationError:
+        raise
+    except OSError as exc:
+        if exc.errno in (errno.ELOOP, errno.ENOTDIR):
+            raise ValidationError("ARTIFACT_ROOT_SYMLINK_OR_NOT_DIRECTORY",
+                                  "artifact root contains a symlink or non-directory component") from exc
+        raise ValidationError("ARTIFACT_ROOT_INVALID", "artifact root could not be opened safely") from exc
+    finally:
+        if current_fd is not None:
+            os.close(current_fd)
+
+
 def _open_beneath(root: Path, parts: tuple[str, ...]) -> int:
     nofollow = getattr(os, "O_NOFOLLOW", None)
     directory = getattr(os, "O_DIRECTORY", None)
@@ -122,9 +150,7 @@ def _open_beneath(root: Path, parts: tuple[str, ...]) -> int:
     root_fd = None
     current_fd = None
     try:
-        root_fd = os.open(root, os.O_RDONLY | directory | nofollow)
-        if not stat.S_ISDIR(os.fstat(root_fd).st_mode):
-            raise ValidationError("ARTIFACT_ROOT_INVALID", "artifact root is not a directory")
+        root_fd = _open_root_directory(root, nofollow, directory)
         current_fd = os.dup(root_fd)
         for part in parts[:-1]:
             next_fd = os.open(part, os.O_RDONLY | directory | nofollow, dir_fd=current_fd)
