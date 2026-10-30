@@ -76,9 +76,10 @@ class FakeRegistry:
                 "registered_before_execution": True,
             }
             result.append(item)
+        event_count = sum(2 if row.get("outcome") == "completed" else 1 for row in self.trials)
         return {"valid": True, "family_id": family_id, "trials": result,
-                "event_count": len(result), "trial_count": len(result),
-                "family_event_sha256": ["e" * 64 for _ in result],
+                "event_count": event_count, "trial_count": len(result),
+                "family_event_sha256": [f"{i:064x}" for i in range(event_count)],
                 "trust": "local_prototype_not_independently_authenticated",
                 "evidence_level": "synthetic"}
 
