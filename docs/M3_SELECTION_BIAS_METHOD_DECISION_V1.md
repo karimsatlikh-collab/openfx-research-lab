@@ -1,6 +1,6 @@
 # M3 Selection-Bias Correction Method Decision v1
 
-Status: **method decision and pre-implementation protocol**. This document is a frozen engineering proposal for review; it is not evidence that the correction is implemented, calibrated, or valid on market data. No broad parameter search is authorized by this document.
+Status: **method decision plus first executable prototype**. The method parameters remain frozen for v1. The implementation is not yet calibrated, independently reviewed, or validated on market data. No broad parameter search is authorized.
 
 - Protocol ID: `M3-HOLM-BLOCK-BOOTSTRAP-V1`
 - Version: `1.0.0`
@@ -137,3 +137,26 @@ Reject omitted/hidden trials, family splitting/renaming, changed config after re
 5. Add unit, property, and adversarial tests.
 6. Freeze a separate calibration protocol, run the synthetic campaign, retain all raw artifacts, and independently reproduce.
 7. Only after independent review and acceptance may Issue #27 close. Broad optimization remains disabled until Issue #24 and Issue #27 are both accepted.
+
+
+## 9. Prototype implementation status (PR #34)
+
+The first executable engine is implemented in `openfx/selection_bias.py` and consumes a complete family snapshot from `LocalTrialRegistry.family_snapshot()`.
+
+Implemented in this prototype:
+- complete family snapshot including latest outcome and original pending registration payload;
+- required pending pre-execution registration bound to the frozen family-manifest digest;
+- failed/non-completed/ineligible attempts retained in family size with p=1;
+- strict data/cost/validation-split/frequency binding, finite returns, common timestamp alignment, and return-series SHA-256 verification;
+- synchronized circular moving-block bootstrap, deterministic family-derived seed, one-sided studentized mean p-values, and Holm step-down;
+- auditable verdict with family/trial IDs, registry snapshot digest, raw/adjusted p-values, thresholds, exclusions, runtime and explicit limitations;
+- unit/adversarial tests for Holm ordering, failed-trial accounting, deterministic reproduction, timestamp misalignment, return-hash tampering, frozen-manifest enforcement, and registry history.
+
+Important prototype limitations:
+- the ledger remains local and can be rewritten in full by a privileged actor; it cannot authenticate family completeness;
+- the registration binding is an application-level invariant, not a cryptographic trusted registrar or proof of wall-clock ordering;
+- the engine does not yet persist all intermediate bootstrap statistics as separate artifacts;
+- no calibration campaign for this method has run; the M2 calibration does not calibrate M3;
+- no optimizer or market-data execution path is connected to this gate.
+
+The prototype must remain BLOCKED from broad search until the dedicated M3 calibration, independent reproduction/review, trusted family-registration design, and Issues #24/#27 acceptance are complete.
