@@ -330,7 +330,7 @@ def run_family_cell(generator_id: str, rho: float, alternative: bool,
         "phase": "family_mde" if alternative else "family_null",
         "generator": generator_id, "rho": rho,
         "engine_revision": engine_revision, "runner_revision": runner_revision,
-        "plan_sha256": plan_sha256, "runtime": _runtime(),
+        "plan_sha256": plan_sha256, **benchmark_info, "runtime": _runtime(),
         "settings": {"n": N, "alpha": ALPHA, "bootstrap_replicates": BOOTSTRAP_REPLICATES,
                      "block_length": BLOCK_LENGTH, "hac_lag": HAC_LAG,
                      "max_observations": 100_000, "max_trials": 10_000,
@@ -392,7 +392,7 @@ def main() -> None:
                                  provenance['engine_revision'], runner_revision, benchmark_info)
     elif args.phase == "marginal-mde":
         cell = run_marginal_cell(args.generator, True, plan_sha256,
-                                 provenance['engine_revision'], runner_revision)
+                                 provenance['engine_revision'], runner_revision, benchmark_info)
     elif args.phase == "family-null":
         cell = run_family_cell(args.generator, args.rho, False, plan_sha256,
                                provenance['engine_revision'], runner_revision)
