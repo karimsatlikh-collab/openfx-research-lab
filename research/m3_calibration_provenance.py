@@ -38,7 +38,7 @@ def verify_execution_bindings(
     aggregator_file = ROOT / "research" / "aggregate_m3_hac_mbb_v2.py"
     reference_file = ROOT / "research" / "validate_m3_v2_reference.py"
     paths = [p.relative_to(ROOT).as_posix() for p in
-             (plan_file, runner_file, engine_file, aggregator_file, reference_file,\n              ROOT / "research" / "benchmark_m3_v2_family.py")]
+             (plan_file, runner_file, engine_file, aggregator_file, reference_file, ROOT / "research" / "benchmark_m3_v2_family.py")]
     for path in paths:
         worktree_blob = _git("hash-object", path)
         committed_blob = _git("rev-parse", f"HEAD:{path}")
