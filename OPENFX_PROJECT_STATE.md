@@ -351,3 +351,43 @@ For `cda92cbc2320e1bf96ea473eded5ef9fe167721e`, refreshed Actions now show:
 - OpenFX Unit Tests run `40975873137`: completed success (syntax check and unit-test step both successful).
 - Project Tests run `40975873003`: completed success (syntax check and project data-evaluation step successful).
 - CodeQL run `40975872872`: still in progress at the latest refresh; the Analyze Python job was in progress at Initialize CodeQL. This is not yet a pass.
+
+
+## 16. Provenance and registry contract hardening — 2026-10-30
+
+### Exact-head CI correction for the prior hardening head
+
+The earlier note that CodeQL was still running for `cda92cbc2320e1bf96ea473eded5ef9fe167721e` is superseded by the completed refresh:
+- OpenFX Unit Tests `40975873137`: success.
+- Project Tests `40975873003`: success.
+- CodeQL `40975872872`: success.
+
+### New changes on `openfx-foundation-m1-contracts`
+
+- Added strict Draft 2020-12 schemas:
+  - `schemas/source-record-v1.schema.json`, commit `822b353c9fc6e0e857706b4c997b87f27db2b873`.
+  - `schemas/atomic-claim-v1.schema.json`, commit `ab5a23743c006d9a26a01efa4f62ca4470dce8c2`.
+  - `schemas/hypothesis-card-v1.schema.json`, commit `cc910c85e76ca997dc664fdbaa52c105f7c3fd22`.
+  - `schemas/registry-event-v1.schema.json`, commit `ffceae7aafa83ae34291813bcbd3727b297291d9`.
+- Added valid fixtures for these contracts to `tests/test_json_schema_validation.py`, commit `57b8eedabfbb50a3be77d828fab6b7a565d715da`. Existing suite checks Draft 2020-12 schema validity, fixture validity, version rejection, and unknown top-level-field rejection across all listed schemas.
+- Hardened `openfx/trial_registry.py`, commit `c0f0b9ce183aa40894c0a7ea40048a548856fab2`: event reads now require the exact v1 field set and reject unsupported `schema_version` before trusting the event hash. This closes the prior gap where extra event fields and unvalidated schema_version could be accepted if the event hash was recomputed.
+
+### CI for current head
+
+Current code head: `c0f0b9ce183aa40894c0a7ea40048a548856fab2`.
+- OpenFX Unit Tests run `40979851698`: completed success.
+- Project Tests run `40979851708`: completed success.
+- CodeQL run `40979851703`: in progress at latest refresh; not yet a pass.
+
+### Work not completed / explicit gaps
+
+- A dedicated FrozenTrial JSON Schema was attempted but not committed; the schema-creation action was blocked. FrozenTrial remains protected by canonical freeze hash and runtime validation, not a persisted JSON Schema contract.
+- An additional standalone adversarial Registry test file was not created. The runtime change is committed, but its dedicated tests for invalid JSON, duplicate event IDs, and schema-version tampering remain to be added. Do not describe those cases as newly tested.
+- The JSON Schema suite structurally validates persisted examples, but it does not automatically validate every runtime object before persistence. SourceRecord legal rights, identity, locator truth, and human reviewer authenticity remain asserted metadata.
+- Registry remains a local hash-chain ledger; a privileged actor can rewrite the full ledger. Strict shape and hash checks do not make it tamper-proof.
+- HypothesisCard remains explicitly a hypothesis; it is not a verified rule.
+- No independent human/clean-room reproduction, real market-data evaluation, MT5 test, or profitability evidence has been produced.
+
+### Next action
+
+Add a dedicated FrozenTrial schema and adversarial registry tests, then refresh all three exact-head Actions. Afterward resume the broader audit: review open PR dependency/cross-file conflict risks, compare worker implementation to its claimed role, and map actual source discovery/extraction/transcript accuracy and rights enforcement against G0-G5. No merge.
