@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from research.m3_calibration_provenance import verify_execution_bindings
+from research.m3_calibration_provenance import verify_execution_bindings, verify_benchmark_report
 
 import numpy as np
 
@@ -30,6 +30,7 @@ from research.m3_hac_mbb_v2_calibration import (
     _hac_statistic,
     _holm_rejections,
     _series_sha256,
+    _runtime,
 )
 
 
@@ -43,11 +44,12 @@ def _fixture_series() -> dict[str, list[float]]:
     return result
 
 
-def validate(plan_file: Path, engine_revision: str) -> dict:
+def validate(plan_file: Path, engine_revision: str, benchmark_report: Path, max_cpu_hours: float) -> dict:
     provenance = verify_execution_bindings(
         plan_file, engine_revision, Path(__file__).resolve().parents[1] / "research" / "m3_hac_mbb_v2_calibration.py",
         Path(__file__).resolve().parents[1] / "openfx" / "selection_bias_v2.py",
     )
+    benchmark_info = verify_benchmark_report(benchmark_report, provenance, _runtime(), max_cpu_hours)
     series = _fixture_series()
     seed = 424242
     replicates = 199
@@ -130,6 +132,7 @@ def validate(plan_file: Path, engine_revision: str) -> dict:
     result = {
         "status": "PASS",
         **provenance,
+        **benchmark_info,
         "fixture_seed": seed,
         "bootstrap_replicates": replicates,
         "series_count": len(series),
@@ -155,9 +158,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--plan-file", required=True)
     parser.add_argument("--engine-revision", required=True)
+    parser.add_argument("--benchmark-report", required=True)
+    parser.add_argument("--max-cpu-hours", type=float, required=True)
     parser.add_argument("--output")
     args = parser.parse_args()
-    result = validate(Path(args.plan_file), args.engine_revision)
+    result = validate(Path(args.plan_file), args.engine_revision, Path(args.benchmark_report), args.max_cpu_hours)
     payload = json.dumps(result, sort_keys=True, separators=(",", ":"),
                          ensure_ascii=False, allow_nan=False) + "\n"
     if args.output:
