@@ -8,6 +8,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from openfx.calibration import run_campaign
+from openfx.leakage_controls import run_declared_leakage_fixtures
 
 
 def main() -> int:
@@ -19,6 +20,16 @@ def main() -> int:
         raise SystemExit(f"refusing to overwrite existing output directory: {output}")
     output.mkdir(parents=True)
     result = run_campaign()
+    leakage = run_declared_leakage_fixtures()
+    result["leakage_fixtures"] = leakage
+    result["acceptance"]["leakage_fixtures_all_detected"] = all(
+        item["status"] == "detected" for item in leakage
+    )
+    result["acceptance"]["overall_calibration_pass"] = (
+        result["acceptance"]["null_false_positive_all_families"]
+        and result["acceptance"]["mde_power_all_families"]
+        and result["acceptance"]["leakage_fixtures_all_detected"]
+    )
     raw_path = output / "raw-records.jsonl"
     with raw_path.open("x", encoding="utf-8", newline="\n") as stream:
         for record in result.pop("raw_records"):
