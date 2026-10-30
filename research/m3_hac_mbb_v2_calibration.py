@@ -294,6 +294,7 @@ def run_family_cell(generator_id: str, rho: float, alternative: bool,
         record = {
             "family_index": family_index, "family_seed": family_seed,
             "bootstrap_seed": bootstrap_seed, "status": status, "failure": error,
+            "trial_ids": [f"trial_{i:02d}" for i in range(FAMILY_SIZE)],
             "trial_return_hashes": hashes, "raw_p_values": pvalues,
             "realized_average_pairwise_return_correlation": realized_corr,
         }
