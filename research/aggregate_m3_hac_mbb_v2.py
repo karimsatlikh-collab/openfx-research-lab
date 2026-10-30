@@ -95,6 +95,8 @@ def _check_family(cell: dict, phase: str, generator: str, generator_index: int, 
             raise ValueError("family replicate is not completed")
         hashes = row.get("trial_return_hashes")
         pvalues = row.get("raw_p_values")
+        if row.get("trial_ids") != [f"trial_{i:02d}" for i in range(20)]:
+            raise ValueError("family trial membership/order mismatch")
         if not isinstance(hashes, list) or len(hashes) != 20 or any(not isinstance(x, str) or len(x) != 64 for x in hashes):
             raise ValueError("family trial return hashes are incomplete")
         if not isinstance(pvalues, list) or len(pvalues) != 20:
