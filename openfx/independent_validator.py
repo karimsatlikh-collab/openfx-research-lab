@@ -99,6 +99,11 @@ def _load_trusted_key(
     valid_until = parse_utc(entry.get("not_after_utc"), "trust_store.not_after_utc")
     _require(valid_from < valid_until, "TRUST_KEY_WINDOW", "trust-key validity window is invalid")
     _require(valid_from <= now <= valid_until, "KEY_OUTSIDE_VALIDITY", "executor key is outside its validity window")
+    issued = parse_utc(attestation.get("issued_at_utc"), "attestation.issued_at_utc")
+    expires = parse_utc(attestation.get("expires_at_utc"), "attestation.expires_at_utc")
+    _require(valid_from <= issued and expires <= valid_until,
+             "ATTESTATION_OUTSIDE_KEY_VALIDITY",
+             "attestation validity must be contained within the trusted key validity window")
 
     encoded = entry.get("public_key_b64")
     _require(isinstance(encoded, str), "TRUST_KEY_INVALID", "trusted public key is missing")
@@ -170,8 +175,9 @@ def _hash_artifact(root: Path, record: dict[str, Any]) -> str:
     relative = record.get("path")
     _require(isinstance(relative, str) and relative, "ARTIFACT_PATH_INVALID", "artifact path is required")
     _require("\\" not in relative, "ARTIFACT_PATH_INVALID", "artifact path must use POSIX separators")
+    raw_parts = relative.split("/")
     rel = PurePosixPath(relative)
-    _require(not rel.is_absolute() and all(part not in ("", ".", "..") for part in rel.parts),
+    _require(not rel.is_absolute() and all(part not in ("", ".", "..") for part in raw_parts),
              "ARTIFACT_PATH_ESCAPE", "artifact path must be a safe relative path")
 
     current = root
