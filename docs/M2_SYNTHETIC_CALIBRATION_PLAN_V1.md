@@ -36,7 +36,7 @@ For each family, execute 1,000 independent deterministic replicate seeds with ze
 2. **T5-IID:** independent Student-t with 5 degrees of freedom, multiplied by `sqrt(3/5)` to normalize variance to 1.
 3. **HET-IID:** independent alternating scales `0.5` and `sqrt(1.75)` applied to standard normal draws; the two-position average variance is 1. The first observation uses scale 0.5.
 4. **AR1-030:** stationary Gaussian AR(1), coefficient `phi=0.30`, innovation standard deviation `sqrt(1-phi^2)`, initialized from a standard normal draw. The stationary marginal variance is 1.
-5. **CONTAM-05:** independent mixture; with probability 0.95 draw `N(0, 0.5^2)`, otherwise draw `N(0, 15.25)`. The unconditional variance is 1. The mixture selector and normal draws use the same seeded PRNG stream in the documented order.
+5. **CONTAM-05:** independent mixture; with probability 0.95 draw `N(0, 0.5^2)`, otherwise draw `N(0, variance=15.25)`. The unconditional variance is 1. The mixture selector and normal draws use the same seeded PRNG stream in the documented order.
 
 The generator implementation must expose its family identifier and parameters in every raw replicate record. Any implementation deviation invalidates this plan version; do not silently substitute another distribution.
 
