@@ -132,6 +132,36 @@ class IndependentValidatorTests(unittest.TestCase):
             self.verify()
         self.assertEqual(ctx.exception.reason_code, "KEY_REVOKED")
 
+    def test_key_executor_identity_mismatch_is_rejected(self):
+        self.trust_store["keys"][0]["executor_id"] = "different-executor"
+        with self.assertRaises(ValidationError) as ctx:
+            self.verify()
+        self.assertEqual(ctx.exception.reason_code, "KEY_IDENTITY_MISMATCH")
+
+    def test_key_engine_scope_is_enforced(self):
+        self.trust_store["keys"][0]["allowed_engines"] = ["mock"]
+        with self.assertRaises(ValidationError) as ctx:
+            self.verify()
+        self.assertEqual(ctx.exception.reason_code, "ENGINE_NOT_ALLOWED")
+
+    def test_key_validity_must_cover_attestation_window(self):
+        self.trust_store["keys"][0]["not_after_utc"] = "2026-10-30T12:02:00Z"
+        with self.assertRaises(ValidationError) as ctx:
+            self.verify()
+        self.assertEqual(ctx.exception.reason_code, "ATTESTATION_OUTSIDE_KEY_VALIDITY")
+
+    def test_artifact_hash_mismatch_is_rejected(self):
+        self.run["outputs"][0]["sha256"] = "0" * 64
+        with self.assertRaises(ValidationError) as ctx:
+            self.verify()
+        self.assertEqual(ctx.exception.reason_code, "ARTIFACT_HASH_MISMATCH")
+
+    def test_missing_artifact_is_rejected(self):
+        self.run["outputs"][0]["path"] = "missing.json"
+        with self.assertRaises(ValidationError) as ctx:
+            self.verify()
+        self.assertEqual(ctx.exception.reason_code, "ARTIFACT_MISSING")
+
     def test_expired_attestation_is_rejected(self):
         self.attestation["expires_at_utc"] = "2026-10-30T11:59:59Z"
         self.sign()
