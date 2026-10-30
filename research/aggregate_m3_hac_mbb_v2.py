@@ -64,8 +64,8 @@ def _check_marginal(cell: dict, phase: str, generator: str, generator_index: int
         if (row.get("data_seed") != expected_data_seed
                 or row.get("bootstrap_seed") != bootstrap_base + expected_data_seed):
             raise ValueError("marginal seed map mismatch")
-        if row.get("source_revision") != cell.get("engine_revision"):
-            raise ValueError("marginal source revision does not match frozen engine revision")
+        if row.get("engine_revision") != cell.get("engine_revision"):
+            raise ValueError("marginal engine revision does not match frozen calibration engine revision")
         if row.get("status") != "completed" or not isinstance(row.get("returns_sha256"), str) or len(row["returns_sha256"]) != 64:
             raise ValueError("marginal replicate missing completed evidence")
         p = row.get("p_value")
@@ -104,8 +104,8 @@ def _check_family(cell: dict, phase: str, generator: str, generator_index: int, 
         pvalues = row.get("raw_p_values")
         if row.get("trial_ids") != [f"trial_{i:02d}" for i in range(20)]:
             raise ValueError("family trial membership/order mismatch")
-        if row.get("trial_source_revisions") != [cell.get("engine_revision")] * 20:
-            raise ValueError("family trial source revisions do not match frozen engine revision")
+        if row.get("trial_engine_revisions") != [cell.get("engine_revision")] * 20:
+            raise ValueError("family trial engine revisions do not match frozen calibration engine revision")
         if not isinstance(hashes, list) or len(hashes) != 20 or any(not isinstance(x, str) or len(x) != 64 for x in hashes):
             raise ValueError("family trial return hashes are incomplete")
         if not isinstance(pvalues, list) or len(pvalues) != 20:
