@@ -460,3 +460,6 @@ Reviewed `worker/openfx_worker.py` on `main` and the later `openfx-audit-fixes` 
 - The new FrozenTrial schema fixture is structural; the runtime path still does not invoke a generic schema-validation service on every frozen object.
 - PR #23 remains independent of the transcript/source feature chain. A planned integration order and branch conflict resolution are required before a combined product can be evaluated.
 - Continue with exact-head CI, then a conflict-aware PR integration plan and a G0–G5 capability/evidence audit. Do not merge or change `main`.
+
+
+CI update for head `e1e1f082d51ca2f5bddfb391e5d54d5c81d04c22`: OpenFX Unit Tests run `40980126134` succeeded; Project Tests run `40980126108` succeeded; CodeQL run `40980126174` remains in progress at latest refresh.
