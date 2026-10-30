@@ -286,15 +286,24 @@ def run_family_cell(generator_id: str, rho: float, alternative: bool,
         fwer20 += int(fwer20_result and not alternative)
         power5 += int(power5_result)
         power20 += int(power20_result)
-        records.append({
+        realized_corr = None
+        if hashes is not None:
+            corr_matrix = np.corrcoef(values)
+            upper = corr_matrix[np.triu_indices(FAMILY_SIZE, k=1)]
+            realized_corr = float(np.mean(upper))
+        record = {
             "family_index": family_index, "family_seed": family_seed,
             "bootstrap_seed": bootstrap_seed, "status": status, "failure": error,
             "trial_return_hashes": hashes, "raw_p_values": pvalues,
-            "global_null_fwer_m5": bool(fwer5_result and not alternative),
-            "global_null_fwer_m20": bool(fwer20_result and not alternative),
-            "mde_candidate_rejected_m5": bool(power5_result),
-            "mde_candidate_rejected_m20": bool(power20_result),
-        })
+            "realized_average_pairwise_return_correlation": realized_corr,
+        }
+        if alternative:
+            record["mde_candidate_rejected_m5"] = bool(power5_result)
+            record["mde_candidate_rejected_m20"] = bool(power20_result)
+        else:
+            record["global_null_fwer_m5"] = bool(fwer5_result)
+            record["global_null_fwer_m20"] = bool(fwer20_result)
+        records.append(record)
     cell = {
         "plan_id": "M3-HAC-MBB-CALIBRATION-V2",
         "phase": "family_mde" if alternative else "family_null",
@@ -306,12 +315,13 @@ def run_family_cell(generator_id: str, rho: float, alternative: bool,
                      "families": FAMILY_REPLICATES, "family_size_primary": FAMILY_SIZE,
                      "family_size_secondary": 5},
         "failed_families": failures,
-        "summary": {
-            "global_null_fwer_m5": _wilson(fwer5, FAMILY_REPLICATES),
-            "global_null_fwer_m20": _wilson(fwer20, FAMILY_REPLICATES),
+        "summary": ({
             "mde_family_power_m5": _wilson(power5, FAMILY_REPLICATES),
             "mde_family_power_m20": _wilson(power20, FAMILY_REPLICATES),
-        },
+        } if alternative else {
+            "global_null_fwer_m5": _wilson(fwer5, FAMILY_REPLICATES),
+            "global_null_fwer_m20": _wilson(fwer20, FAMILY_REPLICATES),
+        }),
         "families": records,
     }
     cell["cell_sha256"] = _sha256(cell)
