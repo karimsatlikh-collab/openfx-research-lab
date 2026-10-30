@@ -187,10 +187,15 @@ def aggregate(input_dir: Path, output_path: Path, reference_path: Path, plan_fil
     )
     if cells[0]["runner_revision"] != provenance["runner_revision"]:
         raise ValueError("cell runner revision does not match the current clean checkout")
+    provenance_keys = (
+        "plan_git_blob", "engine_git_blob", "runner_git_blob",
+        "aggregator_git_blob", "reference_check_git_blob",
+    )
     if (reference.get("plan_sha256") != expected_plan_sha256
             or reference.get("engine_revision") != cells[0]["engine_revision"]
-            or reference.get("runner_revision") != cells[0]["runner_revision"]):
-        raise ValueError("reference check provenance does not match calibration cells")
+            or reference.get("runner_revision") != cells[0]["runner_revision"]
+            or any(reference.get(key) != provenance.get(key) for key in provenance_keys)):
+        raise ValueError("reference check provenance does not match calibration cells and checkout")
     plan_hash = cells[0]["plan_sha256"]
     if not isinstance(plan_hash, str) or len(plan_hash) != 64:
         raise ValueError("invalid plan SHA-256")
@@ -242,6 +247,7 @@ def aggregate(input_dir: Path, output_path: Path, reference_path: Path, plan_fil
         "plan_sha256": plan_hash,
         "engine_revision": cells[0]["engine_revision"],
         "runner_revision": cells[0]["runner_revision"],
+        "source_provenance": provenance,
         "runtime": cells[0]["runtime"],
         "reference_validation_sha256": reference_hash,
         "cell_count": len(cells),
