@@ -463,3 +463,59 @@ Reviewed `worker/openfx_worker.py` on `main` and the later `openfx-audit-fixes` 
 
 
 CI update for head `e1e1f082d51ca2f5bddfb391e5d54d5c81d04c22`: OpenFX Unit Tests run `40980126134` succeeded; Project Tests run `40980126108` succeeded; CodeQL run `40980126174` remains in progress at latest refresh.
+
+
+## 18. Engineering decision and end-to-end readiness audit — 2026-10-30
+
+### Exact-head CI refresh
+
+For PR #23 branch `openfx-foundation-m1-contracts`, exact head `e1e1f082d51ca2f5bddfb391e5d54d5c81d04c22`:
+- OpenFX Unit Tests run `40980126134`: completed success.
+- Project Tests run `40980126108`: completed success.
+- CodeQL run `40980126174`: completed success; its Analyze Python job completed successfully.
+
+This establishes the listed GitHub Actions checks on this exact commit only. It does not establish market testing, production security, or profitability.
+
+### Threat-model review against implementation
+
+Reviewed `docs/THREAT_MODEL_M3.md`, `docs/G0_G5_ENFORCEMENT_MATRIX.md`, `docs/ARCHITECTURE_FOUNDATION_M1.md`, and `worker/openfx_worker.py` on the PR #23 head.
+
+Confirmed:
+- The threat model accurately labels itself an initial code-reviewed threat register, not a security certification.
+- The attestation helper is a fail-closed control-flow boundary that delegates to an external verifier; no trusted key store, signature policy, revocation/expiry/nonce enforcement, or mandatory executor/registrar integration is established.
+- Source rights, identity, locator, approval actor/time/reason, and source truth remain caller-asserted metadata. Hashing binds the supplied bytes/documents; it does not independently authenticate source ownership, legal permission, or reviewer identity.
+- The worker is explicitly validation/audit-only. Its module states it does not invoke MT5 or execute jobs. The reviewed implementation is not a production control plane, MT5 adapter, broker connector, or VPS deployment.
+- The local JSONL registry is not a trusted central registrar and can be rewritten by a privileged actor. Local locking/concurrency tests do not establish multi-host atomicity, power-loss durability, or crash recovery.
+- Synthetic replay uses the same implementation twice in separate workspaces. This is useful deterministic regression evidence, but not independent implementation reproduction or G4 clean-room replication.
+- The statistical gate is descriptive and does not calculate DSR, PBO, familywise error correction, or statistical power. It must not be used to certify an optimized strategy.
+- The G0–G5 matrix and architecture docs are acceptance/design contracts. Their presence is not evidence that access controls, role separation, OOS secrecy, or every gate are enforced at runtime.
+
+### G0–G5 capability verdict (current evidence)
+
+| Gate | Current status | What is actually demonstrated | Blocking gap |
+|---|---|---|---|
+| G0 source admissibility | PARTIAL / BLOCKED for external autonomous ingestion | Local source-record/claim contracts, hashes, rights vocabulary, schema fixtures | No independently verified source capture, permission, reviewer identity, or full ingestion-to-transcript provenance |
+| G1 claim and hypothesis | PARTIAL | Atomic claim and hypothesis structures bound to source references and full-document digests | No enforced human review workflow, contradiction graph, or independent semantic verification |
+| G2 implementation and synthetic qualification | PARTIAL; synthetic slice CI-green | Frozen trial, local registration, deterministic synthetic replay, persisted artifact read-back, schemas and adversarial tests | Same-code replay, local rewriteable registry, incomplete runtime schema enforcement, no production authorization |
+| G3 market-data evaluation | NOT IMPLEMENTED / BLOCKED | Data/cost/gate contracts exist | No trusted market-data pipeline, executable market runner, full cost model validation, untouched OOS access controls, or multiple-testing correction |
+| G4 independent reproduction / MT5 demo | NOT IMPLEMENTED / BLOCKED | Attestation boundary helper and mock worker contract only | No trusted executor, independent clean-room reproducer, MT5 adapter, or evidenced MT5 demo run |
+| G5 release/deployment | NOT IMPLEMENTED / BLOCKED | Human approval boundary documented | No release controls, deployed service, operational monitoring/rollback evidence, VPS or live-trading authorization |
+
+### Engineering decision
+
+**Do not add an MT5 executor, VPS worker, or further statistical-gate complexity yet. Do not merge PR #23 or any other PR.** The next highest-value increment is a bounded source-to-claim evidence vertical slice and an integration baseline, because without trustworthy G0/G1 evidence the later experiment machinery can only reproducibly test untrusted or invented hypotheses.
+
+Before coding that slice, resolve the feature-branch integration graph and select one canonical integration branch. PR #16 and #17 require deliberate combination because they modify the same transcript-import implementation and tests. The #11 → #12 → #14 chain must remain ordered; #15/#20/#22 depend on the #14 branch; #21 depends on #11; #18/#19 and #23 are independent main-based branches. Individual mergeable flags are not a safe integration plan.
+
+The next implementation increment should be limited to:
+1. Define one canonical source-ingestion acceptance fixture with original bytes, stable locator, rights basis, capture timestamp, content hash, transcript artifact, and exact segment locator.
+2. Add an auditable human-review event (reviewer identity, timestamp, decision, reason, reviewed content digest) rather than trusting a `human_verified` boolean or caller-supplied approval fields.
+3. Bind each atomic claim to the exact transcript artifact digest and segment offsets/timecodes, then test tampering, missing/ambiguous rights, dropped negation, altered numbers/units/dates, and Persian/Arabic-Indic digit normalization.
+4. Separate mechanical fidelity checks from semantic review; do not label heuristic checks as proof of semantic equivalence.
+5. Produce one reproducible evidence package and negative-case report before connecting this path to strategy generation.
+
+No external source should be scraped or ingested without an admissible rights basis. No paid service, API, VPS, MT5 demo, broker access, or live trading is authorized by this decision.
+
+### Next precise action
+
+Refresh and inventory all PR heads/files once more, then produce a single conflict-aware integration plan and a minimal acceptance-test specification for the source→transcript→review-event→claim→hypothesis chain. Keep all work on non-main branches and preserve every failed CI run and negative result.
