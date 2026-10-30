@@ -106,7 +106,7 @@ References:
 ## 8. Acceptance boundary
 
 This document is a method candidate, not an authorization to use v2 for strategy selection. Before acceptance:
-- freeze a new v2 calibration plan and disjoint seeds;
+- execute the pre-registered v2.0.1 calibration plan with its disjoint seed ranges;
 - quantify how many marginal null replicates are needed to resolve the smallest Holm threshold for the declared maximum family size;
 - run direct return-level correlated-trial family simulations;
 - test Gaussian, heavy-tail, serial-correlation, volatility-clustering, and combined nulls;
