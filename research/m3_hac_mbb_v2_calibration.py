@@ -314,6 +314,7 @@ def run_family_cell(generator_id: str, rho: float, alternative: bool,
         records.append(record)
     cell = {
         "plan_id": "M3-HAC-MBB-CALIBRATION-V2-1",
+        "method_id": "M3-HOLM-HAC-MBB-V2", "method_version": "2.0.1",
         "phase": "family_mde" if alternative else "family_null",
         "generator": generator_id, "rho": rho,
         "engine_revision": engine_revision, "runner_revision": runner_revision,
