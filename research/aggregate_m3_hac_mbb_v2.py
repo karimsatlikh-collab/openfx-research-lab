@@ -189,7 +189,7 @@ def aggregate(input_dir: Path, output_path: Path, reference_path: Path, plan_fil
         raise ValueError("cell runner revision does not match the current clean checkout")
     provenance_keys = (
         "plan_git_blob", "engine_git_blob", "runner_git_blob",
-        "aggregator_git_blob", "reference_check_git_blob",
+        "aggregator_git_blob", "reference_check_git_blob", "benchmark_git_blob",
     )
     if (reference.get("plan_sha256") != expected_plan_sha256
             or reference.get("engine_revision") != cells[0]["engine_revision"]
