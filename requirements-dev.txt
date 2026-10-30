@@ -1,0 +1,2 @@
+# Development and security-validation dependencies.
+cryptography>=43,<47
