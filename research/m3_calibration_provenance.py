@@ -8,10 +8,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 FROZEN_ENGINE_REVISION = "087e66622f27350f1999d2e5b2ec82a9ead78982"
 EXPECTED_GIT_BLOBS = {
-    "docs/M3_HAC_MBB_V2_3_CALIBRATION_PLAN.md": "72e585cc52e80ab42915378afe297f1757c37141",
-    "research/m3_hac_mbb_v2_calibration.py": "0a952e210e38db28e319b2d43e8e1ec776173ee3",
+    "docs/M3_HAC_MBB_V2_3_CALIBRATION_PLAN.md": "8ba4deedfd90bcaaf489311fe7a83a025f492556",
+    "research/m3_hac_mbb_v2_calibration.py": "dccab5919636f1c1fac5d83a28336d9e15024ecb",
     "openfx/selection_bias_v2.py": "72a69166e8121e7d866baa7cb77479975dd04161",
-    "research/aggregate_m3_hac_mbb_v2.py": "931db864ad41d70dbc41029a2937aa697ddd7f83",
+    "research/aggregate_m3_hac_mbb_v2.py": "0338898cb460fc2a644a00b20e59e41b18cdb3c1",
     "research/validate_m3_v2_reference.py": "5eee54aedcb0054e07f2f23fe7551057106d396a",
     "research/benchmark_m3_v2_family.py": "0fc0dc099a82933862ecaad1395d316d78768ab4",
 }
