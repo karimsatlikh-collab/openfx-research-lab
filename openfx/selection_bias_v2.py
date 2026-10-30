@@ -249,7 +249,8 @@ def evaluate_registered_family(*, registry: Any,
             or event_count < len(trials) or trial_count != len(trials)
             or not isinstance(event_hashes, list) or len(event_hashes) != event_count
             or any(not isinstance(value, str) or re.fullmatch(r"[0-9a-f]{64}", value) is None
-                   for value in event_hashes)):
+                   for value in event_hashes)
+            or len(set(event_hashes)) != event_count):
         raise SelectionBiasV2Error("registry family snapshot event/trial counts or event hashes are invalid")
     if snapshot.get("trust") != "local_prototype_not_independently_authenticated":
         raise SelectionBiasV2Error("registry snapshot trust declaration is missing or unexpected")
