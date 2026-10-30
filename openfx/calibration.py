@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import os
 import platform
 import random
 import sys
@@ -15,6 +16,8 @@ from typing import Any
 
 PLAN_ID = "m2-synthetic-calibration-v1"
 PLAN_VERSION = "1.0.0"
+GENERATOR_VERSION = "1.0.0"
+DECISION_RULE_VERSION = "1.0.0"
 FAMILIES = ("N-IID", "T5-IID", "HET-IID", "AR1-030", "CONTAM-05")
 EFFECTS = (0.25, 0.40, 0.60)
 N_OBSERVATIONS = 100
@@ -120,6 +123,8 @@ def run_cell(*, kind: str, family: str, effect: float, seed_start: int,
         raise ValueError("unknown generator family")
     if not isinstance(count, int) or isinstance(count, bool) or count != REPLICATES_PER_CELL:
         raise ValueError("calibration cell size is frozen at exactly 1000 replicates")
+    if not isinstance(seed_start, int) or isinstance(seed_start, bool):
+        raise ValueError("seed_start must be an integer")
     if kind == "null" and effect != 0.0:
         raise ValueError("null cells must use zero effect")
     if kind == "power" and effect not in EFFECTS:
@@ -136,6 +141,8 @@ def run_cell(*, kind: str, family: str, effect: float, seed_start: int,
         digest = hashlib.sha256(canonical_json(returns).encode("utf-8")).hexdigest()
         records.append({
             "plan_id": PLAN_ID, "plan_version": PLAN_VERSION,
+            "generator_version": GENERATOR_VERSION,
+            "decision_rule_version": DECISION_RULE_VERSION,
             "kind": kind, "family": family, "effect": effect,
             "seed": seed, "sample_size": N_OBSERVATIONS,
             "mean_return": mean_return, "passed": passed,
@@ -149,6 +156,8 @@ def run_cell(*, kind: str, family: str, effect: float, seed_start: int,
     )
     return {
         "plan_id": PLAN_ID, "plan_version": PLAN_VERSION,
+        "generator_version": GENERATOR_VERSION,
+        "decision_rule_version": DECISION_RULE_VERSION,
         "kind": kind, "family": family, "effect": effect,
         "seed_start": seed_start, "seed_end": seed_start + count - 1,
         "successes": successes, "trials": count, "rate": rate,
@@ -168,6 +177,9 @@ def run_campaign() -> dict[str, Any]:
                  if cell["kind"] == "power" and cell["effect"] == MDE)
     return {
         "plan_id": PLAN_ID, "plan_version": PLAN_VERSION,
+        "generator_version": GENERATOR_VERSION,
+        "decision_rule_version": DECISION_RULE_VERSION,
+        "source_commit_sha": os.environ.get("GITHUB_SHA", "UNAVAILABLE"),
         "evidence_level": "synthetic", "is_market_backtest": False,
         "environment": {
             "python": sys.version,
