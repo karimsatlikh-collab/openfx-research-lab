@@ -3,7 +3,7 @@
 Status: **executable research candidate; not accepted, not calibrated, not market-validated**.
 
 - Method ID: `M3-HOLM-HAC-MBB-V2`
-- Version: `2.0.0`
+- Version: `2.0.1`
 - Candidate implementation: `openfx/selection_bias_v2.py`
 - Primary correction: Holm step-down family-wise error control.
 - Marginal test: one-sided HAC-studentized mean test using a null-centered circular moving-block bootstrap.
@@ -13,7 +13,7 @@ Status: **executable research candidate; not accepted, not calibrated, not marke
 
 M3 v1 used the ordinary sample standard deviation to studentize the observed and bootstrap means. Its pre-registered calibration failed under Student-t(5) and AR(1) null generators. An exploratory, non-pre-registered pilot suggested that HAC/Newey-West studentization may improve marginal null calibration, but did not establish family-wise control. The pilot is recorded in `docs/M3_HAC_MBB_V2_EXPLORATORY_PILOT.md`; it is not acceptance evidence.
 
-The v2 candidate therefore changes only the marginal studentization method while retaining the family registry and Holm correction. It must pass a new, independently pre-registered calibration before it can replace v1.
+The v2 candidate changes the marginal studentization method while retaining the family registry and Holm correction. The 2.0.1 hardening additionally binds every completed trial to the frozen source revision and blocks evaluations that exceed a deterministic bootstrap-work budget. It must pass a new, independently pre-registered calibration before it can replace v1.
 
 ## 2. Frozen v2 candidate settings
 
@@ -24,6 +24,9 @@ The v2 candidate therefore changes only the marginal studentization method while
 | Family-wise alpha | 0.05 |
 | Bootstrap replicates | 9,999 |
 | Minimum aligned observations | 252 |
+| Maximum observations per trial | 100,000 |
+| Maximum registered trials in a family | 10,000 |
+| Maximum estimated bootstrap work | 1,000,000,000 units (`replicates × eligible_trials × n × (HAC_lag+1)`) |
 | Circular moving-block length | ceil(n^(1/3)) |
 | HAC kernel | Newey-West/Bartlett |
 | HAC lag | ceil(n^(1/3)) |
@@ -70,13 +73,15 @@ The evaluator consumes the complete verified local registry family snapshot, not
 
 Completed trial inputs must have:
 - finite net portfolio returns;
-- matching data, cost, split, and return-frequency bindings;
+- matching data, cost, split, return-frequency, and exact source-revision bindings;
 - timezone-aware, valid, strictly increasing timestamps;
 - exactly aligned timestamps across eligible candidates;
 - a canonical SHA-256 return-series hash;
 - at least 252 observations.
 
 Final OOS is not read or evaluated by the function. Failed and ineligible attempts remain in the family with p=1.
+
+The manifest source revision must be a 40- or 64-character lowercase Git SHA. The validation payload of every completed trial must carry that exact source_revision; a mismatch is excluded with p=1. The evaluator blocks before bootstrap sampling if its estimated work exceeds the frozen one-billion-unit budget.
 
 The local hash-chain registry remains a prototype, not an independently trusted registrar. A privileged actor can rewrite the entire ledger. The boolean `registered_before_execution` is an application-level assertion, not cryptographic proof of wall-clock ordering.
 
