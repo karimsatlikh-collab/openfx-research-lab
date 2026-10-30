@@ -9,8 +9,9 @@ import json
 import math
 import platform
 import random
+import re
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from numbers import Real
 from typing import Any
 
@@ -22,6 +23,10 @@ DEFAULT_MIN_OBSERVATIONS = 252
 HAC_KERNEL_ID = "NEWEY_WEST_BARTLETT"
 BLOCK_LENGTH_RULE = "ceil(n^(1/3))"
 HAC_LAG_RULE = "ceil(n^(1/3))"
+MAX_TRIALS = 10_000
+MAX_OBSERVATIONS = 100_000
+MAX_BOOTSTRAP_WORK = 1_000_000_000
+_SOURCE_REVISION_RE = re.compile(r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
 
 
 class SelectionBiasV2Error(ValueError):
@@ -38,8 +43,8 @@ def sha256_json(value: Any) -> str:
 
 
 def _finite_vector(values: Any) -> list[float]:
-    if not isinstance(values, list) or not values:
-        raise SelectionBiasV2Error("validation_returns must be a non-empty list")
+    if not isinstance(values, list) or not values or len(values) > MAX_OBSERVATIONS:
+        raise SelectionBiasV2Error("validation_returns must be a non-empty list within the observation limit")
     result = []
     for value in values:
         if isinstance(value, bool) or not isinstance(value, Real) or not math.isfinite(float(value)):
@@ -192,14 +197,17 @@ def _validate_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
            for key in string_fields):
         raise SelectionBiasV2Error("family and input binding fields must be non-empty strings")
     if (not isinstance(manifest["max_trials"], int)
-            or isinstance(manifest["max_trials"], bool) or manifest["max_trials"] < 1):
-        raise SelectionBiasV2Error("max_trials must be a positive integer")
+            or isinstance(manifest["max_trials"], bool)
+            or not 1 <= manifest["max_trials"] <= MAX_TRIALS):
+        raise SelectionBiasV2Error(f"max_trials must be an integer from 1 to {MAX_TRIALS}")
+    if _SOURCE_REVISION_RE.fullmatch(manifest["source_revision"]) is None:
+        raise SelectionBiasV2Error("source_revision must be a 40- or 64-character lowercase git SHA")
     try:
         frozen_at = datetime.fromisoformat(str(manifest["frozen_at_utc"]).replace("Z", "+00:00"))
     except ValueError as exc:
         raise SelectionBiasV2Error("frozen_at_utc must be ISO-8601") from exc
-    if frozen_at.tzinfo is None or frozen_at.utcoffset() is None:
-        raise SelectionBiasV2Error("frozen_at_utc must include an explicit timezone")
+    if frozen_at.tzinfo is None or frozen_at.utcoffset() != timedelta(0):
+        raise SelectionBiasV2Error("frozen_at_utc must be explicitly UTC")
     if (isinstance(manifest["alpha"], bool) or not isinstance(manifest["alpha"], Real)
             or float(manifest["alpha"]) != DEFAULT_ALPHA):
         raise SelectionBiasV2Error("M3 v2 requires frozen alpha=0.05")
@@ -278,6 +286,7 @@ def evaluate_registered_family(*, registry: Any,
             "cost_profile_id": manifest["cost_profile_id"],
             "split_id": manifest["validation_split_id"],
             "return_frequency": manifest["return_frequency"],
+            "source_revision": manifest["source_revision"],
         }
         mismatch = [key for key, expected in bindings.items()
                     if validation.get(key) != expected]
@@ -317,6 +326,21 @@ def evaluate_registered_family(*, registry: Any,
                             "No eligible validation return series; no statistical pass is possible."],
         }
 
+    n = len(next(iter(series.values())))
+    estimated_bootstrap_work = (settings["bootstrap_replicates"] * len(series)
+                                * n * (_hac_lag(n) + 1))
+    if estimated_bootstrap_work > MAX_BOOTSTRAP_WORK:
+        return {
+            "decision": "BLOCKED", "reason": "bootstrap_work_budget_exceeded",
+            "method_id": METHOD_ID, "method_version": METHOD_VERSION,
+            "family_id": manifest["family_id"], "trial_count": len(ordered),
+            "eligible_trial_count": len(series), "estimated_bootstrap_work": estimated_bootstrap_work,
+            "max_bootstrap_work": MAX_BOOTSTRAP_WORK,
+            "trial_ids": [row["trial_id"] for row in ordered],
+            "exclusions": exclusions, "registry_snapshot_sha256": sha256_json(snapshot),
+            "limitations": ["Estimated bootstrap work exceeds the frozen runtime safety budget; no p-values were computed."],
+        }
+
     seed_material = (manifest_digest + METHOD_ID + METHOD_VERSION).encode("utf-8")
     seed = int.from_bytes(hashlib.sha256(seed_material).digest()[:8], "big")
     raw = _bootstrap_pvalues(series, replicates=settings["bootstrap_replicates"], seed=seed)
@@ -335,7 +359,6 @@ def evaluate_registered_family(*, registry: Any,
         })
     rejected = [item["trial_id"] for item in trial_results
                 if item["eligible"] and item["rejected"]]
-    n = len(next(iter(series.values())))
     verdict = {
         "decision": "PASS" if rejected else "FAIL",
         "reason": "holm_rejected_at_least_one_trial" if rejected else "no_trial_rejected_by_holm",
@@ -344,6 +367,10 @@ def evaluate_registered_family(*, registry: Any,
         "block_length": _block_length(n), "block_length_rule": BLOCK_LENGTH_RULE,
         "hac_kernel": HAC_KERNEL_ID, "hac_lag": _hac_lag(n), "hac_lag_rule": HAC_LAG_RULE,
         "bootstrap_seed": seed, "family_id": manifest["family_id"],
+        "estimated_bootstrap_work": estimated_bootstrap_work,
+        "max_bootstrap_work": MAX_BOOTSTRAP_WORK,
+        "max_observations": MAX_OBSERVATIONS,
+        "max_trials": MAX_TRIALS,
         "family_manifest_sha256": manifest_digest,
         "registry_snapshot_sha256": sha256_json(snapshot),
         "trial_count": len(ordered), "trial_ids": [row["trial_id"] for row in ordered],
