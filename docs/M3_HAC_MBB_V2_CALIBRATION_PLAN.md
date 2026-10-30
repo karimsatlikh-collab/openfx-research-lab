@@ -158,6 +158,8 @@ First run the deterministic primitive-level reference check. It must pass before
 
 ```bash
 python research/validate_m3_v2_reference.py \\
+  --plan-file docs/M3_HAC_MBB_V2_CALIBRATION_PLAN.md \\
+  --engine-revision <ENGINE_COMMIT_SHA> \\
   --output artifacts/m3-v2/reference-check.json
 ```
 
@@ -191,4 +193,4 @@ python research/aggregate_m3_hac_mbb_v2.py \
   --output artifacts/m3-v2/campaign-summary.json
 ```
 
-The aggregator validates cell hashes, complete seed sequences, return hashes, trial membership, realized family correlations, common plan/engine/runner revisions, all cell counts, and the frozen acceptance thresholds. A missing, failed, overwritten, or inconsistent cell prevents a valid campaign summary.
+The runner computes the plan SHA-256 from the actual plan file and verifies that the plan, runner, and engine files match the clean Git checkout. The runner revision is taken from `HEAD`, not caller-supplied metadata; the engine revision must resolve to a commit containing the exact checked-out engine file. The reference check records the same provenance. The aggregator recomputes the plan hash, verifies the clean checkout and exact source bindings, and checks reference/cell provenance, cell hashes, complete seed sequences, return hashes, trial membership, realized family correlations, all cell counts, and frozen acceptance thresholds. A missing, failed, overwritten, or inconsistent cell prevents a valid campaign summary.
