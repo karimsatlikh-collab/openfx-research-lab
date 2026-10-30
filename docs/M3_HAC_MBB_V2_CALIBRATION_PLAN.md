@@ -144,3 +144,38 @@ Stop and mark the campaign inconclusive if:
 - a code change is required after the campaign begins.
 
 A fix requires a new method/calibration version, new plan hash, and disjoint seed ranges. Preserve all prior failed outcomes.
+
+## 10. Execution and aggregation
+
+Install optional pinned dependencies with `python -m pip install -r requirements-m3-calibration.txt`.
+
+Run each cell as a separate immutable artifact. Required filenames:
+
+- `marginal-null-<GENERATOR>.json`
+- `marginal-mde-<GENERATOR>.json`
+- `family-null-<GENERATOR>-rho-0p0.json`, `...-rho-0p5.json`, `...-rho-0p9.json`
+- `family-mde-<GENERATOR>-rho-0p0.json`, `...-rho-0p5.json`, `...-rho-0p9.json`
+
+Example command:
+
+```bash
+python research/m3_hac_mbb_v2_calibration.py \
+  --phase family-null --generator N3_AR1_GAUSSIAN --rho 0.5 \
+  --plan-sha256 <PLAN_SHA256> \
+  --engine-revision <ENGINE_COMMIT_SHA> \
+  --runner-revision <RUNNER_COMMIT_SHA> \
+  --output artifacts/m3-v2/family-null-N3_AR1_GAUSSIAN-rho-0p5.json
+```
+
+Run all 40 cells (5 marginal-null + 5 marginal-MDE + 15 family-null + 15 family-MDE). Do not overwrite a cell artifact. A rerun must use a new campaign directory and preserve the original outcome.
+
+After all 40 cell files exist, aggregate and validate them:
+
+```bash
+python research/aggregate_m3_hac_mbb_v2.py \
+  --input-dir artifacts/m3-v2 \
+  --expected-plan-sha256 <PLAN_SHA256> \
+  --output artifacts/m3-v2/campaign-summary.json
+```
+
+The aggregator validates cell hashes, complete seed sequences, return hashes, trial membership, realized family correlations, common plan/engine/runner revisions, all cell counts, and the frozen acceptance thresholds. A missing, failed, overwritten, or inconsistent cell prevents a valid campaign summary.
