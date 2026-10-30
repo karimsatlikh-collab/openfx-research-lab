@@ -97,6 +97,10 @@ class IndependentValidatorTests(unittest.TestCase):
         signature = self.private_key.sign(DOMAIN + canonical_bytes(claims))
         self.attestation["signature"] = base64.b64encode(signature).decode("ascii")
 
+    def refresh_run_binding(self):
+        self.attestation["run_record_sha256"] = sha256_bytes(canonical_bytes(self.run))
+        self.sign()
+
     def verify(self):
         return validate_independently(
             self.job, self.run, self.attestation, self.trust_store,
@@ -176,12 +180,14 @@ class IndependentValidatorTests(unittest.TestCase):
 
     def test_artifact_hash_mismatch_is_rejected(self):
         self.run["outputs"][0]["sha256"] = "0" * 64
+        self.refresh_run_binding()
         with self.assertRaises(ValidationError) as ctx:
             self.verify()
         self.assertEqual(ctx.exception.reason_code, "ARTIFACT_HASH_MISMATCH")
 
     def test_missing_artifact_is_rejected(self):
         self.run["outputs"][0]["path"] = "missing.json"
+        self.refresh_run_binding()
         with self.assertRaises(ValidationError) as ctx:
             self.verify()
         self.assertEqual(ctx.exception.reason_code, "ARTIFACT_MISSING")
@@ -229,6 +235,7 @@ class IndependentValidatorTests(unittest.TestCase):
 
     def test_artifact_path_traversal_is_rejected(self):
         self.run["outputs"][0]["path"] = "../report.json"
+        self.refresh_run_binding()
         with self.assertRaises(ValidationError) as ctx:
             self.verify()
         self.assertEqual(ctx.exception.reason_code, "ARTIFACT_PATH_ESCAPE")
@@ -240,6 +247,7 @@ class IndependentValidatorTests(unittest.TestCase):
         except (OSError, NotImplementedError):
             self.skipTest("symlink creation is unavailable on this platform")
         self.run["outputs"][0]["path"] = "link.json"
+        self.refresh_run_binding()
         with self.assertRaises(ValidationError) as ctx:
             self.verify()
         self.assertEqual(ctx.exception.reason_code, "ARTIFACT_SYMLINK")
