@@ -184,7 +184,7 @@ def build_hypothesis_card(
         _require(claim_id not in seen_claim_ids, "hypothesis links contain duplicate claim IDs")
         seen_claim_ids.add(claim_id)
         claim_state = claim.get("provenance_state")
-        _require(claim_state in _PROVENANCE - {"hypothesis", "unknown"},
+        _require(isinstance(claim_state, str) and claim_state in _PROVENANCE - {"hypothesis", "unknown"},
                  "hypothesis links must preserve a source-backed claim provenance state")
         ref = claim.get("source_ref")
         _require(isinstance(ref, dict)
