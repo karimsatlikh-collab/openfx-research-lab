@@ -10,7 +10,7 @@ from openfx.synthetic_e2e import (
     sha256_bytes, verify_frozen_trial,
 )
 from openfx.statistical_gate import GateConfigError
-from openfx.trial_registry import LocalTrialRegistry
+from openfx.trial_registry import LocalTrialRegistry, TrialRegistryError
 
 CONTENT = b"OpenFX local synthetic source fixture."
 LOCATOR = "fixture://openfx/synthetic#segment=1"
@@ -125,6 +125,17 @@ class SyntheticEndToEndTests(unittest.TestCase):
             rows = registry._read_and_verify()
             self.assertEqual([row["outcome"] for row in rows], ["pending", "failed"])
             self.assertEqual(rows[-1]["event_id"], "trial-e2e-1-failed")
+
+
+    def test_registry_rejects_nonfinite_json_payload_values(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            registry = LocalTrialRegistry(Path(tmp) / "registry.jsonl")
+            with self.assertRaisesRegex(TrialRegistryError, "finite JSON"):
+                registry.append(
+                    event_id="event-nan", family_id="family-nan", trial_id="trial-nan",
+                    outcome="pending", payload={"nonfinite": float("nan")}, max_trials=1,
+                )
+            self.assertEqual(registry.verify()["event_count"], 0)
 
 
 if __name__ == "__main__":
