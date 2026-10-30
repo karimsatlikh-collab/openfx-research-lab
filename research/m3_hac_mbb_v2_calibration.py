@@ -217,8 +217,8 @@ def run_marginal_cell(generator_id: str, alternative: bool,
                       runner_revision: str) -> dict:
     gi = GENERATORS.index(generator_id)
     count = MARGINAL_MDE_REPLICATES if alternative else MARGINAL_NULL_REPLICATES
-    data_base = 400_000_000 if alternative else 300_000_000
-    bootstrap_base = 900_000_000 if alternative else 800_000_000
+    data_base = 1_400_000_000 if alternative else 1_300_000_000
+    bootstrap_base = 1_900_000_000 if alternative else 1_800_000_000
     rows = []
     successes = 0
     failures = 0
@@ -236,16 +236,21 @@ def run_marginal_cell(generator_id: str, alternative: bool,
             failures += 1
         successes += int(pvalue <= ALPHA)
         rows.append({"replicate": replicate, "data_seed": data_seed,
-                     "bootstrap_seed": bootstrap_seed, "returns_sha256": series_hash,
+                     "bootstrap_seed": bootstrap_seed, "source_revision": engine_revision,
+            "returns_sha256": series_hash,
                      "p_value": pvalue, "status": status, "failure": error})
     cell = {
-        "plan_id": "M3-HAC-MBB-CALIBRATION-V2",
+        "plan_id": "M3-HAC-MBB-CALIBRATION-V2-1",
+        "method_id": "M3-HOLM-HAC-MBB-V2", "method_version": "2.0.1",
         "phase": "marginal_mde" if alternative else "marginal_null",
         "generator": generator_id, "effect": MDE if alternative else 0.0,
         "engine_revision": engine_revision, "runner_revision": runner_revision,
         "plan_sha256": plan_sha256, "runtime": _runtime(),
         "settings": {"n": N, "alpha": ALPHA, "bootstrap_replicates": BOOTSTRAP_REPLICATES,
                      "block_length": BLOCK_LENGTH, "hac_lag": HAC_LAG,
+                     "max_observations": 100_000, "max_trials": 10_000,
+                     "max_bootstrap_work": 1_000_000_000,
+                     "estimated_bootstrap_work_per_replicate": BOOTSTRAP_REPLICATES * N * (HAC_LAG + 1),
                      "replicates": count},
         "failed_replicates": failures, "summary": _wilson(successes, count),
         "replicates": rows,
@@ -259,12 +264,12 @@ def run_family_cell(generator_id: str, rho: float, alternative: bool,
                     runner_revision: str) -> dict:
     gi = GENERATORS.index(generator_id)
     ci = CORRELATIONS.index(rho)
-    data_base = 600_000_000 if alternative else 500_000_000
+    data_base = 1_600_000_000 if alternative else 1_500_000_000
     records = []
     fwer5 = fwer20 = power5 = power20 = failures = 0
     for family_index in range(FAMILY_REPLICATES):
         family_seed = data_base + gi * 1_000_000 + ci * 10_000 + family_index
-        bootstrap_seed = 700_000_000 + family_seed
+        bootstrap_seed = 1_700_000_000 + family_seed
         hashes = None
         try:
             values = _generate_family(generator_id, family_seed, rho, alternative)
@@ -296,6 +301,7 @@ def run_family_cell(generator_id: str, rho: float, alternative: bool,
             "family_index": family_index, "family_seed": family_seed,
             "bootstrap_seed": bootstrap_seed, "status": status, "failure": error,
             "trial_ids": [f"trial_{i:02d}" for i in range(FAMILY_SIZE)],
+            "trial_source_revisions": [engine_revision] * FAMILY_SIZE,
             "trial_return_hashes": hashes, "raw_p_values": pvalues,
             "realized_average_pairwise_return_correlation": realized_corr,
         }
@@ -314,6 +320,9 @@ def run_family_cell(generator_id: str, rho: float, alternative: bool,
         "plan_sha256": plan_sha256, "runtime": _runtime(),
         "settings": {"n": N, "alpha": ALPHA, "bootstrap_replicates": BOOTSTRAP_REPLICATES,
                      "block_length": BLOCK_LENGTH, "hac_lag": HAC_LAG,
+                     "max_observations": 100_000, "max_trials": 10_000,
+                     "max_bootstrap_work": 1_000_000_000,
+                     "estimated_bootstrap_work_per_family": BOOTSTRAP_REPLICATES * FAMILY_SIZE * N * (HAC_LAG + 1),
                      "families": FAMILY_REPLICATES, "family_size_primary": FAMILY_SIZE,
                      "family_size_secondary": 5},
         "failed_families": failures,
