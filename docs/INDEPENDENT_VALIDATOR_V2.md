@@ -32,7 +32,7 @@ This v2 is a separate schema and module from the original PR #29 v1 prototype. D
 
 5. **No caller-supplied CLI clock**
    - The production CLI always uses the system clock.
-   - An injectable now_utc exists only on the in-process validation function for deterministic unit tests.
+   - Neither the CLI nor the in-process validation API accepts a caller-supplied clock.
    - The CLI no longer accepts --now-utc.
 
 6. **Validator provenance**
