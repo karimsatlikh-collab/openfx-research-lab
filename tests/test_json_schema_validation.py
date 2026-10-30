@@ -54,6 +54,32 @@ EXAMPLES = {
         "outputs": [{"name": "summary.json", "sha256": HASH, "media_type": "application/json"}],
         "error": None,
     },
+    "source-record-v1.schema.json": {
+        "source_id": "fixture-source-1", "identity": "local fixture",
+        "rights_basis": "owner_created", "permission_evidence": "created for tests",
+        "retrieved_at_utc": NOW, "exact_locator": "fixture://source/1",
+        "capture_method": "inline bytes", "content_sha256": HASH,
+        "provenance_state": "test_confirmed", "human_approval": None,
+    },
+    "atomic-claim-v1.schema.json": {
+        "claim_id": "claim-1", "statement": "Fixture observation.",
+        "source_ref": {"source_id": "fixture-source-1", "exact_locator": "fixture://source/1", "content_sha256": HASH},
+        "provenance_state": "test_confirmed", "claim_kind": "source_backed",
+    },
+    "hypothesis-card-v1.schema.json": {
+        "hypothesis_id": "hyp-1", "title": "Fixture hypothesis",
+        "falsifiable_statement": "If X then Y.", "predicted_mechanism": "Mechanism",
+        "invalidation_criteria": "Reject if Y does not occur.",
+        "linked_claims": [{"claim_id": "claim-1", "source_ref": {"source_id": "fixture-source-1", "exact_locator": "fixture://source/1", "content_sha256": HASH}, "claim_provenance_state": "test_confirmed"}],
+        "epistemic_status": "hypothesis", "is_verified_rule": False,
+        "limitations": ["Fixture only."],
+    },
+    "registry-event-v1.schema.json": {
+        "schema_version": 1, "sequence": 1, "family_sequence": 1, "trial_index": 1,
+        "event_id": "event-1", "family_id": "family-1", "trial_id": "trial-1",
+        "outcome": "pending", "payload": {}, "previous_event_sha256": "0" * 64,
+        "event_sha256": HASH,
+    },
     "synthetic-run-record-v1.schema.json": {
         "schema_version": 1, "frozen_sha256": HASH, "trial_id": "trial-1",
         "evidence_level": "synthetic", "engine": "openfx.synthetic_engine.run_synthetic",
