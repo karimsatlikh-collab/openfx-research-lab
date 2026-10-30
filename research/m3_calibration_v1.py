@@ -229,7 +229,7 @@ def _copula_cell(generator_index: int, family_size: int,
     return result
 
 
-def run_campaign(plan_sha256: str, engine_revision: str) -> dict:
+def run_campaign(plan_sha256: str, engine_revision: str, runner_revision: str) -> dict:
     marginal_null = []
     marginal_alternative = []
     copula_results = []
@@ -261,6 +261,7 @@ def run_campaign(plan_sha256: str, engine_revision: str) -> dict:
         "method_id": "M3-HOLM-BLOCK-BOOTSTRAP-V1",
         "method_version": "1.0.0",
         "engine_revision": engine_revision,
+        "runner_revision": runner_revision,
         "plan_sha256": plan_sha256,
         "settings": {
             "n": N, "alpha": ALPHA, "bootstrap_replicates": BOOTSTRAP_REPLICATES,
@@ -311,12 +312,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--plan-sha256", required=True)
     parser.add_argument("--engine-revision", required=True)
+    parser.add_argument("--runner-revision", required=True)
     parser.add_argument("--output", default="artifacts/m3_calibration_v1.json")
     args = parser.parse_args()
     output = Path(args.output)
     if output.exists():
         raise SystemExit(f"refusing to overwrite existing campaign artifact: {output}")
-    result = run_campaign(args.plan_sha256, args.engine_revision)
+    result = run_campaign(args.plan_sha256, args.engine_revision, args.runner_revision)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(result, sort_keys=True, separators=(",", ":"),
                                  ensure_ascii=False, allow_nan=False) + "\n",
