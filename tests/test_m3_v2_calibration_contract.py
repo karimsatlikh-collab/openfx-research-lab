@@ -26,7 +26,7 @@ class M3V2CalibrationContractTests(unittest.TestCase):
         expected = (
             "3_300_000_000", "3_400_000_000", "3_500_000_000",
             "3_600_000_000", "4_100_000_000", "4_200_000_000",
-            "4_300_000_000",
+            "4_300_000_000", "4_400_000_000",
         )
         for seed in expected:
             self.assertIn(seed, runner)
