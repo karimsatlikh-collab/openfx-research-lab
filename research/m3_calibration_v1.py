@@ -179,17 +179,26 @@ def _marginal_campaign(generator_id: str, generator_index: int,
     for replicate in range(OUTER_REPLICATES):
         data_seed = base + generator_index * 100_000 + replicate
         bootstrap_seed = 40_000_000 + data_seed
-        values = _series(generator_id, data_seed, MDE if alternative else 0.0)
-        pvalue = _bootstrap_pvalue(values, bootstrap_seed)
+        values = None
+        series_hash = None
+        failure = None
+        try:
+            values = _series(generator_id, data_seed, MDE if alternative else 0.0)
+            series_hash = _series_sha256(values)
+            pvalue = _bootstrap_pvalue(values, bootstrap_seed)
+        except (ValueError, FloatingPointError, OverflowError) as exc:
+            pvalue = 1.0  # Retain the failed replicate conservatively; acceptance will fail.
+            failure = f"{type(exc).__name__}: {exc}"
         pvalues.append(pvalue)
         replicates.append({
             "replicate": replicate, "data_seed": data_seed,
-            "bootstrap_seed": bootstrap_seed,
-            "returns_sha256": _series_sha256(values), "p_value": pvalue,
+            "bootstrap_seed": bootstrap_seed, "status": "failed" if failure else "completed",
+            "returns_sha256": series_hash, "p_value": pvalue, "failure": failure,
         })
     ordered = sorted(pvalues)
     return {"generator": generator_id, "alternative": alternative,
             "effect": MDE if alternative else 0.0,
+            "failed_replicates": sum(item["status"] == "failed" for item in replicates),
             "p_values": pvalues, "p_values_sorted": ordered,
             "replicates": replicates}
 
@@ -267,6 +276,29 @@ def run_campaign(plan_sha256: str, engine_revision: str) -> dict:
         "marginal_null": marginal_null,
         "marginal_alternative": marginal_alternative,
         "copula_results": copula_results,
+    }
+    null_ok = all(
+        item["failed_replicates"] == 0 and item["summary"]["estimate"] <= 0.055
+        and item["summary"]["upper_95"] <= 0.065 for item in marginal_null
+    )
+    power_ok = all(
+        item["failed_replicates"] == 0 and item["summary"]["lower_95"] >= 0.80
+        for item in marginal_alternative
+    )
+    copula_null_ok = all(
+        item["global_null_fwer"]["estimate"] <= 0.055
+        and item["global_null_fwer"]["upper_95"] <= 0.065
+        for item in copula_results if item["scenario"] == "global_null"
+    )
+    copula_power_ok = all(
+        item["mde_family_power"]["lower_95"] >= 0.80
+        for item in copula_results if item["scenario"] == "one_mde_candidate"
+    )
+    campaign["acceptance"] = {
+        "marginal_null": null_ok, "marginal_mde_power": power_ok,
+        "copula_global_null_fwer": copula_null_ok,
+        "copula_mde_family_power": copula_power_ok,
+        "accepted": bool(null_ok and power_ok and copula_null_ok and copula_power_ok),
     }
     campaign["campaign_sha256"] = hashlib.sha256(
         json.dumps(campaign, sort_keys=True, separators=(",", ":"),
