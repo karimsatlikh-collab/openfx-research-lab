@@ -79,6 +79,8 @@ Generator order: N1, N2, N3, N4, N5. Replicate/family indices start at zero.
 
 - Marginal null data: `300,000,000 + generator_index*100,000 + replicate_index`.
 - Marginal MDE data: `400,000,000 + generator_index*100,000 + replicate_index`.
+- Marginal null bootstrap seed: `800,000,000 + marginal_null_data_seed`.
+- Marginal MDE bootstrap seed: `900,000,000 + marginal_mde_data_seed`.
 - Global-null family seed: `500,000,000 + generator_index*1,000,000 + correlation_index*10,000 + family_index`.
 - One-MDE family seed: `600,000,000 + generator_index*1,000,000 + correlation_index*10,000 + family_index`.
 - Bootstrap resampling seed for a family: `700,000,000 + family_seed`.
