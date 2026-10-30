@@ -391,3 +391,72 @@ Current code head: `c0f0b9ce183aa40894c0a7ea40048a548856fab2`.
 ### Next action
 
 Add a dedicated FrozenTrial schema and adversarial registry tests, then refresh all three exact-head Actions. Afterward resume the broader audit: review open PR dependency/cross-file conflict risks, compare worker implementation to its claimed role, and map actual source discovery/extraction/transcript accuracy and rights enforcement against G0-G5. No merge.
+
+
+## 17. Frozen provenance binding and cross-PR integration audit — 2026-10-30
+
+### FrozenTrial provenance binding
+
+A review of `freeze_trial` found that the frozen digest previously carried the source locator/hash and claim/hypothesis IDs, but not digests of the complete SourceRecord, AtomicClaim, and HypothesisCard documents. That left descriptive/evidential fields outside the frozen binding.
+
+Corrected on `openfx-foundation-m1-contracts`:
+- `openfx/synthetic_e2e.py`, commit `684c1415b393b5278e2521d0b7af3149b7e54853`: the frozen spec now includes SHA-256 digests of the complete source record, claim, and hypothesis card, in addition to the existing source-content binding.
+- `tests/test_synthetic_e2e.py`, commit `e89130c906030becf14879869590e604787a8582`: verifies these three digests exist and tampering with one invalidates the frozen hash.
+- `schemas/frozen-trial-v1.schema.json`, commit `d3a6ce87e6f48c646f2f5a3a6767be1d5de1a160`: strict v1 FrozenTrial contract includes those three document digests.
+- `tests/test_json_schema_validation.py`, commit `8ca1217de674c6c959db4476a211d05977f41767`: adds a structural FrozenTrial fixture.
+
+### Registry event adversarial coverage
+
+- `openfx/trial_registry.py`, commit `c0f0b9ce183aa40894c0a7ea40048a548856fab2`: strict event field set and schema-version enforcement.
+- `tests/test_m2_research_controls.py`, commits `01499a4b3fc4a5ecde5cdb8ea98225d90b52d6c7` and `e1e1f082d51ca2f5bddfb391e5d54d5c81d04c22`: added tests for malformed JSON, extra event fields even when the event hash is recomputed, and unsupported event schema version. Duplicate event-ID checking already existed in the registry verification implementation and prior tests in this project; the new test additions above do not add a separate duplicate-ID fixture.
+
+### CI evidence
+
+- Previous strict-registry head `c0f0b9ce183aa40894c0a7ea40048a548856fab2`:
+  - OpenFX Unit Tests `40979851698`: success.
+  - Project Tests `40979851708`: success.
+  - CodeQL `40979851703`: success.
+- Current code head `e1e1f082d51ca2f5bddfb391e5d54d5c81d04c22`:
+  - OpenFX Unit Tests `40980126134`: queued at latest refresh.
+  - Project Tests `40980126108`: queued at latest refresh.
+  - No CodeQL run was returned for this head at latest refresh. Do not infer any pass until refreshed.
+
+### Broader integration audit — observed branch relationships
+
+Live GitHub PR metadata confirms the following currently open, unmerged PRs and base/head relationships:
+
+- PR #11: `openfx-audit-fixes → main`.
+- PR #12: `openfx-transcript-adversarial-checks → openfx-audit-fixes` (depends on #11's branch).
+- PR #14: `openfx-audit-round1 → openfx-transcript-adversarial-checks` (extends #12).
+- PRs #15, #16, #17, #20, and #22 target `openfx-audit-round1`.
+- PR #21 targets `openfx-audit-fixes`.
+- PRs #18 and #19 independently target `main`.
+- PR #23 targets `main` independently; it is not integrated with the #11–#22 branch chain.
+
+All these PRs were observed open and unmerged in the latest metadata read. GitHub reports each individually mergeable against its declared base; this does not prove the entire chain is safe to merge in arbitrary order.
+
+### Confirmed cross-PR collision
+
+PR #16 and PR #17 are both based on `openfx-audit-round1`, and both change:
+- `openfx/transcript_import.py`
+- `tests/test_transcript_import.py`
+
+PR #17 additionally changes `docs/SOURCE_INGESTION.md` and `tests/test_source_cli.py`. Their branch comparison is `diverged` (PR #16 head branch `openfx-transcript-import-strictness` vs PR #17 head branch `openfx-rights-gate`; 4 commits ahead / 7 behind from the selected comparison direction). They need a deliberate combined rebase/integration and a single test run; do not merge both independently based only on their individual mergeable flags.
+
+PR #12 and PR #14 form a sequential branch chain; both touch `openfx/transcript_quality.py` and `tests/test_source_research.py`, but PR #14 is directly based on PR #12's head branch. PR #20 further changes those same transcript-quality/test paths plus its synthetic corpus and workflow. Treat this as an ordered chain, not independent cherry-picks.
+
+### Worker capability audit
+
+Reviewed `worker/openfx_worker.py` on `main` and the later `openfx-audit-fixes` branch:
+- It validates declarative job fields, polls an HTTPS control-plane placeholder/configuration, and records local state/events.
+- `process_job` returns `VALIDATED_NOT_EXECUTED`; there is no subprocess invocation, MT5 terminal API, strategy tester invocation, or broker execution path.
+- The later audit branch adds cross-job idempotency-key rejection, host allow-list configuration, and a local state-file lock, but still explicitly does not execute jobs.
+- It is therefore a validation/queue-worker prototype, not an MT5 execution worker or deployed VPS service. A control-plane server, trusted approval/attestation, MT5 adapter, durable registrar, and independent run-artifact capture are absent.
+
+### Current limitations and next action
+
+- Current branch head CI is still queued/not observed; refresh before further code edits or claims.
+- Registry duplicate-event rejection is implemented, but a new dedicated duplicate-ID adversarial test was not added in this increment.
+- The new FrozenTrial schema fixture is structural; the runtime path still does not invoke a generic schema-validation service on every frozen object.
+- PR #23 remains independent of the transcript/source feature chain. A planned integration order and branch conflict resolution are required before a combined product can be evaluated.
+- Continue with exact-head CI, then a conflict-aware PR integration plan and a G0–G5 capability/evidence audit. Do not merge or change `main`.
