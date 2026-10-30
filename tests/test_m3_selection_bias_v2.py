@@ -167,6 +167,26 @@ class M3HACSelectionBiasTests(unittest.TestCase):
         self.assertEqual(verdict["reason"], "bootstrap_work_budget_exceeded")
         self.assertGreater(verdict["estimated_bootstrap_work"], verdict["max_bootstrap_work"])
 
+
+    def test_registry_snapshot_requires_complete_unique_event_hashes(self):
+        returns = [0.02 + ((i % 7) - 3) * 0.001 for i in range(252)]
+        manifest = _manifest()
+        trials = [{
+            "trial_id": "candidate", "trial_index": 1, "outcome": "completed",
+            "payload": _validation_payload(returns),
+        }]
+
+        class BrokenRegistry(FakeRegistry):
+            def family_snapshot(self, family_id):
+                result = super().family_snapshot(family_id)
+                result["family_event_sha256"] = []
+                return result
+
+        with self.assertRaises(SelectionBiasV2Error):
+            evaluate_registered_family(
+                registry=BrokenRegistry(trials, manifest), manifest=manifest
+            )
+
     def test_method_settings_are_frozen(self):
         manifest = _manifest(hac_lag_rule="caller-selected")
         registry = FakeRegistry([
