@@ -242,6 +242,17 @@ def evaluate_registered_family(*, registry: Any,
     trials = snapshot.get("trials")
     if not isinstance(trials, list) or not trials:
         raise SelectionBiasV2Error("family has no registered trials")
+    event_count = snapshot.get("event_count")
+    trial_count = snapshot.get("trial_count")
+    event_hashes = snapshot.get("family_event_sha256")
+    if (isinstance(event_count, bool) or not isinstance(event_count, int)
+            or event_count < len(trials) or trial_count != len(trials)
+            or not isinstance(event_hashes, list) or len(event_hashes) != event_count
+            or any(not isinstance(value, str) or re.fullmatch(r"[0-9a-f]{64}", value) is None
+                   for value in event_hashes)):
+        raise SelectionBiasV2Error("registry family snapshot event/trial counts or event hashes are invalid")
+    if snapshot.get("trust") != "local_prototype_not_independently_authenticated":
+        raise SelectionBiasV2Error("registry snapshot trust declaration is missing or unexpected")
     if len(trials) > manifest["max_trials"]:
         raise SelectionBiasV2Error("family trial budget exceeded")
     if any(not isinstance(row, dict) for row in trials):
