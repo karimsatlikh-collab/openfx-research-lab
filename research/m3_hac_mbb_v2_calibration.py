@@ -236,7 +236,7 @@ def run_marginal_cell(generator_id: str, alternative: bool,
             failures += 1
         successes += int(pvalue <= ALPHA)
         rows.append({"replicate": replicate, "data_seed": data_seed,
-                     "bootstrap_seed": bootstrap_seed, "source_revision": engine_revision,
+                     "bootstrap_seed": bootstrap_seed, "engine_revision": engine_revision,
             "returns_sha256": series_hash,
                      "p_value": pvalue, "status": status, "failure": error})
     cell = {
@@ -301,7 +301,7 @@ def run_family_cell(generator_id: str, rho: float, alternative: bool,
             "family_index": family_index, "family_seed": family_seed,
             "bootstrap_seed": bootstrap_seed, "status": status, "failure": error,
             "trial_ids": [f"trial_{i:02d}" for i in range(FAMILY_SIZE)],
-            "trial_source_revisions": [engine_revision] * FAMILY_SIZE,
+            "trial_engine_revisions": [engine_revision] * FAMILY_SIZE,
             "trial_return_hashes": hashes, "raw_p_values": pvalues,
             "realized_average_pairwise_return_correlation": realized_corr,
         }
