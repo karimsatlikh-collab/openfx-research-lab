@@ -29,6 +29,7 @@ FAMILY_REPLICATES = 1000
 FAMILY_SIZE = 20
 BLOCK_LENGTH = 7
 HAC_LAG = 7
+MAX_BOOTSTRAP_WORK = 1_000_000_000
 WILSON_Z = 1.959963984540054
 GENERATORS = ("N1_GAUSSIAN_IID", "N2_STUDENT_T5_IID", "N3_AR1_GAUSSIAN",
               "N4_GARCH_1_1", "N5_AR1_STUDENT_T5")
@@ -102,6 +103,9 @@ def _make_indices(seed: int, replicates: int = BOOTSTRAP_REPLICATES) -> np.ndarr
 
 def _bootstrap_pvalues(series: np.ndarray, seed: int,
                        replicates: int = BOOTSTRAP_REPLICATES) -> np.ndarray:
+    estimated_work = replicates * series.shape[0] * N * (HAC_LAG + 1)
+    if estimated_work > MAX_BOOTSTRAP_WORK:
+        raise ValueError("estimated bootstrap work exceeds frozen M3 v2.0.1 budget")
     observed = np.empty(series.shape[0], dtype=np.float64)
     centered = np.empty_like(series, dtype=np.float64)
     for trial in range(series.shape[0]):
@@ -249,7 +253,7 @@ def run_marginal_cell(generator_id: str, alternative: bool,
         "settings": {"n": N, "alpha": ALPHA, "bootstrap_replicates": BOOTSTRAP_REPLICATES,
                      "block_length": BLOCK_LENGTH, "hac_lag": HAC_LAG,
                      "max_observations": 100_000, "max_trials": 10_000,
-                     "max_bootstrap_work": 1_000_000_000,
+                     "max_bootstrap_work": MAX_BOOTSTRAP_WORK,
                      "estimated_bootstrap_work_per_replicate": BOOTSTRAP_REPLICATES * N * (HAC_LAG + 1),
                      "replicates": count},
         "failed_replicates": failures, "summary": _wilson(successes, count),
