@@ -55,6 +55,15 @@ class LocalTrialRegistry:
                 raise TrialRegistryError(f"invalid JSON at ledger line {line_number}") from exc
             if not isinstance(row, dict):
                 raise TrialRegistryError(f"event must be an object at ledger line {line_number}")
+            expected_event_keys = {
+                "schema_version", "sequence", "family_sequence", "trial_index",
+                "event_id", "family_id", "trial_id", "outcome", "payload",
+                "previous_event_sha256", "event_sha256",
+            }
+            if set(row) != expected_event_keys:
+                raise TrialRegistryError(f"unexpected or missing event fields at ledger line {line_number}")
+            if row.get("schema_version") != 1:
+                raise TrialRegistryError(f"unsupported event schema_version at ledger line {line_number}")
             supplied_hash = row.pop("event_sha256", None)
             if row.get("previous_event_sha256") != previous:
                 raise TrialRegistryError(f"broken previous hash at ledger line {line_number}")
