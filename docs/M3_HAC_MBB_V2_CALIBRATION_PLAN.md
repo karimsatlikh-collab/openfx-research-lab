@@ -7,7 +7,7 @@ Status: **pre-registered plan; formal campaign not yet run**.
 - Implementation: `openfx/selection_bias_v2.py`
 - Freeze date: 2026-10-30 UTC
 - Evidence class: synthetic only.
-- This plan is separate from M3 v1. It supersedes the unexecuted v2.0.0 and v2.0.2 drafts. No formal v2 cells were run; all earlier seed ranges are retired and are not reused.
+- This plan is separate from M3 v1. It supersedes the unexecuted v2.0.0 and v2.0.1 drafts. No formal v2 cells were run; all earlier seed ranges are retired and are not reused.
 
 ## 1. Frozen method settings
 
