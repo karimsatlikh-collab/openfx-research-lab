@@ -48,6 +48,13 @@ def _check_marginal(cell: dict, phase: str, generator: str, generator_index: int
             or cell.get("method_id") != "M3-HOLM-HAC-MBB-V2"
             or cell.get("method_version") != "2.0.1"):
         raise ValueError("marginal cell identity/method version mismatch")
+    settings = cell.get("settings", {})
+    expected_settings = {"n": 252, "alpha": 0.05, "bootstrap_replicates": 9999,
+                         "block_length": 7, "hac_lag": 7, "max_observations": 100_000,
+                         "max_trials": 10_000, "max_bootstrap_work": 1_000_000_000,
+                         "replicates": expected_count}
+    if any(settings.get(key) != value for key, value in expected_settings.items()):
+        raise ValueError("marginal cell settings do not match frozen v2.0.1 plan")
     if cell.get("failed_replicates") != 0:
         raise ValueError("marginal cell contains failed replicates")
     rows = cell.get("replicates")
@@ -83,6 +90,15 @@ def _check_family(cell: dict, phase: str, generator: str, generator_index: int, 
             or cell.get("plan_id") != "M3-HAC-MBB-CALIBRATION-V2-1"
             or cell.get("method_version") != "2.0.1"):
         raise ValueError("family cell identity/method version mismatch")
+    settings = cell.get("settings", {})
+    expected_settings = {"n": 252, "alpha": 0.05, "bootstrap_replicates": 9999,
+                         "block_length": 7, "hac_lag": 7, "max_observations": 100_000,
+                         "max_trials": 10_000, "max_bootstrap_work": 1_000_000_000,
+                         "families": 1000, "family_size_primary": 20,
+                         "family_size_secondary": 5,
+                         "estimated_bootstrap_work_per_family": 9999 * 20 * 252 * 8}
+    if any(settings.get(key) != value for key, value in expected_settings.items()):
+        raise ValueError("family cell settings do not match frozen v2.0.1 plan")
     if cell.get("failed_families") != 0:
         raise ValueError("family cell contains failed families")
     rows = cell.get("families")
