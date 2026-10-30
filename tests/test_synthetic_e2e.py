@@ -111,6 +111,35 @@ class SyntheticEndToEndTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "hash mismatch"):
             verify_frozen_trial(spec)
 
+    def test_freeze_rejects_nonfinite_parameters_and_nonstring_ids(self):
+        base = frozen()
+        source_record = build_source_record(
+            source_id="source-e2e-2", identity="fixture", rights_basis="owner_created",
+            permission_evidence="test fixture", retrieved_at_utc="2026-10-30T12:00:00Z",
+            exact_locator=LOCATOR, capture_method="inline", content=CONTENT,
+        )
+        claim = build_atomic_claim(
+            claim_id="claim-e2e-2", source_record=source_record, source_content=CONTENT,
+            exact_locator=LOCATOR, statement="Fixture claim.",
+        )
+        hypothesis = build_hypothesis_card(
+            hypothesis_id="hyp-e2e-2", title="H", falsifiable_statement="F",
+            linked_claims=[claim], predicted_mechanism="M", invalidation_criteria="I",
+        )
+        gate = base["gate_config"]
+        with self.assertRaisesRegex(ValueError, "finite numbers"):
+            freeze_trial(
+                source_record=source_record, source_content=CONTENT, claim=claim,
+                hypothesis=hypothesis, family_id="family", trial_id="trial",
+                seed=1, n=10, edge=float("nan"), noise=1.0, gate_config=gate,
+            )
+        with self.assertRaisesRegex(ValueError, "family_id and trial_id"):
+            freeze_trial(
+                source_record=source_record, source_content=CONTENT, claim=claim,
+                hypothesis=hypothesis, family_id=123, trial_id="trial",
+                seed=1, n=10, edge=0.0, noise=1.0, gate_config=gate,
+            )
+
     def test_gate_input_error_is_preserved_and_trial_is_marked_failed(self):
         spec = frozen()
         spec["gate_config"]["acceptance_thresholds"]["min_sample_size"] = True
