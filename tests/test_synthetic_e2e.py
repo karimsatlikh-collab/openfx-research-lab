@@ -86,6 +86,15 @@ class SyntheticEndToEndTests(unittest.TestCase):
                 run_synthetic_reproduction(frozen=spec, registry=registry, workspace=Path(tmp) / "runs")
             self.assertEqual(registry.verify()["event_count"], 0)
 
+    def test_freeze_binds_complete_provenance_documents(self):
+        spec = frozen()
+        self.assertEqual(len(spec["source_record_sha256"]), 64)
+        self.assertEqual(len(spec["claim_sha256"]), 64)
+        self.assertEqual(len(spec["hypothesis_sha256"]), 64)
+        spec["claim_sha256"] = "0" * 64
+        with self.assertRaises(ValueError):
+            verify_frozen_trial(spec)
+
     def test_hypothesis_cannot_be_relabelled_as_verified_rule(self):
         spec = frozen()
         spec["hypothesis_status"] = "verified_rule"
