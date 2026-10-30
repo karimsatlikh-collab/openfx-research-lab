@@ -132,11 +132,12 @@ def test_changed_returns_hash_fails_closed_to_p_one():
     returns = [0.1 + ((i % 6) - 2) * 0.02 for i in range(60)]
     payload = _payload(returns)
     payload["validation"]["returns_sha256"] = "0" * 64
+    manifest = _manifest()
     registry = FakeRegistry([{
         "trial_id": "tampered", "trial_index": 1, "outcome": "completed",
         "payload": payload,
-    }])
-    verdict = evaluate_registered_family(registry=registry, manifest=_manifest())
+    }], manifest)
+    verdict = evaluate_registered_family(registry=registry, manifest=manifest)
     assert verdict["decision"] == "BLOCKED"
     assert verdict["exclusions"]["tampered"] == "return_artifact_hash_mismatch_counted_with_p1"
 
