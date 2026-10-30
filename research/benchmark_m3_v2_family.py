@@ -65,7 +65,7 @@ def run(plan_file: Path, families: int) -> dict:
         return_hashes.append(series_hashes)
 
     average = sum(timings) / len(timings)
-    return {
+    result = {
         "evidence_class": "performance_preflight_only_not_calibration",
         "plan_id": "M3-HAC-MBB-CALIBRATION-V2-3",
         **provenance,
@@ -95,6 +95,10 @@ def run(plan_file: Path, families: int) -> dict:
             "It is a throughput estimate, not evidence about null error rates, power, or profitability.",
         ],
     }
+    canonical = json.dumps(result, sort_keys=True, separators=(",", ":"),
+                           ensure_ascii=False, allow_nan=False).encode("utf-8")
+    result["benchmark_sha256"] = __import__("hashlib").sha256(canonical).hexdigest()
+    return result
 
 
 def main() -> None:
@@ -103,8 +107,8 @@ def main() -> None:
     parser.add_argument("--families", type=int, default=3)
     parser.add_argument("--output")
     args = parser.parse_args()
-    if not 1 <= args.families <= 20:
-        raise SystemExit("--families must be between 1 and 20")
+    if not 3 <= args.families <= 20:
+        raise SystemExit("--families must be between 3 and 20")
     result = run(Path(args.plan_file), args.families)
     payload = json.dumps(result, sort_keys=True, separators=(",", ":"),
                          ensure_ascii=False, allow_nan=False) + "\n"
