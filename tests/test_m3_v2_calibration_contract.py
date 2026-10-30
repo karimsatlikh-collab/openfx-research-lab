@@ -58,6 +58,8 @@ class M3V2CalibrationContractTests(unittest.TestCase):
         self.assertIn("aggregator_git_blob", aggregator)
         self.assertIn("reference_check_git_blob", aggregator)
         self.assertIn("source_provenance", aggregator)
+        self.assertIn("benchmark_git_blob", aggregator)
+        self.assertIn("research/benchmark_m3_v2_family.py", provenance)
         self.assertIn('git', provenance)
         self.assertIn("hash-object", provenance)
 
