@@ -51,7 +51,7 @@ def _check_marginal(cell: dict, phase: str, generator: str, generator_index: int
     expected_phase = "marginal_null" if phase == "null" else "marginal_mde"
     expected_count = 5000 if phase == "null" else 1000
     if (cell.get("phase") != expected_phase or cell.get("generator") != generator
-            or cell.get("plan_id") != "M3-HAC-MBB-CALIBRATION-V2-2"
+            or cell.get("plan_id") != "M3-HAC-MBB-CALIBRATION-V2-3"
             or cell.get("method_id") != "M3-HOLM-HAC-MBB-V2"
             or cell.get("method_version") != "2.0.2"):
         raise ValueError("marginal cell identity/method version mismatch")
@@ -73,8 +73,8 @@ def _check_marginal(cell: dict, phase: str, generator: str, generator_index: int
         if isinstance(index, bool) or not isinstance(index, int) or not 0 <= index < expected_count or index in seen:
             raise ValueError("marginal replicate indices are malformed")
         seen.add(index)
-        data_base = 2_400_000_000 if phase == "mde" else 2_300_000_000
-        bootstrap_base = 2_900_000_000 if phase == "mde" else 2_800_000_000
+        data_base = 3_400_000_000 if phase == "mde" else 3_300_000_000
+        bootstrap_base = 3_900_000_000 if phase == "mde" else 3_800_000_000
         expected_data_seed = data_base + generator_index * 100_000 + index
         if (row.get("data_seed") != expected_data_seed
                 or row.get("bootstrap_seed") != bootstrap_base + expected_data_seed):
@@ -94,7 +94,7 @@ def _check_family(cell: dict, phase: str, generator: str, generator_index: int, 
     expected_phase = "family_null" if phase == "null" else "family_mde"
     if (cell.get("phase") != expected_phase or cell.get("generator") != generator
             or cell.get("rho") != rho
-            or cell.get("plan_id") != "M3-HAC-MBB-CALIBRATION-V2-2"
+            or cell.get("plan_id") != "M3-HAC-MBB-CALIBRATION-V2-3"
             or cell.get("method_id") != "M3-HOLM-HAC-MBB-V2"
             or cell.get("method_version") != "2.0.2"):
         raise ValueError("family cell identity/method version mismatch")
@@ -102,7 +102,7 @@ def _check_family(cell: dict, phase: str, generator: str, generator_index: int, 
     expected_settings = {"n": 252, "alpha": 0.05, "bootstrap_replicates": 9999,
                          "block_length": 7, "hac_lag": 7, "max_observations": 100_000,
                          "max_trials": 10_000, "max_bootstrap_work": 1_000_000_000,
-                         "families": 1000, "family_size_primary": 20,
+                         "families": 5000, "family_size_primary": 20,
                          "family_size_secondary": 5,
                          "estimated_bootstrap_work_per_family": 9999 * 20 * 252 * 8}
     if any(settings.get(key) != value for key, value in expected_settings.items()):
@@ -110,18 +110,18 @@ def _check_family(cell: dict, phase: str, generator: str, generator_index: int, 
     if cell.get("failed_families") != 0:
         raise ValueError("family cell contains failed families")
     rows = cell.get("families")
-    if not isinstance(rows, list) or len(rows) != 1000:
+    if not isinstance(rows, list) or len(rows) != 5000:
         raise ValueError("family replicate count mismatch")
     seen = set()
     for row in rows:
         index = row.get("family_index")
-        if isinstance(index, bool) or not isinstance(index, int) or not 0 <= index < 1000 or index in seen:
+        if isinstance(index, bool) or not isinstance(index, int) or not 0 <= index < 5000 or index in seen:
             raise ValueError("family indices are malformed")
         seen.add(index)
         correlation_index = CORRELATIONS.index(rho)
-        data_base = 2_600_000_000 if phase == "mde" else 2_500_000_000
+        data_base = 3_600_000_000 if phase == "mde" else 3_500_000_000
         expected_family_seed = data_base + generator_index * 1_000_000 + correlation_index * 10_000 + index
-        if row.get("family_seed") != expected_family_seed or row.get("bootstrap_seed") != 2_700_000_000 + expected_family_seed:
+        if row.get("family_seed") != expected_family_seed or row.get("bootstrap_seed") != 3_700_000_000 + expected_family_seed:
             raise ValueError("family seed map mismatch")
         if row.get("status") != "completed":
             raise ValueError("family replicate is not completed")
@@ -140,7 +140,7 @@ def _check_family(cell: dict, phase: str, generator: str, generator_index: int, 
         realized = row.get("realized_average_pairwise_return_correlation")
         if isinstance(realized, bool) or not isinstance(realized, (int, float)) or not math.isfinite(realized) or not -1 <= realized <= 1:
             raise ValueError("family realized correlation is missing or invalid")
-    if seen != set(range(1000)):
+    if seen != set(range(5000)):
         raise ValueError("family replicate sequence is incomplete")
 
 
@@ -243,7 +243,7 @@ def aggregate(input_dir: Path, output_path: Path, reference_path: Path, plan_fil
     }
     acceptance["accepted"] = all(acceptance.values())
     result = {
-        "plan_id": "M3-HAC-MBB-CALIBRATION-V2-2",
+        "plan_id": "M3-HAC-MBB-CALIBRATION-V2-3",
         "plan_sha256": plan_hash,
         "engine_revision": cells[0]["engine_revision"],
         "runner_revision": cells[0]["runner_revision"],
