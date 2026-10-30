@@ -2,7 +2,7 @@ import unittest
 
 from openfx.leakage_controls import (
     LeakageDetected, assert_available_by, assert_feature_window_within_split,
-    assert_final_oos_access, assert_ordered_splits,
+    assert_final_oos_access, assert_ordered_splits, run_declared_leakage_fixtures,
 )
 
 
@@ -61,6 +61,11 @@ class LeakageFixtureTests(unittest.TestCase):
                 assert_final_oos_access(split_name="final_oos", audience=audience)
         assert_final_oos_access(split_name="final_oos", audience="authorized_human")
         assert_final_oos_access(split_name="validation", audience="optimizer")
+
+    def test_declared_fixture_suite_detects_every_in_scope_fixture(self):
+        results = run_declared_leakage_fixtures()
+        self.assertEqual(len(results), 6)
+        self.assertTrue(all(item["status"] == "detected" for item in results), results)
 
     def test_unknown_audience_fails_closed(self):
         with self.assertRaises(LeakageDetected):
