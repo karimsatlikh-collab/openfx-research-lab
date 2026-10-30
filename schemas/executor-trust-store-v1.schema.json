@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/karimsatlikh-collab/openfx-research-lab/blob/main/schemas/executor-trust-store-v1.schema.json",
+  "title": "OpenFX Executor Trust Store v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "keys"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "keys": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "key_id", "executor_id", "algorithm", "public_key_b64",
+          "not_before_utc", "not_after_utc", "revoked", "allowed_engines"
+        ],
+        "properties": {
+          "key_id": {"type": "string", "minLength": 1},
+          "executor_id": {"type": "string", "minLength": 1},
+          "algorithm": {"const": "Ed25519"},
+          "public_key_b64": {"type": "string", "minLength": 1},
+          "not_before_utc": {"type": "string", "format": "date-time"},
+          "not_after_utc": {"type": "string", "format": "date-time"},
+          "revoked": {"type": "boolean"},
+          "allowed_engines": {
+            "type": "array",
+            "items": {"enum": ["mock", "synthetic", "mt5-demo"]},
+            "minItems": 1,
+            "uniqueItems": true
+          }
+        }
+      }
+    }
+  }
+}
