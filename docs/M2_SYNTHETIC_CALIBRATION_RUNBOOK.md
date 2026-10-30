@@ -6,7 +6,7 @@ edit its thresholds or seed allocation after seeing results.
 Run from the repository root after the calibration implementation is frozen:
 
 ```bash
-python -m unittest tests.test_m2_calibration
+python -m unittest discover -s tests -p "test_m2_*.py" -v
 python scripts/run_m2_calibration.py --output-dir calibration-artifacts/m2-v1
 ```
 
