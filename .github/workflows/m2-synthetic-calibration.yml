@@ -1,0 +1,40 @@
+name: M2 Synthetic Calibration
+
+on:
+  pull_request:
+    branches:
+      - openfx-foundation-m1-contracts
+    paths:
+      - "openfx/calibration.py"
+      - "openfx/leakage_controls.py"
+      - "tests/test_m2_*.py"
+      - "scripts/run_m2_calibration.py"
+      - "docs/M2_SYNTHETIC_CALIBRATION_PLAN_V1.md"
+      - ".github/workflows/m2-synthetic-calibration.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  calibration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run M2 unit and leakage fixture tests
+        run: python -m unittest discover -s tests -p "test_m2_*.py" -v
+      - name: Execute pre-registered 20,000-replicate campaign
+        run: python scripts/run_m2_calibration.py --output-dir "calibration-artifacts/m2-v1-${GITHUB_RUN_ID}"
+      - name: Preserve raw calibration evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: m2-synthetic-calibration-v1-${{ github.run_id }}
+          path: calibration-artifacts/
+          if-no-files-found: error
+          retention-days: 90
