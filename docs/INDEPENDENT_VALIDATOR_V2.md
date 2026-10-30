@@ -18,7 +18,8 @@ This v2 is a separate schema and module from the original PR #29 v1 prototype. D
    - JobSpec digest and RunRecord digest are both signed/bound.
 
 3. **Race-resistant artifact opening**
-   - The artifact root is opened as a directory descriptor.
+   - Job/Run/attestation/trust-store JSON inputs are size-bounded and read through no-follow descriptors with before/after metadata checks.
+   - The artifact root is opened component-by-component from filesystem root as a pinned directory descriptor.
    - Every intermediate component is traversed relative to the pinned descriptor using O_DIRECTORY and O_NOFOLLOW.
    - The final file is opened relative to its parent descriptor using O_NOFOLLOW.
    - The validator fails closed if the platform lacks dir_fd/openat, O_NOFOLLOW, or O_DIRECTORY support.
