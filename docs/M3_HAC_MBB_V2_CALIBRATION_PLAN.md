@@ -1,13 +1,13 @@
-# M3 HAC-Studentized MBB v2.0.1 — Pre-Registered Calibration Plan
+# M3 HAC-Studentized MBB v2.0.2 — Pre-Registered Calibration Plan
 
 Status: **pre-registered plan; formal campaign not yet run**.
 
-- Plan ID: `M3-HAC-MBB-CALIBRATION-V2-1`
-- Method ID/version: `M3-HOLM-HAC-MBB-V2` / `2.0.1`
+- Plan ID: `M3-HAC-MBB-CALIBRATION-V2-2`
+- Method ID/version: `M3-HOLM-HAC-MBB-V2` / `2.0.2`
 - Implementation: `openfx/selection_bias_v2.py`
 - Freeze date: 2026-10-30 UTC
 - Evidence class: synthetic only.
-- This plan is separate from M3 v1. It supersedes the unexecuted v2.0.0 draft. No formal v2.0.0 cells were run; its original seed ranges are retired and are not reused.
+- This plan is separate from M3 v1. It supersedes the unexecuted v2.0.0 and v2.0.2 drafts. No formal v2 cells were run; all earlier seed ranges are retired and are not reused.
 
 ## 1. Frozen method settings
 
@@ -80,13 +80,13 @@ The independent calibration runner must record the exact generation method, seed
 
 Generator order: N1, N2, N3, N4, N5. Replicate/family indices start at zero.
 
-- Marginal null data: `1,300,000,000 + generator_index*100,000 + replicate_index`.
-- Marginal MDE data: `1,400,000,000 + generator_index*100,000 + replicate_index`.
-- Marginal null bootstrap seed: `1,800,000,000 + marginal_null_data_seed`.
-- Marginal MDE bootstrap seed: `1,900,000,000 + marginal_mde_data_seed`.
-- Global-null family seed: `1,500,000,000 + generator_index*1,000,000 + correlation_index*10,000 + family_index`.
-- One-MDE family seed: `1,600,000,000 + generator_index*1,000,000 + correlation_index*10,000 + family_index`.
-- Bootstrap resampling seed for a family: `1,700,000,000 + family_seed`.
+- Marginal null data: `2,300,000,000 + generator_index*100,000 + replicate_index`.
+- Marginal MDE data: `2,400,000,000 + generator_index*100,000 + replicate_index`.
+- Marginal null bootstrap seed: `2,800,000,000 + marginal_null_data_seed`.
+- Marginal MDE bootstrap seed: `2,900,000,000 + marginal_mde_data_seed`.
+- Global-null family seed: `2,500,000,000 + generator_index*1,000,000 + correlation_index*10,000 + family_index`.
+- One-MDE family seed: `2,600,000,000 + generator_index*1,000,000 + correlation_index*10,000 + family_index`.
+- Bootstrap resampling seed for a family: `2,700,000,000 + family_seed`.
 - Correlation order: 0.0, 0.5, 0.9.
 - Trial IDs and ordering are deterministic; the signal candidate is always the first trial in MDE families.
 
@@ -121,7 +121,7 @@ For each of 15 generator/correlation cells, and separately for family size 5 and
 
 The evaluator blocks before sampling if estimated work `9,999 × eligible_trials × n × (HAC_lag+1)` exceeds 1,000,000,000 units; it also caps each trial at 100,000 observations and each manifest at 10,000 registered trials. A resource-budget block is not a statistical failure; it is an incomplete evaluation and cannot count as a pass.
 
-A failure of any criterion means v2.0.1 is **not accepted**. No threshold, generator, seed, family size, correlation cell, or MDE may be removed after results are seen.
+A failure of any criterion means v2.0.2 is **not accepted**. No threshold, generator, seed, family size, correlation cell, or MDE may be removed after results are seen.
 
 ## 7. Computational execution boundary
 
