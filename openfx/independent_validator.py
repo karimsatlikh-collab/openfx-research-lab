@@ -116,10 +116,10 @@ def _load_trusted_key(
 
 def _verify_attestation(
     attestation: dict[str, Any], trust_store: dict[str, Any],
-    job: dict[str, Any], run: dict[str, Any], job_digest: str, now: datetime,
+    job: dict[str, Any], run: dict[str, Any], job_digest: str, run_digest: str, now: datetime,
 ) -> dict[str, str]:
     required = (
-        "key_id", "executor_id", "job_id", "run_id", "job_spec_sha256",
+        "key_id", "executor_id", "job_id", "run_id", "job_spec_sha256", "run_record_sha256",
         "engine", "implementation_sha256", "nonce", "issued_at_utc",
         "expires_at_utc", "signature",
     )
@@ -133,6 +133,7 @@ def _verify_attestation(
         "job_id": job.get("job_id"),
         "run_id": run.get("run_id"),
         "job_spec_sha256": job_digest,
+        "run_record_sha256": run_digest,
         "engine": job.get("requested_engine"),
         "implementation_sha256": implementation.get("build_sha256"),
     }
@@ -251,6 +252,7 @@ def validate_independently(
              "RUN_JOB_DIGEST_MISMATCH", "RunRecord does not bind the canonical JobSpec digest")
     _require(inputs.get("implementation_sha256") == implementation["build_sha256"],
              "RUN_IMPLEMENTATION_MISMATCH", "RunRecord implementation digest does not match JobSpec")
+    run_digest = sha256_bytes(canonical_bytes(run))
 
     timestamps = run.get("timestamps")
     _require(isinstance(timestamps, dict), "RUN_TIMESTAMPS_MISSING", "RunRecord timestamps are required")
@@ -265,7 +267,7 @@ def validate_independently(
         raise ValidationError("ARTIFACT_ROOT_MISSING", "artifact root does not exist") from exc
     _require(root.is_dir(), "ARTIFACT_ROOT_INVALID", "artifact root must be a directory")
 
-    verified_identity = _verify_attestation(attestation, trust_store, job, run, job_digest, now)
+    verified_identity = _verify_attestation(attestation, trust_store, job, run, job_digest, run_digest, now)
     issued_at = parse_utc(attestation.get("issued_at_utc"), "attestation.issued_at_utc")
     _require(issued_at >= finished, "ATTESTATION_PRECEDES_RUN_COMPLETION",
              "executor attestation must be issued after run completion")
@@ -287,6 +289,7 @@ def validate_independently(
         "decision": "PASS",
         "reason_codes": ["JOB_RUN_BINDING_VALID", "EXECUTOR_SIGNATURE_VALID", "ARTIFACTS_VALID"],
         "job_spec_sha256": job_digest,
+        "run_record_sha256": run_digest,
         "run_id": run["run_id"],
         "executor_id": verified_identity["executor_id"],
         "key_id": verified_identity["key_id"],

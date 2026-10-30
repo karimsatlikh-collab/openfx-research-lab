@@ -5,7 +5,7 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "key_id", "executor_id", "job_id", "run_id", "job_spec_sha256",
+    "key_id", "executor_id", "job_id", "run_id", "job_spec_sha256", "run_record_sha256",
     "engine", "implementation_sha256", "nonce", "issued_at_utc",
     "expires_at_utc", "signature"
   ],
@@ -15,6 +15,7 @@
     "job_id": {"type": "string", "minLength": 1},
     "run_id": {"type": "string", "minLength": 1},
     "job_spec_sha256": {"$ref": "#/$defs/sha256"},
+    "run_record_sha256": {"$ref": "#/$defs/sha256"},
     "engine": {"enum": ["mock", "synthetic", "mt5-demo"]},
     "implementation_sha256": {"$ref": "#/$defs/sha256"},
     "nonce": {"type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$"},
