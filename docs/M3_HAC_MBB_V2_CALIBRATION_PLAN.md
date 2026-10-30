@@ -149,6 +149,13 @@ A fix requires a new method/calibration version, new plan hash, and disjoint see
 
 Install optional pinned dependencies with `python -m pip install -r requirements-m3-calibration.txt`.
 
+First run the deterministic primitive-level reference check. It must pass before any cell is accepted:
+
+```bash
+python research/validate_m3_v2_reference.py \\
+  --output artifacts/m3-v2/reference-check.json
+```
+
 Run each cell as a separate immutable artifact. Required filenames:
 
 - `marginal-null-<GENERATOR>.json`
