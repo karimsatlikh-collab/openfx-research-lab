@@ -88,6 +88,7 @@ def _check_family(cell: dict, phase: str, generator: str, generator_index: int, 
     if (cell.get("phase") != expected_phase or cell.get("generator") != generator
             or cell.get("rho") != rho
             or cell.get("plan_id") != "M3-HAC-MBB-CALIBRATION-V2-2"
+            or cell.get("method_id") != "M3-HOLM-HAC-MBB-V2"
             or cell.get("method_version") != "2.0.2"):
         raise ValueError("family cell identity/method version mismatch")
     settings = cell.get("settings", {})
@@ -136,7 +137,7 @@ def _check_family(cell: dict, phase: str, generator: str, generator_index: int, 
         raise ValueError("family replicate sequence is incomplete")
 
 
-def aggregate(input_dir: Path, output_path: Path, reference_path: Path) -> dict:
+def aggregate(input_dir: Path, output_path: Path, reference_path: Path, expected_plan_sha256: str) -> dict:
     if output_path.exists():
         raise FileExistsError(f"refusing to overwrite {output_path}")
     reference = json.loads(reference_path.read_text(encoding="utf-8"))
@@ -157,7 +158,7 @@ def aggregate(input_dir: Path, output_path: Path, reference_path: Path) -> dict:
     for generator in GENERATORS:
         for phase, target in (("null", marginal_null), ("mde", marginal_mde)):
             path = input_dir / f"marginal-{phase}-{generator}.json"
-            cell = _load_cell(path)
+            cell = _load_cell(path, expected_plan_sha256)
             _check_marginal(cell, phase, generator, GENERATORS.index(generator))
             target[generator] = cell
             cells.append(cell)
@@ -165,7 +166,7 @@ def aggregate(input_dir: Path, output_path: Path, reference_path: Path) -> dict:
             tag = str(rho).replace(".", "p")
             for phase, target in (("null", family_null), ("mde", family_mde)):
                 path = input_dir / f"family-{phase}-{generator}-rho-{tag}.json"
-                cell = _load_cell(path)
+                cell = _load_cell(path, expected_plan_sha256)
                 _check_family(cell, phase, generator, GENERATORS.index(generator), rho)
                 target[(generator, rho)] = cell
                 cells.append(cell)
@@ -261,14 +262,14 @@ def aggregate(input_dir: Path, output_path: Path, reference_path: Path) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input-dir", required=True)
-    parser.add_argument("--expected-plan-sha256")
+    parser.add_argument("--expected-plan-sha256", required=True)
     parser.add_argument("--reference-check", required=True)
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
-    result = aggregate(Path(args.input_dir), Path(args.output), Path(args.reference_check))
-    if args.expected_plan_sha256 and result["plan_sha256"] != args.expected_plan_sha256:
-        Path(args.output).unlink(missing_ok=True)
-        raise SystemExit("aggregated plan hash does not match --expected-plan-sha256")
+    if not args.expected_plan_sha256:
+        raise SystemExit("--expected-plan-sha256 is required for a frozen calibration run")
+    result = aggregate(Path(args.input_dir), Path(args.output), Path(args.reference_check),
+                       args.expected_plan_sha256)
     print(json.dumps({"output": args.output, "campaign_sha256": result["campaign_sha256"],
                       "acceptance": result["acceptance"]}, sort_keys=True))
 
