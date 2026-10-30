@@ -31,7 +31,7 @@ ALPHA = 0.05
 MDE = 0.35
 MARGINAL_NULL_REPLICATES = 5000
 MARGINAL_MDE_REPLICATES = 1000
-FAMILY_REPLICATES = 1000
+FAMILY_REPLICATES = 5000
 FAMILY_SIZE = 20
 BLOCK_LENGTH = 7
 HAC_LAG = 7
@@ -111,7 +111,7 @@ def _bootstrap_pvalues(series: np.ndarray, seed: int,
                        replicates: int = BOOTSTRAP_REPLICATES) -> np.ndarray:
     estimated_work = replicates * series.shape[0] * N * (HAC_LAG + 1)
     if estimated_work > MAX_BOOTSTRAP_WORK:
-        raise ValueError("estimated bootstrap work exceeds frozen M3 v2.0.2 budget")
+        raise ValueError("estimated bootstrap work exceeds frozen M3 v2.0.3 calibration budget")
     observed = np.empty(series.shape[0], dtype=np.float64)
     centered = np.empty_like(series, dtype=np.float64)
     for trial in range(series.shape[0]):
@@ -227,8 +227,8 @@ def run_marginal_cell(generator_id: str, alternative: bool,
                       runner_revision: str) -> dict:
     gi = GENERATORS.index(generator_id)
     count = MARGINAL_MDE_REPLICATES if alternative else MARGINAL_NULL_REPLICATES
-    data_base = 2_400_000_000 if alternative else 2_300_000_000
-    bootstrap_base = 2_900_000_000 if alternative else 2_800_000_000
+    data_base = 3_400_000_000 if alternative else 3_300_000_000
+    bootstrap_base = 3_900_000_000 if alternative else 3_800_000_000
     rows = []
     successes = 0
     failures = 0
@@ -250,7 +250,7 @@ def run_marginal_cell(generator_id: str, alternative: bool,
             "returns_sha256": series_hash,
                      "p_value": pvalue, "status": status, "failure": error})
     cell = {
-        "plan_id": "M3-HAC-MBB-CALIBRATION-V2-2",
+        "plan_id": "M3-HAC-MBB-CALIBRATION-V2-3",
         "method_id": "M3-HOLM-HAC-MBB-V2", "method_version": "2.0.2",
         "phase": "marginal_mde" if alternative else "marginal_null",
         "generator": generator_id, "effect": MDE if alternative else 0.0,
@@ -274,12 +274,12 @@ def run_family_cell(generator_id: str, rho: float, alternative: bool,
                     runner_revision: str) -> dict:
     gi = GENERATORS.index(generator_id)
     ci = CORRELATIONS.index(rho)
-    data_base = 2_600_000_000 if alternative else 2_500_000_000
+    data_base = 3_600_000_000 if alternative else 3_500_000_000
     records = []
     fwer5 = fwer20 = power5 = power20 = failures = 0
     for family_index in range(FAMILY_REPLICATES):
         family_seed = data_base + gi * 1_000_000 + ci * 10_000 + family_index
-        bootstrap_seed = 2_700_000_000 + family_seed
+        bootstrap_seed = 3_700_000_000 + family_seed
         hashes = None
         try:
             values = _generate_family(generator_id, family_seed, rho, alternative)
@@ -323,7 +323,7 @@ def run_family_cell(generator_id: str, rho: float, alternative: bool,
             record["global_null_fwer_m20"] = bool(fwer20_result)
         records.append(record)
     cell = {
-        "plan_id": "M3-HAC-MBB-CALIBRATION-V2-2",
+        "plan_id": "M3-HAC-MBB-CALIBRATION-V2-3",
         "method_id": "M3-HOLM-HAC-MBB-V2", "method_version": "2.0.2",
         "phase": "family_mde" if alternative else "family_null",
         "generator": generator_id, "rho": rho,
