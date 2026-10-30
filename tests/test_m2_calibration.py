@@ -65,6 +65,8 @@ class CalibrationProtocolTests(unittest.TestCase):
         self.assertEqual(cell["records"][-1]["seed"], 100999)
         self.assertEqual(cell["records"][0]["evidence_level"], "synthetic")
         self.assertEqual(cell["acceptance"], cell["wilson_95_upper"] <= 0.05)
+        repeat = run_cell(kind="null", family="N-IID", effect=0.0, seed_start=100000)
+        self.assertEqual(cell, repeat)
 
     def test_canonical_serialization_rejects_nan(self):
         with self.assertRaises(ValueError):
