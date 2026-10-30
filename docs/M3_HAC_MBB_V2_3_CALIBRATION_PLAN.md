@@ -202,7 +202,7 @@ Run all 40 cells (5 marginal-null + 5 marginal-MDE + 15 family-null + 15 family-
 After all 40 cell files exist, aggregate and validate them:
 
 ```bash
-python research/aggregate_m3_hac_mbb_v2.py --input-dir artifacts/m3-v2 --plan-file docs/M3_HAC_MBB_V2_3_CALIBRATION_PLAN.md --reference-check artifacts/m3-v2.0.3/reference-check.json --output artifacts/m3-v2.0.3/campaign-summary.json
+python research/aggregate_m3_hac_mbb_v2.py --input-dir artifacts/m3-v2.0.3 --plan-file docs/M3_HAC_MBB_V2_3_CALIBRATION_PLAN.md --reference-check artifacts/m3-v2.0.3/reference-check.json --output artifacts/m3-v2.0.3/campaign-summary.json
 ```
 
 The runner computes the plan SHA-256 from the actual plan file and verifies that the plan, runner, and engine files match the clean Git checkout. The runner revision is taken from `HEAD`, not caller-supplied metadata; the engine revision must resolve to a commit containing the exact checked-out engine file. The reference check records the same provenance. The aggregator recomputes the plan hash, verifies the clean checkout and exact source bindings, and checks reference/cell provenance, cell hashes, complete seed sequences, return hashes, trial membership, realized family correlations, all cell counts, and frozen acceptance thresholds. A missing, failed, overwritten, or inconsistent cell prevents a valid campaign summary.
