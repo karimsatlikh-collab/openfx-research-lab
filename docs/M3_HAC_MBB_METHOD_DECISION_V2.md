@@ -83,7 +83,7 @@ Final OOS is not read or evaluated by the function. Failed and ineligible attemp
 
 The manifest source revision must be a 40- or 64-character lowercase Git SHA. The validation payload of every completed trial must carry that exact source_revision; a mismatch is excluded with p=1. The evaluator blocks before bootstrap sampling if its estimated work exceeds the frozen one-billion-unit budget.
 
-The local hash-chain registry remains a prototype, not an independently trusted registrar. A privileged actor can rewrite the entire ledger. The boolean `registered_before_execution` is an application-level assertion, not cryptographic proof of wall-clock ordering.
+The local hash-chain registry remains a prototype, not an independently trusted registrar. A privileged actor can rewrite the entire ledger. The boolean `registered_before_execution` is an application-level assertion, not cryptographic proof of wall-clock ordering. In addition, the current validation payload's return-series hash is self-declared and is not yet cryptographically linked to an independently validated RunRecord/artifact. Therefore the production evaluator must be treated as synthetic/unverified until signed RunRecord v2 and independent-validator evidence are wired into the registry ingestion path.
 
 ## 6. Known statistical risks
 
