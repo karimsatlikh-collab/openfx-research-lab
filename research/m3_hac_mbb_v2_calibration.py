@@ -96,7 +96,7 @@ def _make_indices(seed: int, replicates: int = BOOTSTRAP_REPLICATES) -> np.ndarr
     ).reshape(replicates, blocks)
     offsets = np.arange(BLOCK_LENGTH, dtype=np.int32)
     return ((starts[:, :, None] + offsets[None, None, :]) % N).reshape(
-        BOOTSTRAP_REPLICATES, -1
+        replicates, -1
     )[:, :N]
 
 
