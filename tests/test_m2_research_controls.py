@@ -147,7 +147,7 @@ class RegistryTests(unittest.TestCase):
     def test_registry_rejects_invalid_json_and_unknown_event_fields(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "ledger.jsonl"
-            path.write_text("{broken\\n", encoding="utf-8")
+            path.write_text("{broken\n", encoding="utf-8")
             with self.assertRaisesRegex(TrialRegistryError, "invalid JSON"):
                 LocalTrialRegistry(path).verify()
 
@@ -161,7 +161,7 @@ class RegistryTests(unittest.TestCase):
                 "previous_event_sha256": GENESIS, "unreviewed": True,
             }
             event["event_sha256"] = _event_hash(event)
-            path.write_text(json.dumps(event) + "\\n", encoding="utf-8")
+            path.write_text(json.dumps(event) + "\n", encoding="utf-8")
             with self.assertRaisesRegex(TrialRegistryError, "unexpected or missing"):
                 LocalTrialRegistry(path).verify()
 
@@ -176,7 +176,7 @@ class RegistryTests(unittest.TestCase):
                 "previous_event_sha256": GENESIS,
             }
             event["event_sha256"] = _event_hash(event)
-            path.write_text(json.dumps(event) + "\\n", encoding="utf-8")
+            path.write_text(json.dumps(event) + "\n", encoding="utf-8")
             with self.assertRaisesRegex(TrialRegistryError, "schema_version"):
                 LocalTrialRegistry(path).verify()
 
