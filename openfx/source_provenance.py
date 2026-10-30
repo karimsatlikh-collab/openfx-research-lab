@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -40,7 +40,7 @@ def _valid_timestamp(value: Any) -> bool:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
         return False
-    return parsed.tzinfo is not None and parsed.utcoffset() is not None
+    return parsed.tzinfo is not None and parsed.utcoffset() == timedelta(0)
 
 
 def content_sha256(content: bytes) -> str:
