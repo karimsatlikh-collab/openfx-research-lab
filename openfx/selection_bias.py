@@ -147,7 +147,8 @@ def _validate_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(manifest, dict) or manifest.get("frozen_before_trials") is not True:
         raise SelectionBiasError("a frozen family manifest is required")
     required = ("family_id", "data_profile_id", "cost_profile_id", "validation_split_id",
-                "return_frequency", "source_revision", "max_trials", "frozen_at_utc")
+                "return_frequency", "source_revision", "max_trials", "frozen_at_utc",
+                "alpha", "bootstrap_replicates", "min_observations")
     for key in required:
         if key not in manifest or manifest[key] in (None, ""):
             raise SelectionBiasError(f"manifest missing {key}")
@@ -162,13 +163,12 @@ def _validate_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
     alpha = manifest.get("alpha", DEFAULT_ALPHA)
     reps = manifest.get("bootstrap_replicates", DEFAULT_REPLICATES)
     minimum = manifest.get("min_observations", DEFAULT_MIN_OBSERVATIONS)
-    if isinstance(alpha, bool) or not isinstance(alpha, Real) or not 0 < alpha < 1:
-        raise SelectionBiasError("invalid alpha")
-    for name, value in (("bootstrap_replicates", reps), ("min_observations", minimum)):
-        if isinstance(value, bool) or not isinstance(value, int) or value < 1:
-            raise SelectionBiasError(f"invalid {name}")
-    if reps < 99:
-        raise SelectionBiasError("at least 99 bootstrap replicates are required")
+    if isinstance(alpha, bool) or not isinstance(alpha, Real) or float(alpha) != DEFAULT_ALPHA:
+        raise SelectionBiasError("M3 v1 requires the frozen alpha=0.05")
+    if isinstance(reps, bool) or not isinstance(reps, int) or reps != DEFAULT_REPLICATES:
+        raise SelectionBiasError("M3 v1 requires the frozen 9999 bootstrap replicates")
+    if isinstance(minimum, bool) or not isinstance(minimum, int) or minimum != DEFAULT_MIN_OBSERVATIONS:
+        raise SelectionBiasError("M3 v1 requires the frozen minimum of 252 observations")
     return {"alpha": float(alpha), "bootstrap_replicates": reps, "min_observations": minimum}
 
 
