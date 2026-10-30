@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class M3V2CalibrationContractTests(unittest.TestCase):
     def test_runner_identity_matches_frozen_plan(self):
-        plan = (ROOT / "docs/M3_HAC_MBB_V2_CALIBRATION_PLAN.md").read_text(encoding="utf-8")
+        plan = (ROOT / "docs/M3_HAC_MBB_V2_3_CALIBRATION_PLAN.md").read_text(encoding="utf-8")
         runner = (ROOT / "research/m3_hac_mbb_v2_calibration.py").read_text(encoding="utf-8")
         aggregator = (ROOT / "research/aggregate_m3_hac_mbb_v2.py").read_text(encoding="utf-8")
         self.assertIn("M3-HAC-MBB-CALIBRATION-V2-3", plan)
@@ -34,7 +34,9 @@ class M3V2CalibrationContractTests(unittest.TestCase):
         stale = (
             "1_300_000_000", "1_400_000_000", "1_500_000_000",
             "1_600_000_000", "1_700_000_000", "1_800_000_000",
-            "1_900_000_000",
+            "1_900_000_000", "2_300_000_000", "2_400_000_000",
+            "2_500_000_000", "2_600_000_000", "2_700_000_000",
+            "2_800_000_000", "2_900_000_000",
         )
         for seed in stale:
             self.assertNotIn(seed, runner)
