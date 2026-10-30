@@ -107,7 +107,7 @@ class IndependentValidatorV2Tests(unittest.TestCase):
     def verify(self):
         return validate_independently(
             self.job, self.run, self.attestation, self.trust_store,
-            self.artifacts, now_utc=NOW_TEXT,
+            self.artifacts,
         )
 
     def test_valid_signature_binds_complete_run_and_artifact(self):
