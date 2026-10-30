@@ -21,6 +21,7 @@ def _manifest(**overrides):
         "validation_split_id": "validation-v1",
         "return_frequency": "daily",
         "source_revision": "abc123",
+        "frozen_at_utc": "2026-01-01T00:00:00Z",
         "max_trials": 10,
         "alpha": 0.05,
         "bootstrap_replicates": 199,
@@ -47,14 +48,24 @@ def _payload(returns, *, timestamps=None, **overrides):
 
 
 class FakeRegistry:
-    def __init__(self, trials):
+    def __init__(self, trials, manifest):
         self.trials = trials
+        self.manifest_digest = sha256_json(manifest)
 
     def family_snapshot(self, family_id):
+        trials = []
+        for row in self.trials:
+            item = dict(row)
+            item["registration_outcome"] = "pending"
+            item["registration_payload"] = {
+                "family_manifest_sha256": self.manifest_digest,
+                "registered_before_execution": True,
+            }
+            trials.append(item)
         return {
             "valid": True,
             "family_id": family_id,
-            "trials": self.trials,
+            "trials": trials,
             "evidence_level": "synthetic",
         }
 
@@ -76,7 +87,8 @@ def test_complete_family_counts_failed_trials_as_p_one():
          "payload": _payload(returns)},
         {"trial_id": "t2", "trial_index": 2, "outcome": "failed", "payload": {}},
     ]
-    verdict = evaluate_registered_family(registry=FakeRegistry(trials), manifest=_manifest())
+    manifest = _manifest()
+    verdict = evaluate_registered_family(registry=FakeRegistry(trials, manifest), manifest=manifest)
     assert verdict["trial_count"] == 2
     assert verdict["trial_ids"] == ["t1", "t2"]
     assert verdict["trials"][1]["raw_p_value"] == 1.0
@@ -87,12 +99,13 @@ def test_complete_family_counts_failed_trials_as_p_one():
 
 def test_same_inputs_reproduce_identical_verdict():
     returns = [0.1 + ((i % 9) - 4) * 0.02 for i in range(90)]
+    manifest = _manifest()
     registry = FakeRegistry([{
         "trial_id": "trial-1", "trial_index": 1, "outcome": "completed",
         "payload": _payload(returns),
-    }])
-    first = evaluate_registered_family(registry=registry, manifest=_manifest())
-    second = evaluate_registered_family(registry=registry, manifest=_manifest())
+    }], manifest)
+    first = evaluate_registered_family(registry=registry, manifest=manifest)
+    second = evaluate_registered_family(registry=registry, manifest=manifest)
     assert first == second
     assert first["verdict_sha256"]
 
@@ -108,7 +121,8 @@ def test_alignment_mismatch_is_excluded_not_silently_used():
         {"trial_id": "b", "trial_index": 2, "outcome": "completed",
          "payload": _payload(b, timestamps=times_b)},
     ]
-    verdict = evaluate_registered_family(registry=FakeRegistry(trials), manifest=_manifest())
+    manifest = _manifest()
+    verdict = evaluate_registered_family(registry=FakeRegistry(trials, manifest), manifest=manifest)
     assert verdict["trials"][0]["eligible"] is True
     assert verdict["trials"][1]["eligible"] is False
     assert "unaligned_timestamps" in verdict["trials"][1]["exclusion_reason"]
@@ -130,18 +144,24 @@ def test_changed_returns_hash_fails_closed_to_p_one():
 def test_manifest_requires_frozen_configuration():
     with pytest.raises(SelectionBiasError):
         evaluate_registered_family(
-            registry=FakeRegistry([{"trial_id": "x", "trial_index": 1, "outcome": "failed"}]),
+            registry=FakeRegistry([{"trial_id": "x", "trial_index": 1, "outcome": "failed"}],
+                                 _manifest(frozen_before_trials=False)),
             manifest=_manifest(frozen_before_trials=False),
         )
 
 
 def test_local_registry_snapshot_retains_all_terminal_attempts(tmp_path):
     registry = LocalTrialRegistry(tmp_path / "trials.jsonl")
+    manifest = _manifest()
+    binding = {"family_manifest_sha256": sha256_json(manifest),
+               "registered_before_execution": True}
     registry.append(event_id="e1", family_id="family-A", trial_id="failed-1",
+                    outcome="pending", payload=binding)
+    registry.append(event_id="e2", family_id="family-A", trial_id="failed-1",
                     outcome="failed", payload={"reason": "timeout"})
-    registry.append(event_id="e2", family_id="family-A", trial_id="done-1",
-                    outcome="pending", payload={})
     registry.append(event_id="e3", family_id="family-A", trial_id="done-1",
+                    outcome="pending", payload=binding)
+    registry.append(event_id="e4", family_id="family-A", trial_id="done-1",
                     outcome="completed", payload=_payload([0.1 + (i % 3) * 0.01 for i in range(40)]))
     snapshot = registry.family_snapshot("family-A")
     assert snapshot["valid"] is True
