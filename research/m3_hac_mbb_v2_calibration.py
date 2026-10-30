@@ -87,29 +87,30 @@ def _series_sha256(values: np.ndarray) -> str:
     return _sha256([float(x) for x in values])
 
 
-def _make_indices(seed: int) -> np.ndarray:
+def _make_indices(seed: int, replicates: int = BOOTSTRAP_REPLICATES) -> np.ndarray:
     rng = random.Random(seed)
     blocks = math.ceil(N / BLOCK_LENGTH)
     starts = np.fromiter(
-        (rng.randrange(N) for _ in range(BOOTSTRAP_REPLICATES * blocks)),
+        (rng.randrange(N) for _ in range(replicates * blocks)),
         dtype=np.int32,
-    ).reshape(BOOTSTRAP_REPLICATES, blocks)
+    ).reshape(replicates, blocks)
     offsets = np.arange(BLOCK_LENGTH, dtype=np.int32)
     return ((starts[:, :, None] + offsets[None, None, :]) % N).reshape(
         BOOTSTRAP_REPLICATES, -1
     )[:, :N]
 
 
-def _bootstrap_pvalues(series: np.ndarray, seed: int) -> np.ndarray:
+def _bootstrap_pvalues(series: np.ndarray, seed: int,
+                       replicates: int = BOOTSTRAP_REPLICATES) -> np.ndarray:
     observed = np.empty(series.shape[0], dtype=np.float64)
     centered = np.empty_like(series, dtype=np.float64)
     for trial in range(series.shape[0]):
         observed[trial] = _hac_statistic(series[trial], HAC_LAG)
-        mean = float(np.mean(series[trial]))
+        mean = sum(float(value) for value in series[trial]) / N
         centered[trial] = series[trial] - mean
     if not np.all(np.isfinite(observed)):
         raise ValueError("invalid observed HAC statistic")
-    indices = _make_indices(seed)
+    indices = _make_indices(seed, replicates)
     return _family_bootstrap_pvalues(centered, observed, indices, HAC_LAG)
 
 
