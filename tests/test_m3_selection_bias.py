@@ -71,13 +71,20 @@ class FakeRegistry:
 
 class M3SelectionBiasTests(unittest.TestCase):
     def test_holm_step_down_and_deterministic_ties(self):
-        result = holm_step_down({"b": 0.001, "a": 0.001, "c": 0.04}, 0.05)
-        self.assertEqual(result["a"]["rank"], 1)
-        self.assertEqual(result["b"]["rank"], 2)
-        self.assertTrue(result["a"]["rejected"])
-        self.assertTrue(result["b"]["rejected"])
-        self.assertFalse(result["c"]["rejected"])
-        self.assertAlmostEqual(result["c"]["holm_adjusted_p_value"], 0.04)
+        tied = holm_step_down({"b": 0.001, "a": 0.001, "c": 0.04}, 0.05)
+        self.assertEqual(tied["a"]["rank"], 1)
+        self.assertEqual(tied["b"]["rank"], 2)
+        self.assertTrue(tied["a"]["rejected"])
+        self.assertTrue(tied["b"]["rejected"])
+        self.assertTrue(tied["c"]["rejected"])
+        self.assertAlmostEqual(tied["c"]["holm_adjusted_p_value"], 0.04)
+
+        stopped = holm_step_down({"a": 0.001, "b": 0.03, "c": 0.04}, 0.05)
+        self.assertTrue(stopped["a"]["rejected"])
+        self.assertFalse(stopped["b"]["rejected"])
+        self.assertFalse(stopped["c"]["rejected"])
+        self.assertAlmostEqual(stopped["b"]["holm_adjusted_p_value"], 0.06)
+        self.assertAlmostEqual(stopped["c"]["holm_adjusted_p_value"], 0.06)
 
     def test_complete_family_counts_failed_trials_as_p_one(self):
         returns = [0.15 + ((i % 7) - 3) * 0.01 for i in range(80)]
