@@ -174,18 +174,29 @@ def build_hypothesis_card(
     _require(isinstance(linked_claims, list) and bool(linked_claims),
              "at least one linked atomic claim is required")
     claim_refs = []
+    seen_claim_ids: set[str] = set()
     for claim in linked_claims:
         _require(isinstance(claim, dict) and claim.get("claim_kind") == "source_backed",
                  "hypothesis links must reference source-backed atomic claims")
+        claim_id = claim.get("claim_id")
+        _require(isinstance(claim_id, str) and bool(_ID_RE.fullmatch(claim_id)),
+                 "hypothesis link contains an invalid claim_id")
+        _require(claim_id not in seen_claim_ids, "hypothesis links contain duplicate claim IDs")
+        seen_claim_ids.add(claim_id)
+        claim_state = claim.get("provenance_state")
+        _require(claim_state in _PROVENANCE - {"hypothesis", "unknown"},
+                 "hypothesis links must preserve a source-backed claim provenance state")
         ref = claim.get("source_ref")
         _require(isinstance(ref, dict)
                  and all(isinstance(ref.get(k), str) and ref[k].strip()
                          for k in ("source_id", "exact_locator", "content_sha256")),
                  "linked claim source reference is incomplete")
+        _require(bool(_ID_RE.fullmatch(ref["source_id"])),
+                 "linked claim source ID is malformed")
         _require(bool(_SHA256_RE.fullmatch(ref["content_sha256"])),
                  "linked claim source hash is malformed")
         claim_refs.append({
-            "claim_id": claim.get("claim_id"),
+            "claim_id": claim_id,
             "source_ref": dict(ref),
             "claim_provenance_state": claim.get("provenance_state"),
         })
