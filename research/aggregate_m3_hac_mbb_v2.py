@@ -7,6 +7,8 @@ import json
 import math
 from pathlib import Path
 
+from research.m3_calibration_provenance import verify_execution_bindings
+
 GENERATORS = ("N1_GAUSSIAN_IID", "N2_STUDENT_T5_IID", "N3_AR1_GAUSSIAN",
               "N4_GARCH_1_1", "N5_AR1_STUDENT_T5")
 CORRELATIONS = (0.0, 0.5, 0.9)
@@ -137,9 +139,10 @@ def _check_family(cell: dict, phase: str, generator: str, generator_index: int, 
         raise ValueError("family replicate sequence is incomplete")
 
 
-def aggregate(input_dir: Path, output_path: Path, reference_path: Path, expected_plan_sha256: str) -> dict:
+def aggregate(input_dir: Path, output_path: Path, reference_path: Path, plan_file: Path) -> dict:
     if output_path.exists():
         raise FileExistsError(f"refusing to overwrite {output_path}")
+    expected_plan_sha256 = hashlib.sha256(plan_file.read_bytes()).hexdigest()
     reference = json.loads(reference_path.read_text(encoding="utf-8"))
     reference_hash = reference.get("validation_sha256")
     reference_unhashed = dict(reference)
@@ -172,6 +175,17 @@ def aggregate(input_dir: Path, output_path: Path, reference_path: Path, expected
                 cells.append(cell)
 
     _check_runtime_and_revisions(cells)
+    provenance = verify_execution_bindings(
+        plan_file, cells[0]["engine_revision"],
+        Path(__file__).resolve().parents[1] / "research" / "m3_hac_mbb_v2_calibration.py",
+        Path(__file__).resolve().parents[1] / "openfx" / "selection_bias_v2.py",
+    )
+    if cells[0]["runner_revision"] != provenance["runner_revision"]:
+        raise ValueError("cell runner revision does not match the current clean checkout")
+    if (reference.get("plan_sha256") != expected_plan_sha256
+            or reference.get("engine_revision") != cells[0]["engine_revision"]
+            or reference.get("runner_revision") != cells[0]["runner_revision"]):
+        raise ValueError("reference check provenance does not match calibration cells")
     plan_hash = cells[0]["plan_sha256"]
     if not isinstance(plan_hash, str) or len(plan_hash) != 64:
         raise ValueError("invalid plan SHA-256")
@@ -262,14 +276,12 @@ def aggregate(input_dir: Path, output_path: Path, reference_path: Path, expected
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input-dir", required=True)
-    parser.add_argument("--expected-plan-sha256", required=True)
+    parser.add_argument("--plan-file", required=True)
     parser.add_argument("--reference-check", required=True)
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
-    if not args.expected_plan_sha256:
-        raise SystemExit("--expected-plan-sha256 is required for a frozen calibration run")
     result = aggregate(Path(args.input_dir), Path(args.output), Path(args.reference_check),
-                       args.expected_plan_sha256)
+                       Path(args.plan_file))
     print(json.dumps({"output": args.output, "campaign_sha256": result["campaign_sha256"],
                       "acceptance": result["acceptance"]}, sort_keys=True))
 
