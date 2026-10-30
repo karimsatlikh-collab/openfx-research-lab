@@ -2,7 +2,7 @@
 
 Status: **pre-registered plan; formal campaign not yet run**.
 
-- Plan ID: `M3-HAC-MBB-CALIBRATION-V2-1-1`
+- Plan ID: `M3-HAC-MBB-CALIBRATION-V2-1`
 - Method ID/version: `M3-HOLM-HAC-MBB-V2` / `2.0.1`
 - Implementation: `openfx/selection_bias_v2.py`
 - Freeze date: 2026-10-30 UTC
@@ -187,6 +187,7 @@ After all 40 cell files exist, aggregate and validate them:
 python research/aggregate_m3_hac_mbb_v2.py \
   --input-dir artifacts/m3-v2 \
   --expected-plan-sha256 <PLAN_SHA256> \
+  --reference-check artifacts/m3-v2/reference-check.json \
   --output artifacts/m3-v2/campaign-summary.json
 ```
 
