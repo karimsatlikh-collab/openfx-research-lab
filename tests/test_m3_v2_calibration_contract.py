@@ -1,8 +1,16 @@
 """Static contract checks preventing plan/runner/aggregator drift for M3 v2.0.3."""
 from pathlib import Path
+import hashlib
+import json
+import sys
+import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from research.m3_calibration_provenance import verify_benchmark_report
 
 
 class M3V2CalibrationContractTests(unittest.TestCase):
@@ -80,6 +88,57 @@ class M3V2CalibrationContractTests(unittest.TestCase):
         self.assertIn("5,000 independent families", plan)
         self.assertIn('git', provenance)
         self.assertIn("hash-object", provenance)
+
+
+    def test_benchmark_report_is_self_hashed_and_budget_gated(self):
+        provenance = {
+            "plan_sha256": "a" * 64,
+            "engine_revision": "b" * 40,
+            "runner_revision": "c" * 40,
+            "plan_git_blob": "d" * 40,
+            "engine_git_blob": "e" * 40,
+            "runner_git_blob": "f" * 40,
+            "aggregator_git_blob": "1" * 40,
+            "reference_check_git_blob": "2" * 40,
+            "benchmark_git_blob": "3" * 40,
+        }
+        runtime = {
+            "python": "3.12.0", "numpy": "2.3.5", "numba": "0.65.1",
+            "platform": "Linux-test", "cpu_count": 8,
+        }
+        report = {
+            "evidence_class": "performance_preflight_only_not_calibration",
+            "plan_id": "M3-HAC-MBB-CALIBRATION-V2-3",
+            **provenance,
+            "runtime": runtime, "platform": runtime["platform"], "cpu_count": 8,
+            "timed_bootstrap_replicates": 9999, "timed_families": 3,
+            "family_seconds": [1.0, 2.0, 3.0],
+            "mean_seconds_per_family": 2.0,
+            "estimated_total_family_equivalents": 151500,
+            "estimated_campaign_cpu_hours": 2.0 * 151500 / 3600.0,
+            "benchmark_seed_ranges": {
+                "family": [3_950_000_000, 3_950_000_003],
+                "bootstrap": [3_960_000_000, 3_960_000_003],
+            },
+            "pvalue_output_sha256": "4" * 64,
+            "return_hashes_sha256": "5" * 64,
+            "realized_correlations": [0.4, 0.5, 0.6],
+        }
+        canonical = json.dumps(report, sort_keys=True, separators=(",", ":"),
+                               ensure_ascii=False, allow_nan=False).encode("utf-8")
+        report["benchmark_sha256"] = hashlib.sha256(canonical).hexdigest()
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "benchmark.json"
+            path.write_text(json.dumps(report), encoding="utf-8")
+            valid = verify_benchmark_report(path, provenance, runtime, 100.0)
+            self.assertEqual(valid["benchmark_sha256"], report["benchmark_sha256"])
+            self.assertEqual(valid["approved_max_cpu_hours"], 100.0)
+            with self.assertRaises(ValueError):
+                verify_benchmark_report(path, provenance, runtime, 50.0)
+            report["mean_seconds_per_family"] = 99.0
+            path.write_text(json.dumps(report), encoding="utf-8")
+            with self.assertRaises(ValueError):
+                verify_benchmark_report(path, provenance, runtime, 100.0)
 
 
 if __name__ == "__main__":
