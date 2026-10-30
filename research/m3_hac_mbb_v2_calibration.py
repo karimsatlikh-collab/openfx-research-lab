@@ -15,6 +15,8 @@ import random
 import sys
 from pathlib import Path
 
+from research.m3_calibration_provenance import verify_execution_bindings
+
 import numba
 import numpy as np
 from numba import njit
@@ -355,12 +357,17 @@ def main() -> None:
                                             "family-null", "family-mde"), required=True)
     parser.add_argument("--generator", choices=GENERATORS, required=True)
     parser.add_argument("--rho", type=float, choices=CORRELATIONS)
-    parser.add_argument("--plan-sha256", required=True)
+    parser.add_argument("--plan-file", required=True)
     parser.add_argument("--engine-revision", required=True)
-    parser.add_argument("--runner-revision", required=True)
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
     output = Path(args.output)
+    provenance = verify_execution_bindings(
+        Path(args.plan_file), args.engine_revision, Path(__file__),
+        Path(__file__).resolve().parents[1] / "openfx" / "selection_bias_v2.py",
+    )
+    plan_sha256 = provenance["plan_sha256"]
+    runner_revision = provenance["runner_revision"]
     if output.exists():
         raise SystemExit(f"refusing to overwrite existing cell artifact: {output}")
     family_phase = args.phase.startswith("family-")
@@ -369,14 +376,14 @@ def main() -> None:
     if not family_phase and args.rho is not None:
         raise SystemExit("--rho is only valid for family phases")
     if args.phase == "marginal-null":
-        cell = run_marginal_cell(args.generator, False, args.plan_sha256,
-                                 args.engine_revision, args.runner_revision)
+        cell = run_marginal_cell(args.generator, False, plan_sha256,
+                                 provenance['engine_revision'], runner_revision)
     elif args.phase == "marginal-mde":
         cell = run_marginal_cell(args.generator, True, args.plan_sha256,
                                  args.engine_revision, args.runner_revision)
     elif args.phase == "family-null":
-        cell = run_family_cell(args.generator, args.rho, False, args.plan_sha256,
-                               args.engine_revision, args.runner_revision)
+        cell = run_family_cell(args.generator, args.rho, False, plan_sha256,
+                               provenance['engine_revision'], runner_revision)
     else:
         cell = run_family_cell(args.generator, args.rho, True, args.plan_sha256,
                                args.engine_revision, args.runner_revision)
