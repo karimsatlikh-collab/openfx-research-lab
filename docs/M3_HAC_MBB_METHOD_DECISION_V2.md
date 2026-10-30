@@ -3,7 +3,7 @@
 Status: **executable research candidate; not accepted, not calibrated, not market-validated**.
 
 - Method ID: `M3-HOLM-HAC-MBB-V2`
-- Version: `2.0.1`
+- Version: `2.0.2`
 - Candidate implementation: `openfx/selection_bias_v2.py`
 - Primary correction: Holm step-down family-wise error control.
 - Marginal test: one-sided HAC-studentized mean test using a null-centered circular moving-block bootstrap.
@@ -13,7 +13,7 @@ Status: **executable research candidate; not accepted, not calibrated, not marke
 
 M3 v1 used the ordinary sample standard deviation to studentize the observed and bootstrap means. Its pre-registered calibration failed under Student-t(5) and AR(1) null generators. An exploratory, non-pre-registered pilot suggested that HAC/Newey-West studentization may improve marginal null calibration, but did not establish family-wise control. The pilot is recorded in `docs/M3_HAC_MBB_V2_EXPLORATORY_PILOT.md`; it is not acceptance evidence.
 
-The v2 candidate changes the marginal studentization method while retaining the family registry and Holm correction. The 2.0.1 hardening additionally binds every completed trial to the frozen source revision and blocks evaluations that exceed a deterministic bootstrap-work budget. It must pass a new, independently pre-registered calibration before it can replace v1.
+The v2 candidate changes the marginal studentization method while retaining the family registry and Holm correction. The 2.0.1/2.0.2 hardening additionally binds every completed trial to the frozen source revision and blocks evaluations that exceed a deterministic bootstrap-work budget. It must pass a new, independently pre-registered calibration before it can replace v1.
 
 ## 2. Frozen v2 candidate settings
 
@@ -83,6 +83,8 @@ Final OOS is not read or evaluated by the function. Failed and ineligible attemp
 
 The manifest source revision must be a 40- or 64-character lowercase Git SHA. The validation payload of every completed trial must carry that exact source_revision; a mismatch is excluded with p=1. The evaluator blocks before bootstrap sampling if its estimated work exceeds the frozen one-billion-unit budget.
 
+The snapshot is also required to expose complete event_count/trial_count metadata and a unique 64-hex family-event hash list; this checks local ledger structure but does not authenticate the registrar.
+
 The local hash-chain registry remains a prototype, not an independently trusted registrar. A privileged actor can rewrite the entire ledger. The boolean `registered_before_execution` is an application-level assertion, not cryptographic proof of wall-clock ordering. In addition, the current validation payload's return-series hash is self-declared and is not yet cryptographically linked to an independently validated RunRecord/artifact. Therefore the production evaluator must be treated as synthetic/unverified until signed RunRecord v2 and independent-validator evidence are wired into the registry ingestion path.
 
 ## 6. Known statistical risks
@@ -106,7 +108,7 @@ References:
 ## 8. Acceptance boundary
 
 This document is a method candidate, not an authorization to use v2 for strategy selection. Before acceptance:
-- execute the pre-registered v2.0.1 calibration plan with its disjoint seed ranges;
+- execute the pre-registered v2.0.2 calibration plan with its disjoint seed ranges;
 - quantify how many marginal null replicates are needed to resolve the smallest Holm threshold for the declared maximum family size;
 - run direct return-level correlated-trial family simulations;
 - test Gaussian, heavy-tail, serial-correlation, volatility-clustering, and combined nulls;
