@@ -144,6 +144,42 @@ class RegistryTests(unittest.TestCase):
             with self.assertRaisesRegex(TrialRegistryError, "unsupported trial outcome"):
                 registry.append(event_id="e1", family_id="fam", trial_id="t1", outcome=["failed"])
 
+    def test_registry_rejects_invalid_json_and_unknown_event_fields(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "ledger.jsonl"
+            path.write_text("{broken\\n", encoding="utf-8")
+            with self.assertRaisesRegex(TrialRegistryError, "invalid JSON"):
+                LocalTrialRegistry(path).verify()
+
+        from openfx.trial_registry import GENESIS, _event_hash
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "ledger.jsonl"
+            event = {
+                "schema_version": 1, "sequence": 1, "family_sequence": 1,
+                "trial_index": 1, "event_id": "e1", "family_id": "f1",
+                "trial_id": "t1", "outcome": "pending", "payload": {},
+                "previous_event_sha256": GENESIS, "unreviewed": True,
+            }
+            event["event_sha256"] = _event_hash(event)
+            path.write_text(json.dumps(event) + "\\n", encoding="utf-8")
+            with self.assertRaisesRegex(TrialRegistryError, "unexpected or missing"):
+                LocalTrialRegistry(path).verify()
+
+    def test_registry_rejects_unsupported_event_schema_version(self):
+        from openfx.trial_registry import GENESIS, _event_hash
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "ledger.jsonl"
+            event = {
+                "schema_version": 2, "sequence": 1, "family_sequence": 1,
+                "trial_index": 1, "event_id": "e1", "family_id": "f1",
+                "trial_id": "t1", "outcome": "pending", "payload": {},
+                "previous_event_sha256": GENESIS,
+            }
+            event["event_sha256"] = _event_hash(event)
+            path.write_text(json.dumps(event) + "\\n", encoding="utf-8")
+            with self.assertRaisesRegex(TrialRegistryError, "schema_version"):
+                LocalTrialRegistry(path).verify()
+
     def test_stale_lock_times_out_without_deleting_lock(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "trials.jsonl"
