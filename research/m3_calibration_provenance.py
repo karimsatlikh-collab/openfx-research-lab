@@ -15,7 +15,7 @@ EXPECTED_GIT_BLOBS = {
     "openfx/selection_bias_v2.py": "72a69166e8121e7d866baa7cb77479975dd04161",
     "research/aggregate_m3_hac_mbb_v2.py": "0e8639be7316d177ab2064f302cbaa3cc24a36cb",
     "research/validate_m3_v2_reference.py": "0ce7599e5e4ba3f17f4f10001da96103314f080b",
-    "research/benchmark_m3_v2_family.py": "b5f86a5574d845c865ea3aa88e10a79d87f43f60",
+    "research/benchmark_m3_v2_family.py": "3f71a48d7fd1adfaea08f7bbc8383dfd3e6e1e0c",
 }
 
 
