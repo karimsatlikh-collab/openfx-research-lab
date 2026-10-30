@@ -23,6 +23,7 @@ from research.m3_hac_mbb_v2_calibration import (
     _generate_family,
     _bootstrap_pvalues,
     _runtime,
+    _series_sha256,
 )
 
 ENGINE_REVISION = "087e66622f27350f1999d2e5b2ec82a9ead78982"
@@ -45,11 +46,13 @@ def run(plan_file: Path, families: int) -> dict:
     _bootstrap_pvalues(warmup, BENCHMARK_BOOTSTRAP_SEED_BASE, replicates=199)
 
     timings = []
-    hashes = []
+    pvalue_outputs = []
+    return_hashes = []
     for index in range(families):
         seed = BENCHMARK_FAMILY_SEED_BASE + index + 1
-        values = _generate_family("N3_AR1_GAUSSIAN", seed, 0.5, False)
         started = time.perf_counter()
+        values = _generate_family("N3_AR1_GAUSSIAN", seed, 0.5, False)
+        series_hashes = [_series_sha256(values[i]) for i in range(20)]
         pvalues = _bootstrap_pvalues(
             values, BENCHMARK_BOOTSTRAP_SEED_BASE + index + 1,
             replicates=BOOTSTRAP_REPLICATES,
@@ -58,7 +61,8 @@ def run(plan_file: Path, families: int) -> dict:
         if len(pvalues) != 20 or not all(0.0 <= float(p) <= 1.0 for p in pvalues):
             raise RuntimeError("benchmark produced invalid p-values")
         timings.append(elapsed)
-        hashes.append([float(x) for x in pvalues])
+        pvalue_outputs.append([float(x) for x in pvalues])
+        return_hashes.append(series_hashes)
 
     average = sum(timings) / len(timings)
     return {
@@ -80,7 +84,10 @@ def run(plan_file: Path, families: int) -> dict:
             "bootstrap": [BENCHMARK_BOOTSTRAP_SEED_BASE, BENCHMARK_BOOTSTRAP_SEED_BASE + families],
         },
         "pvalue_output_sha256": __import__("hashlib").sha256(
-            json.dumps(hashes, separators=(",", ":"), allow_nan=False).encode("utf-8")
+            json.dumps(pvalue_outputs, separators=(",", ":"), allow_nan=False).encode("utf-8")
+        ).hexdigest(),
+        "return_hashes_sha256": __import__("hashlib").sha256(
+            json.dumps(return_hashes, separators=(",", ":"), allow_nan=False).encode("utf-8")
         ).hexdigest(),
         "limitations": [
             "This measures one declared family generator on this host only.",
