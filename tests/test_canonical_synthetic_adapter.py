@@ -10,6 +10,8 @@ from pathlib import Path
 from openfx.canonical_synthetic_adapter import (
     CanonicalSyntheticAdapterError,
     _validate_manifest,
+    _build_implementation_manifest,
+    _verify_implementation_manifest,
     run_canonical_synthetic_job,
 )
 from openfx.source_provenance import (
@@ -159,6 +161,42 @@ def documents():
 
 
 class CanonicalSyntheticAdapterTests(unittest.TestCase):
+    def test_composite_implementation_manifest_covers_execution_closure_and_detects_tampering(self):
+        repository_root = Path(__file__).resolve().parent.parent
+        manifest = _build_implementation_manifest(repository_root)
+        paths = {entry["path"] for entry in manifest["entries"]}
+        required = {
+            "openfx/canonical_synthetic_adapter.py",
+            "openfx/contract_validation.py",
+            "openfx/statistical_gate.py",
+            "openfx/synthetic_e2e.py",
+            "openfx/synthetic_engine.py",
+            "openfx/trial_registry.py",
+            "openfx/source_provenance.py",
+            "schemas/strategy-spec-v1.schema.json",
+            "schemas/data-profile-v1.schema.json",
+            "schemas/cost-profile-v1.schema.json",
+            "schemas/gate-config-v1.schema.json",
+            "schemas/job-spec-v1.schema.json",
+            "schemas/run-record-v1.schema.json",
+            "schemas/gate-verdict-v1.schema.json",
+        }
+        self.assertTrue(required.issubset(paths))
+        self.assertEqual(len(paths), len(manifest["entries"]))
+        self.assertTrue(_verify_implementation_manifest(manifest, repository_root))
+
+        with tempfile.TemporaryDirectory() as tmp:
+            copied_root = Path(tmp)
+            for entry in manifest["entries"]:
+                destination = copied_root / entry["path"]
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_bytes((repository_root / entry["path"]).read_bytes())
+            self.assertTrue(_verify_implementation_manifest(manifest, copied_root))
+            target = copied_root / "openfx" / "synthetic_e2e.py"
+            target.write_bytes(target.read_bytes() + b"\\n# tampered\\n")
+            with self.assertRaisesRegex(CanonicalSyntheticAdapterError, "implementation bundle"):
+                _verify_implementation_manifest(manifest, copied_root)
+
     def test_valid_canonical_job_emits_bound_run_record_and_manifest(self):
         job, strategy, data, costs, gate, frozen = documents()
         with tempfile.TemporaryDirectory() as tmp:
@@ -181,6 +219,10 @@ class CanonicalSyntheticAdapterTests(unittest.TestCase):
             self.assertTrue(result["replay_hashes_equal"])
             self.assertFalse(result["is_market_backtest"])
             self.assertEqual(result["registry"]["trial_count"], 1)
+            implementation = result["implementation_manifest"]
+            self.assertEqual(implementation["path"], "implementation_manifest.json")
+            self.assertEqual(len(implementation["bundle_sha256"]), 64)
+            self.assertTrue((Path(tmp) / "artifacts" / implementation["path"]).is_file())
 
     def test_run_record_timestamps_capture_ordered_lifecycle_boundaries(self):
         job, strategy, data, costs, gate, frozen = documents()
