@@ -15,7 +15,7 @@ This worker is intended to run on a private Windows VPS after the owner purchase
 - The MT5 adapter is intentionally not implemented; a job is not run until that adapter and a private control plane have been built and independently tested.
 
 ## Current limitations
-The prototype validates and records jobs only. It cannot run Strategy Tester, download EAs, report back to a server, or claim a backtest has happened. Do not deploy it as a Windows service yet.
+The prototype validates and records jobs only. **Network polling is explicitly disabled** until the worker verifies a signed, expiring AuthorizationRecord bound to canonical JobSpec v1, canonical RunRecord v1, and the artifact manifest, with trusted nonce consumption and replay rejection. The current `approved` boolean is caller-controlled and is not proof of authorization. The worker cannot run Strategy Tester, download EAs, report back to a server, or claim a backtest has happened. Do not deploy it as a Windows service yet.
 
 ## Local validation
 Requires Python 3.11+.
@@ -32,7 +32,7 @@ Copy `worker_config.example.json` to a private local configuration file only aft
 ## Planned implementation sequence
 1. Add schema validation and local audit trail (this prototype).
 2. Add unit tests and static checks.
-3. Implement a private HTTPS control plane with worker enrollment and job approval.
-4. Implement a narrow MT5 Strategy Tester adapter on a disposable/demo-only environment.
-5. Verify report completeness, hashes, timeout behavior, duplicate handling, and failure recovery.
-6. Run a no-trading smoke test before any unattended testing.
+3. Implement canonical JobSpec/RunRecord bundle verification and a signed, expiring AuthorizationRecord with trusted issuer keys and atomic nonce consumption.\n4. Implement a private HTTPS control plane with worker enrollment and job approval.
+5. Implement a narrow MT5 Strategy Tester adapter on a disposable/demo-only environment.
+6. Verify report completeness, hashes, timeout behavior, duplicate handling, and failure recovery.
+7. Run a no-trading smoke test before any unattended testing.
