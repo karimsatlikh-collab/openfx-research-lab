@@ -32,7 +32,8 @@ Copy `worker_config.example.json` to a private local configuration file only aft
 ## Planned implementation sequence
 1. Add schema validation and local audit trail (this prototype).
 2. Add unit tests and static checks.
-3. Implement canonical JobSpec/RunRecord bundle verification and a signed, expiring AuthorizationRecord with trusted issuer keys and atomic nonce consumption.\n4. Implement a private HTTPS control plane with worker enrollment and job approval.
+3. Implement canonical JobSpec/RunRecord bundle verification and a signed, expiring AuthorizationRecord with trusted issuer keys and atomic nonce consumption.
+4. Implement a private HTTPS control plane with worker enrollment and job approval.
 5. Implement a narrow MT5 Strategy Tester adapter on a disposable/demo-only environment.
 6. Verify report completeness, hashes, timeout behavior, duplicate handling, and failure recovery.
 7. Run a no-trading smoke test before any unattended testing.
