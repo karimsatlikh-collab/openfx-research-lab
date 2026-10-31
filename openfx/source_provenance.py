@@ -188,18 +188,22 @@ def _store_immutable(path: Path, payload: bytes) -> None:
             os.fsync(stream.fileno())
 
 
-def register_claim_record(
-    registry_root: str | Path,
-    claim: dict[str, Any],
-    source_record: dict[str, Any],
-    source_content: bytes,
-) -> str:
-    """Persist a claim and its source as content-addressed local records.
+def _reject_duplicate_json_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """Reject ambiguous object keys in the mutable claim-index document."""
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ProvenanceError(f"duplicate JSON object key in claim index: {key}")
+        result[key] = value
+    return result
 
-    This supplies integrity and referential checks, not trusted authorship:
-    the local registry has no external signature, registrar, or access control.
-    """
-    validate_source_record(source_record, source_content)
+
+def _reject_json_constant(value: str) -> None:
+    raise ProvenanceError(f"non-standard JSON numeric constant in claim index: {value}")
+
+
+def _validate_registered_claim(claim: Any, source_record: dict[str, Any]) -> str:
+    """Validate every claim invariant before any immutable registry write."""
     _require(isinstance(claim, dict), "claim must be an object")
     _require(claim.get("claim_kind") == "source_backed", "claim is not source-backed")
     claim_id = claim.get("claim_id")
@@ -212,6 +216,25 @@ def register_claim_record(
     }, "claim source reference does not match validated source record")
     _require(isinstance(claim.get("statement"), str) and claim["statement"].strip(),
              "claim statement is required")
+    state = claim.get("provenance_state")
+    _require(isinstance(state, str) and state in _PROVENANCE - {"hypothesis", "unknown"},
+             "source-backed claim requires an evidential provenance state")
+    return claim_id
+
+
+def register_claim_record(
+    registry_root: str | Path,
+    claim: dict[str, Any],
+    source_record: dict[str, Any],
+    source_content: bytes,
+) -> str:
+    """Persist a claim and its source as content-addressed local records.
+
+    This supplies integrity and referential checks, not trusted authorship:
+    the local registry has no external signature, registrar, or access control.
+    """
+    validate_source_record(source_record, source_content)
+    claim_id = _validate_registered_claim(claim, source_record)
     source_bytes = _canonical_json_bytes(source_record)
     source_digest = hashlib.sha256(source_bytes).hexdigest()
     content_digest = content_sha256(source_content)
@@ -245,7 +268,14 @@ def resolve_claim_record(registry_root: str | Path, claim_id: str) -> dict[str, 
         index_path = root / "claim-index" / f"{claim_id}.json"
         if index_path.is_symlink():
             raise ProvenanceError("claim registry index must not be a symlink")
-        index = json.loads(index_path.read_text(encoding="utf-8"))
+        index_bytes = index_path.read_bytes()
+        index = json.loads(
+            index_bytes.decode("utf-8"),
+            object_pairs_hook=_reject_duplicate_json_keys,
+            parse_constant=_reject_json_constant,
+        )
+        _require(_canonical_json_bytes(index) == index_bytes,
+                 "claim registry index is not canonically encoded")
         _require(isinstance(index, dict)
                  and set(index) == {"schema_version", "claim_id", "claim_record_sha256"}
                  and index.get("schema_version") == 1
@@ -289,16 +319,7 @@ def resolve_claim_record(registry_root: str | Path, claim_id: str) -> dict[str, 
         _require(source_record.get("content_sha256") == content_digest,
                  "source record does not bind stored source bytes")
         validate_source_record(source_record, source_content)
-        _require(claim.get("source_ref") == {
-            "source_id": source_record["source_id"],
-            "exact_locator": source_record["exact_locator"],
-            "content_sha256": source_record["content_sha256"],
-        }, "claim source reference does not match registered source")
-        _require(isinstance(claim.get("statement"), str) and claim["statement"].strip(),
-                 "registered claim statement is invalid")
-        _require(claim.get("claim_kind") == "source_backed", "registered claim kind is invalid")
-        _require(claim.get("provenance_state") in _PROVENANCE - {"hypothesis", "unknown"},
-                 "registered claim provenance state is invalid")
+        _validate_registered_claim(claim, source_record)
         return {
             "claim": claim,
             "claim_record_sha256": digest,

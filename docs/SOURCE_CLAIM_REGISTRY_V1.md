@@ -32,7 +32,8 @@ If no registry root is passed, linked claim dictionaries remain metadata-only an
 This local registry provides content integrity and referential consistency against accidental changes and simple record tampering. It does **not** provide:
 
 - authenticated authorship or trusted issuer identity;
-- protection from a privileged actor who can replace the index and all referenced records;
+- protection from a privileged or same-user actor who can replace registry files or directories;
+- protection against symlinked ancestor directories or local filesystem TOCTOU races (the current checks are final-component checks, not a hardened directory-descriptor traversal);
 - atomic multi-host registration or replay protection;
 - independent authentication of source identity or exact locator;
 - copyright/licensing/legal permission verification;

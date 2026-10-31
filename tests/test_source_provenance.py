@@ -208,6 +208,54 @@ class ClaimAndHypothesisBindingTests(unittest.TestCase):
             with self.assertRaisesRegex(ProvenanceError, "resolution failed"):
                 resolve_claim_record(tmp, "claim-does-not-exist")
 
+    def test_registry_rejects_invalid_claim_state_before_writing_any_objects(self):
+        valid_claim = build_atomic_claim(
+            claim_id="claim-invalid-state", source_record=source(), source_content=CONTENT,
+            exact_locator=LOCATOR, statement="State must be validated before registration.",
+        )
+        invalid_claims = []
+        for state in ("hypothesis", "unknown", "not-a-state", None):
+            invalid_claims.append(dict(valid_claim, provenance_state=state))
+        missing_state = dict(valid_claim)
+        missing_state.pop("provenance_state")
+        invalid_claims.append(missing_state)
+
+        for index, invalid_claim in enumerate(invalid_claims):
+            with self.subTest(index=index), tempfile.TemporaryDirectory() as tmp:
+                with self.assertRaisesRegex(ProvenanceError, "evidential provenance state"):
+                    register_claim_record(tmp, invalid_claim, source(), CONTENT)
+                root = Path(tmp)
+                self.assertFalse((root / "claim-index" / "claim-invalid-state.json").exists())
+                self.assertFalse((root / "claim-records").exists())
+                self.assertFalse((root / "source-records").exists())
+                self.assertFalse((root / "source-content").exists())
+
+    def test_registry_rejects_duplicate_and_noncanonical_index_json(self):
+        claim = build_atomic_claim(
+            claim_id="claim-index-strict-json", source_record=source(), source_content=CONTENT,
+            exact_locator=LOCATOR, statement="The index must have one canonical encoding.",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            digest = register_claim_record(tmp, claim, source(), CONTENT)
+            index_path = Path(tmp) / "claim-index" / "claim-index-strict-json.json"
+            duplicate = (
+                '{"schema_version":1,"claim_id":"claim-index-strict-json",'
+                f'"claim_record_sha256":"{digest}",'
+                f'"claim_record_sha256":"{digest}"}}'
+            ).encode("utf-8")
+            index_path.write_bytes(duplicate)
+            with self.assertRaisesRegex(ProvenanceError, "duplicate JSON object key"):
+                resolve_claim_record(tmp, "claim-index-strict-json")
+
+            noncanonical = json.dumps({
+                "schema_version": 1,
+                "claim_id": "claim-index-strict-json",
+                "claim_record_sha256": digest,
+            }, indent=2).encode("utf-8")
+            index_path.write_bytes(noncanonical)
+            with self.assertRaisesRegex(ProvenanceError, "not canonically encoded"):
+                resolve_claim_record(tmp, "claim-index-strict-json")
+
     def test_registry_rejects_modified_claim_record_bytes(self):
         claim = build_atomic_claim(
             claim_id="claim-tamper-1", source_record=source(), source_content=CONTENT,
