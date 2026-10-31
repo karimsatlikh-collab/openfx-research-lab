@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -251,8 +252,9 @@ def run_canonical_synthetic_job(
     root = Path(workspace).resolve()
     root.mkdir(parents=True, exist_ok=True)
     # Do not overwrite an earlier run's artifacts.
-    if (root / "replay_a").exists() or (root / "replay_b").exists():
-        raise CanonicalSyntheticAdapterError("workspace already contains replay artifacts")
+    reserved_paths = (root / "replay_a", root / "replay_b", root / "gate_verdict.json")
+    if any(path.exists() or path.is_symlink() for path in reserved_paths):
+        raise CanonicalSyntheticAdapterError("workspace already contains reserved run artifacts")
 
     # These timestamps are captured at their actual lifecycle boundaries.
     # created_at marks acceptance of the validated run request immediately
@@ -341,7 +343,17 @@ def run_canonical_synthetic_job(
             summary=a["record"]["result"],
         )
         _validate_schema(canonical_verdict, "verdict")
-        gate_verdict_digest = _sha256_bytes(_canonical_bytes(canonical_verdict))
+        gate_verdict_bytes = _canonical_bytes(canonical_verdict)
+        gate_verdict_digest = _sha256_bytes(gate_verdict_bytes)
+        gate_verdict_path = root / "gate_verdict.json"
+        with gate_verdict_path.open("xb") as stream:
+            stream.write(gate_verdict_bytes)
+            stream.flush()
+            os.fsync(stream.fileno())
+        if gate_verdict_path.is_symlink() or not gate_verdict_path.is_file():
+            raise CanonicalSyntheticAdapterError("canonical GateVerdict artifact is not a regular file")
+        if _sha256_bytes(gate_verdict_path.read_bytes()) != gate_verdict_digest:
+            raise CanonicalSyntheticAdapterError("canonical GateVerdict artifact hash mismatch")
         registry.append(
             event_id=f"{trial_id}-canonical-completed",
             family_id=family_id, trial_id=trial_id, outcome="completed",
@@ -350,6 +362,8 @@ def run_canonical_synthetic_job(
                 "run_record_sha256": _sha256_bytes(_canonical_bytes(run_record)),
                 "artifact_manifest_sha256": _sha256_bytes(_canonical_bytes(manifest)),
                 "gate_decision": verdict["decision"],
+                "gate_verdict_path": "gate_verdict.json",
+                "gate_verdict_size_bytes": len(gate_verdict_bytes),
                 "gate_verdict_sha256": gate_verdict_digest,
                 "evidence_level": "synthetic",
             },
@@ -363,6 +377,11 @@ def run_canonical_synthetic_job(
             "artifact_manifest": manifest,
             "gate_verdict": verdict,
             "canonical_gate_verdict": canonical_verdict,
+            "gate_verdict_artifact": {
+                "path": "gate_verdict.json",
+                "size_bytes": len(gate_verdict_bytes),
+                "sha256": gate_verdict_digest,
+            },
             "registry": final_registry_verification,
             "replay_hashes_equal": True,
             "evidence_level": "synthetic",
