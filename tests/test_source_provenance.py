@@ -142,6 +142,34 @@ class ClaimAndHypothesisBindingTests(unittest.TestCase):
                 linked_claims=[unverified], predicted_mechanism="M", invalidation_criteria="I",
             )
 
+    def test_caller_supplied_claim_is_explicitly_not_provenance_verified(self):
+        # A plausible fabricated dictionary is not proof that a registry record exists.
+        fabricated = {
+            "claim_kind": "source_backed",
+            "claim_id": "claim-fabricated",
+            "provenance_state": "test_confirmed",
+            "source_ref": {
+                "source_id": "source-fabricated",
+                "exact_locator": LOCATOR,
+                "content_sha256": "b" * 64,
+            },
+        }
+        card = build_hypothesis_card(
+            hypothesis_id="hyp-fabricated",
+            title="Caller-supplied claim",
+            falsifiable_statement="A fabricated claim dictionary must not be treated as verified.",
+            linked_claims=[fabricated],
+            predicted_mechanism="Test-only mechanism",
+            invalidation_criteria="Reject if provenance is reported verified without registry resolution",
+        )
+        self.assertTrue(card["claim_link_validation"]["shape_valid"])
+        self.assertFalse(card["claim_link_validation"]["provenance_verified"])
+        self.assertEqual(
+            card["claim_link_validation"]["status"],
+            "metadata_only_unverified",
+        )
+        self.assertIn("no authoritative claim registry", card["claim_link_validation"]["reason"])
+
     def test_hypothesis_rejects_unlinked_or_non_source_claim(self):
         with self.assertRaisesRegex(ProvenanceError, "at least one"):
             build_hypothesis_card(
