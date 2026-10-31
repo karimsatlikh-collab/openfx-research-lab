@@ -1,14 +1,17 @@
 """Local append-only trial event ledger prototype.
 
 This is a single-host research prototype, not a tamper-proof or distributed registrar.
-It uses a hash chain and exclusive lock file to detect accidental edits and avoid
-concurrent local appends. A privileged actor can still rewrite the entire ledger.
+Readers and writers coordinate through one exclusive lock file. The configured
+ledger path and every parent directory are trusted local configuration: symlinked
+ancestor traversal and local TOCTOU races are not hardened by this implementation.
+A privileged actor can still rewrite the entire ledger.
 """
 from __future__ import annotations
 import hashlib
 import json
 import os
 import time
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -37,6 +40,28 @@ class LocalTrialRegistry:
         self.path = Path(path)
         self.lock_path = self.path.with_suffix(self.path.suffix + ".lock")
         self.lock_timeout_seconds = lock_timeout_seconds
+
+    @contextmanager
+    def _locked(self):
+        """Acquire the shared reader/writer lock; stale locks fail closed."""
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        deadline = time.monotonic() + self.lock_timeout_seconds
+        fd = None
+        while fd is None:
+            try:
+                fd = os.open(self.lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+            except FileExistsError:
+                if time.monotonic() >= deadline:
+                    raise TrialRegistryError("registry lock timeout; inspect stale lock before removal")
+                time.sleep(0.025)
+        try:
+            yield
+        finally:
+            os.close(fd)
+            try:
+                self.lock_path.unlink()
+            except FileNotFoundError:
+                pass
 
     def _read_and_verify(self) -> list[dict[str, Any]]:
         if not self.path.exists():
@@ -109,10 +134,11 @@ class LocalTrialRegistry:
         return rows
 
     def verify(self) -> dict[str, Any]:
-        rows = self._read_and_verify()
-        return {"valid": True, "event_count": len(rows),
-                "trial_count": len({(row["family_id"], row["trial_id"]) for row in rows}),
-                "last_event_sha256": rows[-1]["event_sha256"] if rows else GENESIS}
+        with self._locked():
+            rows = self._read_and_verify()
+            return {"valid": True, "event_count": len(rows),
+                    "trial_count": len({(row["family_id"], row["trial_id"]) for row in rows}),
+                    "last_event_sha256": rows[-1]["event_sha256"] if rows else GENESIS}
 
     def trial_count(self, family_id: str) -> int:
         """Return the registrar-derived count of unique trials in a family.
@@ -122,15 +148,17 @@ class LocalTrialRegistry:
         """
         if not isinstance(family_id, str) or not family_id.strip():
             raise TrialRegistryError("family_id must be non-empty")
-        rows = self._read_and_verify()
-        return len({row["trial_id"] for row in rows if row["family_id"] == family_id})
+        with self._locked():
+            rows = self._read_and_verify()
+            return len({row["trial_id"] for row in rows if row["family_id"] == family_id})
 
     def next_trial_index(self, family_id: str) -> int:
         """Return the next one-based index for a family; callers must still append under lock."""
         if not isinstance(family_id, str) or not family_id.strip():
             raise TrialRegistryError("family_id must be non-empty")
-        rows = self._read_and_verify()
-        return len({row["trial_id"] for row in rows if row["family_id"] == family_id}) + 1
+        with self._locked():
+            rows = self._read_and_verify()
+            return len({row["trial_id"] for row in rows if row["family_id"] == family_id}) + 1
 
     def append(self, *, event_id: str, family_id: str, trial_id: str,
                outcome: str, payload: dict[str, Any] | None = None,
