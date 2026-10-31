@@ -1,7 +1,9 @@
 """Tests for the canonical M1 synthetic adapter; no market claims are made."""
 import hashlib
 import tempfile
+import time
 import unittest
+from datetime import datetime
 from unittest.mock import patch
 from pathlib import Path
 
@@ -179,6 +181,32 @@ class CanonicalSyntheticAdapterTests(unittest.TestCase):
             self.assertTrue(result["replay_hashes_equal"])
             self.assertFalse(result["is_market_backtest"])
             self.assertEqual(result["registry"]["trial_count"], 1)
+
+    def test_run_record_timestamps_capture_ordered_lifecycle_boundaries(self):
+        job, strategy, data, costs, gate, frozen = documents()
+        from openfx.canonical_synthetic_adapter import _execute_once
+        def delayed_execute(*args, **kwargs):
+            time.sleep(0.02)
+            return _execute_once(*args, **kwargs)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            registry = LocalTrialRegistry(Path(tmp) / "registry.jsonl")
+            with patch("openfx.canonical_synthetic_adapter._execute_once", side_effect=delayed_execute):
+                result = run_canonical_synthetic_job(
+                    job=job, strategy_spec=strategy, data_profile=data,
+                    cost_profile=costs, gate_config=gate, frozen_trial=frozen,
+                    registry=registry, workspace=Path(tmp) / "artifacts",
+                    run_id="canonical-run-timestamp-order",
+                )
+
+            timestamps = result["run_record"]["timestamps"]
+            created = datetime.fromisoformat(timestamps["created_at_utc"].replace("Z", "+00:00"))
+            started = datetime.fromisoformat(timestamps["started_at_utc"].replace("Z", "+00:00"))
+            finished = datetime.fromisoformat(timestamps["finished_at_utc"].replace("Z", "+00:00"))
+            self.assertLessEqual(created, started)
+            self.assertLessEqual(started, finished)
+            self.assertGreaterEqual((finished - started).total_seconds(), 0.0)
+            self.assertGreater((finished - started).total_seconds(), 0.0)
 
     def test_frozen_parameters_must_match_job_spec(self):
         job, strategy, data, costs, gate, frozen = documents()
