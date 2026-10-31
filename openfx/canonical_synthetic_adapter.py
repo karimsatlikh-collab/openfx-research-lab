@@ -115,8 +115,17 @@ def _validate_manifest(manifest: dict[str, Any], run_record: dict[str, Any],
         if "\\" in entry["path"] or ":" in entry["path"]:
             raise CanonicalSyntheticAdapterError("non-POSIX or drive-qualified artifact path")
         path = workspace / relative
-        if path.is_symlink() or not path.is_file():
-            raise CanonicalSyntheticAdapterError("artifact must be a regular non-symlink file")
+        cursor = workspace
+        for part in relative.parts:
+            cursor = cursor / part
+            if cursor.is_symlink():
+                raise CanonicalSyntheticAdapterError("artifact path contains a symlink component")
+        if not path.is_file():
+            raise CanonicalSyntheticAdapterError("artifact must be a regular file")
+        resolved_root = workspace.resolve(strict=True)
+        resolved_path = path.resolve(strict=True)
+        if resolved_root not in resolved_path.parents:
+            raise CanonicalSyntheticAdapterError("artifact path escapes the read-only workspace")
         raw = path.read_bytes()
         if len(raw) != entry["size_bytes"] or _sha256_bytes(raw) != entry["sha256"]:
             raise CanonicalSyntheticAdapterError("artifact size/hash verification failed")
@@ -161,6 +170,8 @@ def run_canonical_synthetic_job(
     frozen_hash = verify_frozen_trial(frozen_trial)
     if frozen_trial.get("gate_config") != gate_config:
         raise CanonicalSyntheticAdapterError("frozen trial gate config differs from canonical GateConfig")
+    if frozen_trial.get("engine_parameters") != job.get("frozen_parameters"):
+        raise CanonicalSyntheticAdapterError("frozen trial parameters differ from JobSpec frozen_parameters")
     family_id = gate_config["trial_family_policy"]["family_id"]
     trial_id = frozen_trial["trial_id"]
     if frozen_trial.get("family_id") != family_id:
@@ -230,6 +241,8 @@ def run_canonical_synthetic_job(
         }
         _validate_schema(run_record, "run")
         validate_run_against_job(run_record, job)
+        if run_record["inputs"]["job_spec_sha256"] != canonical_sha256(job):
+            raise CanonicalSyntheticAdapterError("RunRecord job_spec_sha256 does not bind the complete JobSpec")
 
         manifest = {
             "schema_version": 1,
