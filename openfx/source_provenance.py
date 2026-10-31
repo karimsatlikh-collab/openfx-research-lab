@@ -204,7 +204,18 @@ def _reject_json_constant(value: str) -> None:
 
 def _validate_registered_claim(claim: Any, source_record: dict[str, Any]) -> str:
     """Validate every claim invariant before any immutable registry write."""
-    claim_id = _validate_registered_claim(claim, source_record)
+    _require(isinstance(claim, dict), "claim must be an object")
+    _require(claim.get("claim_kind") == "source_backed", "claim is not source-backed")
+    claim_id = claim.get("claim_id")
+    _require(isinstance(claim_id, str) and bool(_ID_RE.fullmatch(claim_id)),
+             "invalid claim_id")
+    _require(claim.get("source_ref") == {
+        "source_id": source_record["source_id"],
+        "exact_locator": source_record["exact_locator"],
+        "content_sha256": source_record["content_sha256"],
+    }, "claim source reference does not match validated source record")
+    _require(isinstance(claim.get("statement"), str) and claim["statement"].strip(),
+             "claim statement is required")
     state = claim.get("provenance_state")
     _require(isinstance(state, str) and state in _PROVENANCE - {"hypothesis", "unknown"},
              "source-backed claim requires an evidential provenance state")
@@ -223,18 +234,7 @@ def register_claim_record(
     the local registry has no external signature, registrar, or access control.
     """
     validate_source_record(source_record, source_content)
-    _require(isinstance(claim, dict), "claim must be an object")
-    _require(claim.get("claim_kind") == "source_backed", "claim is not source-backed")
-    claim_id = claim.get("claim_id")
-    _require(isinstance(claim_id, str) and bool(_ID_RE.fullmatch(claim_id)),
-             "invalid claim_id")
-    _require(claim.get("source_ref") == {
-        "source_id": source_record["source_id"],
-        "exact_locator": source_record["exact_locator"],
-        "content_sha256": source_record["content_sha256"],
-    }, "claim source reference does not match validated source record")
-    _require(isinstance(claim.get("statement"), str) and claim["statement"].strip(),
-             "claim statement is required")
+    claim_id = _validate_registered_claim(claim, source_record)
     source_bytes = _canonical_json_bytes(source_record)
     source_digest = hashlib.sha256(source_bytes).hexdigest()
     content_digest = content_sha256(source_content)
