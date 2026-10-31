@@ -179,6 +179,20 @@ class CanonicalSyntheticAdapterTests(unittest.TestCase):
             self.assertFalse(result["is_market_backtest"])
             self.assertEqual(result["registry"]["trial_count"], 1)
 
+    def test_frozen_parameters_must_match_job_spec(self):
+        job, strategy, data, costs, gate, frozen = documents()
+        job["frozen_parameters"]["seed"] = 99
+        with tempfile.TemporaryDirectory() as tmp:
+            registry = LocalTrialRegistry(Path(tmp) / "registry.jsonl")
+            with self.assertRaisesRegex(CanonicalSyntheticAdapterError, "parameters differ"):
+                run_canonical_synthetic_job(
+                    job=job, strategy_spec=strategy, data_profile=data,
+                    cost_profile=costs, gate_config=gate, frozen_trial=frozen,
+                    registry=registry, workspace=Path(tmp) / "artifacts",
+                    run_id="run-parameter-mismatch",
+                )
+            self.assertEqual(registry.verify()["event_count"], 0)
+
     def test_non_synthetic_engine_is_rejected_before_trial_registration(self):
         job, strategy, data, costs, gate, frozen = documents()
         job["requested_engine"] = "mt5-demo"
