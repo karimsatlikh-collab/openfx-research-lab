@@ -5,7 +5,7 @@
 This worker is intended to run on a private Windows VPS after the owner purchases and secures it. It is deliberately deny-by-default.
 
 ## Security model
-- Polls a configured HTTPS control-plane endpoint; it does not open an inbound listener.
+- Network polling is disabled in this prototype until signed authorization and canonical research-contract verification are implemented; it does not open an inbound listener.
 - Reads the bearer token from the `OPENFX_WORKER_TOKEN` environment variable, never from source code.
 - Accepts only a narrow JSON job schema and an explicit allow-list of EA identifiers.
 - Rejects arbitrary commands, URLs, file paths, executables, and unknown fields.
