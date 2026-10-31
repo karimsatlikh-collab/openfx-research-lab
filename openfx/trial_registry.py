@@ -44,7 +44,24 @@ class LocalTrialRegistry:
     @contextmanager
     def _locked(self):
         """Acquire the shared reader/writer lock; stale locks fail closed."""
-        with self._locked():
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        deadline = time.monotonic() + self.lock_timeout_seconds
+        fd = None
+        while fd is None:
+            try:
+                fd = os.open(self.lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+            except FileExistsError:
+                if time.monotonic() >= deadline:
+                    raise TrialRegistryError("registry lock timeout; inspect stale lock before removal")
+                time.sleep(0.025)
+        try:
+            yield
+        finally:
+            os.close(fd)
+            try:
+                self.lock_path.unlink()
+            except FileNotFoundError:
+                pass
 
 
     def verify(self) -> dict[str, Any]:
