@@ -212,12 +212,12 @@ def run_canonical_synthetic_job(
         max_trials=gate_config["trial_family_policy"]["max_trials"],
         reject_existing_trial=True,
     )
-    # Verify the durable registration before allowing any execution side effect.
-    registration_verification = registry.verify()
-    if not registration_verification.get("valid"):
-        raise CanonicalSyntheticAdapterError("trial registry verification failed after registration")
     terminal_recorded = False
     try:
+        # Verify the durable registration before allowing any execution side effect.
+        registration_verification = registry.verify()
+        if not registration_verification.get("valid"):
+            raise CanonicalSyntheticAdapterError("trial registry verification failed after registration")
         started_at = _utc_timestamp()
         a = _execute_once(frozen_trial, root / "replay_a")
         b = _execute_once(frozen_trial, root / "replay_b")
