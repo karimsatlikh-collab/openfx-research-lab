@@ -6,7 +6,10 @@ sources, authenticate human reviewers, or establish semantic correctness.
 from __future__ import annotations
 
 import hashlib
+import json
+import os
 import re
+from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -155,6 +158,156 @@ def build_atomic_claim(
     }
 
 
+
+def _canonical_json_bytes(value: Any) -> bytes:
+    """Canonical local JSON encoding for content-addressed provenance records."""
+    try:
+        return json.dumps(
+            value, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+            allow_nan=False,
+        ).encode("utf-8")
+    except (TypeError, ValueError) as exc:
+        raise ProvenanceError("record is not canonical-JSON serializable") from exc
+
+
+def _store_immutable(path: Path, payload: bytes) -> None:
+    """Create a content-addressed file once; never silently overwrite it."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with path.open("xb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+    except FileExistsError:
+        if path.is_symlink() or path.read_bytes() != payload:
+            raise ProvenanceError("content-addressed registry collision or tampering")
+
+
+def register_claim_record(
+    registry_root: str | Path,
+    claim: dict[str, Any],
+    source_record: dict[str, Any],
+    source_content: bytes,
+) -> str:
+    """Persist a claim and its source as content-addressed local records.
+
+    This supplies integrity and referential checks, not trusted authorship:
+    the local registry has no external signature, registrar, or access control.
+    """
+    validate_source_record(source_record, source_content)
+    _require(isinstance(claim, dict), "claim must be an object")
+    _require(claim.get("claim_kind") == "source_backed", "claim is not source-backed")
+    claim_id = claim.get("claim_id")
+    _require(isinstance(claim_id, str) and bool(_ID_RE.fullmatch(claim_id)),
+             "invalid claim_id")
+    _require(claim.get("source_ref") == {
+        "source_id": source_record["source_id"],
+        "exact_locator": source_record["exact_locator"],
+        "content_sha256": source_record["content_sha256"],
+    }, "claim source reference does not match validated source record")
+    _require(isinstance(claim.get("statement"), str) and claim["statement"].strip(),
+             "claim statement is required")
+    source_bytes = _canonical_json_bytes(source_record)
+    source_digest = hashlib.sha256(source_bytes).hexdigest()
+    content_digest = content_sha256(source_content)
+    claim_record = {
+        "schema_version": 1,
+        "claim": claim,
+        "source_record_sha256": source_digest,
+        "source_content_sha256": content_digest,
+    }
+    claim_bytes = _canonical_json_bytes(claim_record)
+    claim_digest = hashlib.sha256(claim_bytes).hexdigest()
+    root = Path(registry_root)
+    _store_immutable(root / "source-records" / f"{source_digest}.json", source_bytes)
+    _store_immutable(root / "source-content" / f"{content_digest}.bin", source_content)
+    _store_immutable(root / "claim-records" / f"{claim_digest}.json", claim_bytes)
+    index_bytes = _canonical_json_bytes({
+        "schema_version": 1,
+        "claim_id": claim_id,
+        "claim_record_sha256": claim_digest,
+    })
+    _store_immutable(root / "claim-index" / f"{claim_id}.json", index_bytes)
+    return claim_digest
+
+
+def resolve_claim_record(registry_root: str | Path, claim_id: str) -> dict[str, Any]:
+    """Resolve a claim ID and verify its content-addressed source chain."""
+    _require(isinstance(claim_id, str) and bool(_ID_RE.fullmatch(claim_id)),
+             "invalid claim_id")
+    root = Path(registry_root)
+    try:
+        index_path = root / "claim-index" / f"{claim_id}.json"
+        if index_path.is_symlink():
+            raise ProvenanceError("claim registry index must not be a symlink")
+        index = json.loads(index_path.read_text(encoding="utf-8"))
+        _require(isinstance(index, dict)
+                 and set(index) == {"schema_version", "claim_id", "claim_record_sha256"}
+                 and index.get("schema_version") == 1
+                 and index.get("claim_id") == claim_id,
+                 "claim registry index schema mismatch")
+        digest = index["claim_record_sha256"]
+        _require(isinstance(digest, str) and bool(_SHA256_RE.fullmatch(digest)),
+                 "claim registry index digest is invalid")
+        claim_path = root / "claim-records" / f"{digest}.json"
+        if claim_path.is_symlink():
+            raise ProvenanceError("claim record must not be a symlink")
+        claim_bytes = claim_path.read_bytes()
+        _require(hashlib.sha256(claim_bytes).hexdigest() == digest,
+                 "claim record content hash mismatch")
+        record = json.loads(claim_bytes)
+        _require(_canonical_json_bytes(record) == claim_bytes,
+                 "claim record is not canonically encoded")
+        _require(record.get("schema_version") == 1, "unsupported claim record schema")
+        claim = record.get("claim")
+        _require(isinstance(claim, dict) and claim.get("claim_id") == claim_id,
+                 "claim ID does not match registry record")
+        source_digest = record.get("source_record_sha256")
+        _require(isinstance(source_digest, str) and bool(_SHA256_RE.fullmatch(source_digest)),
+                 "source record digest is invalid")
+        source_path = root / "source-records" / f"{source_digest}.json"
+        content_digest = record.get("source_content_sha256")
+        _require(isinstance(content_digest, str) and bool(_SHA256_RE.fullmatch(content_digest)),
+                 "source content digest is invalid")
+        content_path = root / "source-content" / f"{content_digest}.bin"
+        if source_path.is_symlink() or content_path.is_symlink():
+            raise ProvenanceError("source registry objects must not be symlinks")
+        source_bytes = source_path.read_bytes()
+        _require(hashlib.sha256(source_bytes).hexdigest() == source_digest,
+                 "source record content hash mismatch")
+        source_record = json.loads(source_bytes)
+        _require(_canonical_json_bytes(source_record) == source_bytes,
+                 "source record is not canonically encoded")
+        source_content = content_path.read_bytes()
+        _require(content_sha256(source_content) == content_digest,
+                 "source content hash mismatch")
+        _require(source_record.get("content_sha256") == content_digest,
+                 "source record does not bind stored source bytes")
+        validate_source_record(source_record, source_content)
+        _require(claim.get("source_ref") == {
+            "source_id": source_record["source_id"],
+            "exact_locator": source_record["exact_locator"],
+            "content_sha256": source_record["content_sha256"],
+        }, "claim source reference does not match registered source")
+        _require(isinstance(claim.get("statement"), str) and claim["statement"].strip(),
+                 "registered claim statement is invalid")
+        _require(claim.get("claim_kind") == "source_backed", "registered claim kind is invalid")
+        _require(claim.get("provenance_state") in _PROVENANCE - {"hypothesis", "unknown"},
+                 "registered claim provenance state is invalid")
+        return {
+            "claim": claim,
+            "claim_record_sha256": digest,
+            "source_record_sha256": source_digest,
+            "source_content_sha256": content_digest,
+            "record_integrity_verified": True,
+            "provenance_authenticated": False,
+        }
+    except ProvenanceError:
+        raise
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, KeyError, TypeError) as exc:
+        raise ProvenanceError(f"claim registry resolution failed: {type(exc).__name__}") from exc
+
+
 def build_hypothesis_card(
     *,
     hypothesis_id: str,
@@ -163,6 +316,7 @@ def build_hypothesis_card(
     linked_claims: list[dict[str, Any]],
     predicted_mechanism: str,
     invalidation_criteria: str,
+    claim_registry_root: str | Path | None = None,
 ) -> dict[str, Any]:
     """Create a hypothesis and explicitly mark linked-claim provenance as unverified.
 
@@ -179,6 +333,8 @@ def build_hypothesis_card(
              "at least one linked atomic claim is required")
     claim_refs = []
     seen_claim_ids: set[str] = set()
+    registry_resolved = 0
+    registry_integrity_verified = 0
     for claim in linked_claims:
         _require(isinstance(claim, dict) and claim.get("claim_kind") == "source_backed",
                  "hypothesis links must reference source-backed atomic claims")
@@ -199,10 +355,18 @@ def build_hypothesis_card(
                  "linked claim source ID is malformed")
         _require(bool(_SHA256_RE.fullmatch(ref["content_sha256"])),
                  "linked claim source hash is malformed")
+        resolved_claim = claim
+        if claim_registry_root is not None:
+            resolved = resolve_claim_record(claim_registry_root, claim_id)
+            _require(_canonical_json_bytes(resolved["claim"]) == _canonical_json_bytes(claim),
+                     "caller-supplied claim does not match content-addressed registry record")
+            resolved_claim = resolved["claim"]
+            registry_resolved += 1
+            registry_integrity_verified += int(resolved["record_integrity_verified"])
         claim_refs.append({
             "claim_id": claim_id,
-            "source_ref": dict(ref),
-            "claim_provenance_state": claim.get("provenance_state"),
+            "source_ref": dict(resolved_claim["source_ref"]),
+            "claim_provenance_state": resolved_claim.get("provenance_state"),
         })
     return {
         "hypothesis_id": hypothesis_id,
@@ -215,11 +379,22 @@ def build_hypothesis_card(
         "is_verified_rule": False,
         "claim_link_validation": {
             "shape_valid": True,
+            "registry_records_resolved": registry_resolved,
+            "record_integrity_verified": (
+                registry_integrity_verified == len(claim_refs)
+                if claim_registry_root is not None else False
+            ),
             "provenance_verified": False,
-            "status": "metadata_only_unverified",
+            "status": (
+                "content_addressed_local_registry_integrity_only_not_authenticated"
+                if claim_registry_root is not None else "metadata_only_unverified"
+            ),
             "reason": (
-                "Caller-supplied claim dictionaries were shape-checked, but no "
-                "authoritative claim registry or signed provenance record was resolved."
+                "Content-addressed claim and source bytes were resolved and hashed, "
+                "but this local registry has no external signature or trusted registrar."
+                if claim_registry_root is not None
+                else "Caller-supplied claim dictionaries were shape-checked, but no "
+                     "content-addressed registry record was resolved."
             ),
         },
         "limitations": [
