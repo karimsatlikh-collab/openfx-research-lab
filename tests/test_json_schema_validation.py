@@ -192,6 +192,26 @@ class JsonSchemaValidationTests(unittest.TestCase):
             mutate(invalid)
             self.assertTrue(list(validator.iter_errors(invalid)))
 
+
+    def test_authorization_record_rejects_forged_or_malformed_envelopes(self):
+        filename = "authorization-record-v1.schema.json"
+        schema = self.load_schema(filename)
+        validator = Draft202012Validator(schema, format_checker=FORMAT_CHECKER)
+        valid = copy.deepcopy(EXAMPLES[filename])
+        mutations = (
+            lambda value: value["payload"].update(audience="attacker"),
+            lambda value: value["payload"].update(action="shell"),
+            lambda value: value["payload"].update(job_sha256="bad"),
+            lambda value: value["payload"].update(nonce="short"),
+            lambda value: value["signature"].update(algorithm="RSA"),
+            lambda value: value["signature"].update(value="bad"),
+            lambda value: value.update(untrusted_public_key="attacker-key"),
+        )
+        for mutate in mutations:
+            invalid = copy.deepcopy(valid)
+            mutate(invalid)
+            self.assertTrue(list(validator.iter_errors(invalid)))
+
     def test_unknown_top_level_fields_are_rejected(self):
         for filename, instance in EXAMPLES.items():
             with self.subTest(schema=filename):
