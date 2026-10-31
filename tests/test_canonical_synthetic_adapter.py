@@ -421,17 +421,24 @@ class CanonicalSyntheticAdapterTests(unittest.TestCase):
                 return original_append(**kwargs)
 
             with patch.object(registry, "append", side_effect=capture_append):
-                run_canonical_synthetic_job(
+                result = run_canonical_synthetic_job(
                     job=job, strategy_spec=strategy, data_profile=data,
                     cost_profile=costs, gate_config=gate, frozen_trial=frozen,
                     registry=registry, workspace=Path(tmp) / "artifacts",
                     run_id="run-effective-cap",
                 )
 
-            self.assertEqual(captured[0], min(
+            effective_cap = min(
                 job["budget"]["max_trials"],
                 gate["trial_family_policy"]["max_trials"],
-            ))
+            )
+            self.assertEqual(captured[0], effective_cap)
+            budget_check = next(
+                check for check in result["canonical_gate_verdict"]["checks"]
+                if check["check_id"] == "trial_family_budget"
+            )
+            self.assertEqual(budget_check["threshold"], effective_cap)
+            self.assertEqual(budget_check["status"], "pass")
 
     def test_canonical_gate_verdict_is_schema_valid_and_registry_bound(self):
         import json
