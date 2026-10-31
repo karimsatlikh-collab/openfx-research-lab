@@ -145,6 +145,24 @@ EXAMPLES = {
         ],
         "created_at_utc": NOW,
     },
+
+    "authorization-record-v1.schema.json": {
+        "schema_version": 1,
+        "payload": {
+            "authorization_id": "auth-00000001",
+            "issuer_id": "openfx-owner-approval",
+            "key_id": "owner-ed25519-2026-01",
+            "audience": "openfx-worker",
+            "job_id": "job-1",
+            "job_sha256": HASH,
+            "action": "execute_job",
+            "requested_engine": "synthetic",
+            "issued_at_utc": NOW,
+            "expires_at_utc": "2026-01-01T00:05:00Z",
+            "nonce": "A" * 43,
+        },
+        "signature": {"algorithm": "Ed25519", "value": "A" * 86},
+    },
 }
 
 
@@ -188,6 +206,26 @@ class JsonSchemaValidationTests(unittest.TestCase):
             lambda value: value.update(frozen_sha256="not-a-sha256"),
             lambda value: value.update(schema_version=2),
         ):
+            invalid = copy.deepcopy(valid)
+            mutate(invalid)
+            self.assertTrue(list(validator.iter_errors(invalid)))
+
+
+    def test_authorization_record_rejects_forged_or_malformed_envelopes(self):
+        filename = "authorization-record-v1.schema.json"
+        schema = self.load_schema(filename)
+        validator = Draft202012Validator(schema, format_checker=FORMAT_CHECKER)
+        valid = copy.deepcopy(EXAMPLES[filename])
+        mutations = (
+            lambda value: value["payload"].update(audience="attacker"),
+            lambda value: value["payload"].update(action="shell"),
+            lambda value: value["payload"].update(job_sha256="bad"),
+            lambda value: value["payload"].update(nonce="short"),
+            lambda value: value["signature"].update(algorithm="RSA"),
+            lambda value: value["signature"].update(value="bad"),
+            lambda value: value.update(untrusted_public_key="attacker-key"),
+        )
+        for mutate in mutations:
             invalid = copy.deepcopy(valid)
             mutate(invalid)
             self.assertTrue(list(validator.iter_errors(invalid)))

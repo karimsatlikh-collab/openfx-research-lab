@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/karimsatlikh-collab/openfx-research-lab/blob/main/schemas/authorization-record-v1.schema.json",
+  "title": "OpenFX AuthorizationRecord v1",
+  "description": "Structural contract only. Signature verification and nonce consumption are separate mandatory runtime controls.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "payload", "signature"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authorization_id", "issuer_id", "key_id", "audience",
+        "job_id", "job_sha256", "action", "requested_engine",
+        "issued_at_utc", "expires_at_utc", "nonce"
+      ],
+      "properties": {
+        "authorization_id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{7,127}$" },
+        "issuer_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "key_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "audience": { "const": "openfx-worker" },
+        "job_id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$" },
+        "job_sha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" },
+        "action": { "const": "execute_job" },
+        "requested_engine": { "enum": ["mock", "synthetic", "mt5-demo"] },
+        "issued_at_utc": { "type": "string", "format": "date-time" },
+        "expires_at_utc": { "type": "string", "format": "date-time" },
+        "nonce": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" }
+      }
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "value"],
+      "properties": {
+        "algorithm": { "const": "Ed25519" },
+        "value": { "type": "string", "pattern": "^[A-Za-z0-9_-]{86}$" }
+      }
+    }
+  }
+}
