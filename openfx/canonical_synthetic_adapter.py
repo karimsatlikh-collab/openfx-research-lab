@@ -209,8 +209,13 @@ def run_canonical_synthetic_job(
             "evidence_level": "synthetic",
             "adapter": "canonical-m1-v1",
         },
-        max_trials=job["budget"]["max_trials"],
+        max_trials=gate_config["trial_family_policy"]["max_trials"],
+        reject_existing_trial=True,
     )
+    # Verify the durable registration before allowing any execution side effect.
+    registration_verification = registry.verify()
+    if not registration_verification.get("valid"):
+        raise CanonicalSyntheticAdapterError("trial registry verification failed after registration")
     terminal_recorded = False
     try:
         started_at = _utc_timestamp()
@@ -281,11 +286,14 @@ def run_canonical_synthetic_job(
             },
         )
         terminal_recorded = True
+        final_registry_verification = registry.verify()
+        if not final_registry_verification.get("valid"):
+            raise CanonicalSyntheticAdapterError("trial registry verification failed after completion")
         return {
             "run_record": run_record,
             "artifact_manifest": manifest,
             "gate_verdict": verdict,
-            "registry": registry.verify(),
+            "registry": final_registry_verification,
             "replay_hashes_equal": True,
             "evidence_level": "synthetic",
             "is_market_backtest": False,
@@ -297,14 +305,18 @@ def run_canonical_synthetic_job(
                 "RunRecord and artifact manifest integrity do not attest that a trusted external executor ran.",
             ],
         }
-    except Exception as exc:
+    except BaseException as exc:
         if not terminal_recorded:
+            terminal_outcome = "interrupted" if isinstance(exc, KeyboardInterrupt) else "failed"
             registry.append(
-                event_id=f"{trial_id}-canonical-failed",
-                family_id=family_id, trial_id=trial_id, outcome="failed",
+                event_id=f"{trial_id}-canonical-{terminal_outcome}",
+                family_id=family_id, trial_id=trial_id, outcome=terminal_outcome,
                 payload={
                     "job_id": job["job_id"], "run_id": run_id,
-                    "error": str(exc)[:500], "evidence_level": "synthetic",
+                    "error": str(exc)[:500],
+                    "finished_at_utc": _utc_timestamp(),
+                    "evidence_level": "synthetic",
                 },
             )
+            registry.verify()
         raise
