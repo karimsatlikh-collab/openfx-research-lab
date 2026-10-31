@@ -1,9 +1,13 @@
 """Adversarial tests for G0 source admissibility and G1 claim binding."""
+import json
+import os
+import tempfile
 import unittest
+from pathlib import Path
 
 from openfx.source_provenance import (
     ProvenanceError, build_atomic_claim, build_hypothesis_card,
-    build_source_record, validate_source_record,
+    build_source_record, register_claim_record, resolve_claim_record, validate_source_record,
 )
 
 
@@ -169,6 +173,122 @@ class ClaimAndHypothesisBindingTests(unittest.TestCase):
             "metadata_only_unverified",
         )
         self.assertIn("no authoritative claim registry", card["claim_link_validation"]["reason"])
+
+    def test_content_addressed_registry_resolves_claim_and_source_chain(self):
+        claim = build_atomic_claim(
+            claim_id="claim-registry-1", source_record=source(), source_content=CONTENT,
+            exact_locator=LOCATOR, statement="A registered synthetic observation.",
+            provenance_state="test_confirmed",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            digest = register_claim_record(tmp, claim, source(), CONTENT)
+            resolved = resolve_claim_record(tmp, "claim-registry-1")
+            self.assertEqual(resolved["claim"], claim)
+            self.assertEqual(resolved["claim_record_sha256"], digest)
+            self.assertTrue(resolved["record_integrity_verified"])
+            self.assertFalse(resolved["provenance_authenticated"])
+            card = build_hypothesis_card(
+                hypothesis_id="hyp-registry-1", title="Registered claim",
+                falsifiable_statement="The registry-backed link resolves exactly.",
+                linked_claims=[claim], predicted_mechanism="Mechanism",
+                invalidation_criteria="Fail if the registry link does not resolve.",
+                claim_registry_root=tmp,
+            )
+            result = card["claim_link_validation"]
+            self.assertEqual(result["registry_records_resolved"], 1)
+            self.assertTrue(result["record_integrity_verified"])
+            self.assertFalse(result["provenance_verified"])
+            self.assertEqual(
+                result["status"],
+                "content_addressed_local_registry_integrity_only_not_authenticated",
+            )
+
+    def test_registry_rejects_unknown_claim_id(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaisesRegex(ProvenanceError, "resolution failed"):
+                resolve_claim_record(tmp, "claim-does-not-exist")
+
+    def test_registry_rejects_modified_claim_record_bytes(self):
+        claim = build_atomic_claim(
+            claim_id="claim-tamper-1", source_record=source(), source_content=CONTENT,
+            exact_locator=LOCATOR, statement="Original statement.",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            digest = register_claim_record(tmp, claim, source(), CONTENT)
+            path = Path(tmp) / "claim-records" / f"{digest}.json"
+            path.write_bytes(path.read_bytes() + b" ")
+            with self.assertRaisesRegex(ProvenanceError, "content hash mismatch"):
+                resolve_claim_record(tmp, "claim-tamper-1")
+
+    def test_registry_rejects_modified_source_bytes(self):
+        claim = build_atomic_claim(
+            claim_id="claim-source-tamper", source_record=source(), source_content=CONTENT,
+            exact_locator=LOCATOR, statement="Source-bound statement.",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            register_claim_record(tmp, claim, source(), CONTENT)
+            content_digest = source()["content_sha256"]
+            path = Path(tmp) / "source-content" / f"{content_digest}.bin"
+            path.write_bytes(CONTENT + b"tampered")
+            with self.assertRaisesRegex(ProvenanceError, "source content hash mismatch"):
+                resolve_claim_record(tmp, "claim-source-tamper")
+
+    def test_registry_rejects_forged_caller_claim_and_changed_locator(self):
+        claim = build_atomic_claim(
+            claim_id="claim-forged-link", source_record=source(), source_content=CONTENT,
+            exact_locator=LOCATOR, statement="Registered statement.",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            register_claim_record(tmp, claim, source(), CONTENT)
+            forged = dict(claim, statement="A different caller-supplied statement.")
+            with self.assertRaisesRegex(ProvenanceError, "does not match"):
+                build_hypothesis_card(
+                    hypothesis_id="hyp-forged-link", title="Forged link",
+                    falsifiable_statement="Must reject altered claim.",
+                    linked_claims=[forged], predicted_mechanism="Mechanism",
+                    invalidation_criteria="Reject any altered claim.",
+                    claim_registry_root=tmp,
+                )
+            altered_ref = dict(claim)
+            altered_ref["source_ref"] = dict(claim["source_ref"], exact_locator="fixture://altered")
+            with self.assertRaisesRegex(ProvenanceError, "does not match"):
+                build_hypothesis_card(
+                    hypothesis_id="hyp-altered-locator", title="Altered locator",
+                    falsifiable_statement="Must reject altered locator.",
+                    linked_claims=[altered_ref], predicted_mechanism="Mechanism",
+                    invalidation_criteria="Reject altered locator.",
+                    claim_registry_root=tmp,
+                )
+
+    @unittest.skipUnless(os.name == "posix", "POSIX file-mode assertion")
+    def test_registry_objects_are_created_with_private_permissions(self):
+        claim = build_atomic_claim(
+            claim_id="claim-private-mode", source_record=source(), source_content=CONTENT,
+            exact_locator=LOCATOR, statement="Private local fixture.",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            digest = register_claim_record(tmp, claim, source(), CONTENT)
+            resolved = resolve_claim_record(tmp, "claim-private-mode")
+            paths = [
+                Path(tmp) / "claim-records" / f"{digest}.json",
+                Path(tmp) / "source-records" / f"{resolved['source_record_sha256']}.json",
+                Path(tmp) / "source-content" / f"{source()['content_sha256']}.bin",
+                Path(tmp) / "claim-index" / "claim-private-mode.json",
+            ]
+            for path in paths:
+                self.assertEqual(path.stat().st_mode & 0o077, 0, str(path))
+
+    def test_registry_rejects_claim_id_collision(self):
+        claim = build_atomic_claim(
+            claim_id="claim-id-collision", source_record=source(), source_content=CONTENT,
+            exact_locator=LOCATOR, statement="First statement.",
+        )
+        second = dict(claim, statement="Second statement.")
+        with tempfile.TemporaryDirectory() as tmp:
+            register_claim_record(tmp, claim, source(), CONTENT)
+            with self.assertRaisesRegex(ProvenanceError, "collision or tampering"):
+                register_claim_record(tmp, second, source(), CONTENT)
+
 
     def test_hypothesis_rejects_unlinked_or_non_source_claim(self):
         with self.assertRaisesRegex(ProvenanceError, "at least one"):
