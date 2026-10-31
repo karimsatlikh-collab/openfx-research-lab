@@ -221,6 +221,17 @@ class RegistryTests(unittest.TestCase):
             with self.assertRaisesRegex(TrialRegistryError, "schema_version"):
                 LocalTrialRegistry(path).verify()
 
+    def test_readers_wait_for_writer_lock_and_fail_closed_on_stale_lock(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "trials.jsonl"
+            registry = LocalTrialRegistry(path, lock_timeout_seconds=0.05)
+            registry.lock_path.write_text("writer lock", encoding="utf-8")
+            for read in (registry.verify, lambda: registry.trial_count("fam"),
+                         lambda: registry.next_trial_index("fam")):
+                with self.assertRaisesRegex(TrialRegistryError, "lock timeout"):
+                    read()
+            self.assertTrue(registry.lock_path.exists())
+
     def test_stale_lock_times_out_without_deleting_lock(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "trials.jsonl"
