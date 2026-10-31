@@ -368,6 +368,45 @@ class CanonicalSyntheticAdapterTests(unittest.TestCase):
             self.assertEqual([row["outcome"] for row in rows], ["pending", "failed"])
             self.assertEqual(registry.verify()["trial_count"], 1)
 
+    def test_terminal_trial_identity_cannot_be_reexecuted_with_new_run_id(self):
+        job, strategy, data, costs, gate, frozen = documents()
+        with tempfile.TemporaryDirectory() as tmp:
+            registry = LocalTrialRegistry(Path(tmp) / "registry.jsonl")
+            run_canonical_synthetic_job(
+                job=job, strategy_spec=strategy, data_profile=data,
+                cost_profile=costs, gate_config=gate, frozen_trial=frozen,
+                registry=registry, workspace=Path(tmp) / "first",
+                run_id="first-run",
+            )
+            with patch("openfx.canonical_synthetic_adapter._execute_once") as execute:
+                with self.assertRaisesRegex(TrialRegistryError, "already been registered"):
+                    run_canonical_synthetic_job(
+                        job=job, strategy_spec=strategy, data_profile=data,
+                        cost_profile=costs, gate_config=gate, frozen_trial=frozen,
+                        registry=registry, workspace=Path(tmp) / "retry",
+                        run_id="different-run-id",
+                    )
+                execute.assert_not_called()
+            self.assertFalse((Path(tmp) / "retry" / "replay_a").exists())
+            self.assertEqual(registry.verify()["event_count"], 2)
+
+    def test_keyboard_interrupt_is_recorded_as_interrupted(self):
+        job, strategy, data, costs, gate, frozen = documents()
+        with tempfile.TemporaryDirectory() as tmp:
+            registry = LocalTrialRegistry(Path(tmp) / "registry.jsonl")
+            with patch("openfx.canonical_synthetic_adapter._execute_once", side_effect=KeyboardInterrupt()):
+                with self.assertRaises(KeyboardInterrupt):
+                    run_canonical_synthetic_job(
+                        job=job, strategy_spec=strategy, data_profile=data,
+                        cost_profile=costs, gate_config=gate, frozen_trial=frozen,
+                        registry=registry, workspace=Path(tmp) / "artifacts",
+                        run_id="interrupted-run",
+                    )
+            rows = [__import__("json").loads(line) for line in registry.path.read_text(encoding="utf-8").splitlines()]
+            self.assertEqual([row["outcome"] for row in rows], ["pending", "interrupted"])
+            self.assertIn("finished_at_utc", rows[-1]["payload"])
+            self.assertTrue(registry.verify()["valid"])
+
 
 if __name__ == "__main__":
     unittest.main()
