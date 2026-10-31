@@ -191,6 +191,13 @@ def record_event(state: dict[str, Any], job_id: str, status: str, detail: str) -
 
 def safe_poll(config: WorkerConfig, token: str) -> list[dict[str, Any]]:
     """Poll a future control plane; never follow redirects or call non-HTTPS URLs."""
+    # Fail closed: the current worker has no signed AuthorizationRecord verifier,
+    # canonical JobSpec/RunRecord binding, or trusted nonce-consuming registrar.
+    # A bearer token and caller-controlled `approved` flag are not authorization.
+    raise RuntimeError(
+        "Network polling is disabled until signed authorization and canonical "
+        "research-contract verification are implemented and independently tested."
+    )
     parsed = urllib.parse.urlparse(config.control_plane_url)
     if parsed.hostname is None or parsed.hostname.endswith(".invalid") or "PLACEHOLDER" in config.control_plane_url:
         raise RuntimeError("Control-plane URL is a placeholder; network polling is disabled.")
