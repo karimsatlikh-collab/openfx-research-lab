@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from openfx.canonical_source_evidence_bridge import (
     SourceEvidenceBridgeError,
     convert_legacy_evidence,
+    convert_legacy_hypothesis,
 )
 
 
@@ -148,6 +149,40 @@ class CanonicalSourceEvidenceBridgeTests(unittest.TestCase):
         with self.assertRaisesRegex(SourceEvidenceBridgeError, "duplicate claim_id"):
             self.convert(registry=registry, register=register)
 
+
+
+    def test_hypothesis_is_preserved_as_unverified_card(self):
+        registry, register = fixtures()
+        register["claims"].append({
+            "claim_id": "hypothesis-001", "claim_text": "A hypothesis.",
+            "classification": "hypothesis", "review_status": "draft",
+            "rationale": "Proposed explanation.", "evidence": [],
+            "contradiction_group": None,
+        })
+        source_result = self.convert(registry=registry, register=register)
+        result = convert_legacy_hypothesis(
+            source_registry=registry, claim_register=register,
+            hypothesis_claim_id="hypothesis-001", hypothesis_id="hyp-001",
+            title="Test hypothesis",
+            falsifiable_statement="The effect exceeds a predefined null baseline.",
+            linked_source_claims=[source_result["atomic_claim"]],
+            predicted_mechanism="The parent structure remains intact.",
+            invalidation_criteria="The effect fails on held-out data.",
+        )
+        self.assertEqual(result["hypothesis_card"]["epistemic_status"], "hypothesis")
+        self.assertFalse(result["hypothesis_card"]["is_verified_rule"])
+
+    def test_hypothesis_conversion_rejects_source_claim(self):
+        registry, register = fixtures()
+        source_result = self.convert(registry=registry, register=register)
+        with self.assertRaisesRegex(SourceEvidenceBridgeError, "classification must be hypothesis"):
+            convert_legacy_hypothesis(
+                source_registry=registry, claim_register=register,
+                hypothesis_claim_id="claim-001", hypothesis_id="hyp-001",
+                title="Not a hypothesis", falsifiable_statement="A statement.",
+                linked_source_claims=[source_result["atomic_claim"]],
+                predicted_mechanism="Mechanism.", invalidation_criteria="Invalidation.",
+            )
 
 if __name__ == "__main__":
     unittest.main()
