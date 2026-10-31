@@ -1,5 +1,6 @@
 """Adversarial tests for G0 source admissibility and G1 claim binding."""
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -258,6 +259,23 @@ class ClaimAndHypothesisBindingTests(unittest.TestCase):
                     invalidation_criteria="Reject altered locator.",
                     claim_registry_root=tmp,
                 )
+
+    @unittest.skipUnless(os.name == "posix", "POSIX file-mode assertion")
+    def test_registry_objects_are_created_with_private_permissions(self):
+        claim = build_atomic_claim(
+            claim_id="claim-private-mode", source_record=source(), source_content=CONTENT,
+            exact_locator=LOCATOR, statement="Private local fixture.",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            digest = register_claim_record(tmp, claim, source(), CONTENT)
+            paths = [
+                Path(tmp) / "claim-records" / f"{digest}.json",
+                Path(tmp) / "source-records" / f"{hashlib.sha256(json.dumps(source(), sort_keys=True, separators=(',', ':'), ensure_ascii=False, allow_nan=False).encode('utf-8')).hexdigest()}.json",
+                Path(tmp) / "source-content" / f"{source()['content_sha256']}.bin",
+                Path(tmp) / "claim-index" / "claim-private-mode.json",
+            ]
+            for path in paths:
+                self.assertEqual(path.stat().st_mode & 0o077, 0, str(path))
 
     def test_registry_rejects_claim_id_collision(self):
         claim = build_atomic_claim(
