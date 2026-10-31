@@ -268,9 +268,10 @@ class ClaimAndHypothesisBindingTests(unittest.TestCase):
         )
         with tempfile.TemporaryDirectory() as tmp:
             digest = register_claim_record(tmp, claim, source(), CONTENT)
+            resolved = resolve_claim_record(tmp, "claim-private-mode")
             paths = [
                 Path(tmp) / "claim-records" / f"{digest}.json",
-                Path(tmp) / "source-records" / f"{hashlib.sha256(json.dumps(source(), sort_keys=True, separators=(',', ':'), ensure_ascii=False, allow_nan=False).encode('utf-8')).hexdigest()}.json",
+                Path(tmp) / "source-records" / f"{resolved['source_record_sha256']}.json",
                 Path(tmp) / "source-content" / f"{source()['content_sha256']}.bin",
                 Path(tmp) / "claim-index" / "claim-private-mode.json",
             ]
