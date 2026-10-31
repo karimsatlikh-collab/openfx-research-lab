@@ -394,7 +394,7 @@ def build_hypothesis_card(
                 "but this local registry has no external signature or trusted registrar."
                 if claim_registry_root is not None
                 else "Caller-supplied claim dictionaries were shape-checked, but no "
-                     "content-addressed registry record was resolved."
+                     "authoritative claim registry or content-addressed registry record was resolved."
             ),
         },
         "limitations": [
