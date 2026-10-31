@@ -16,6 +16,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 from openfx.evidence import validate_claim_register
 from openfx.source_provenance import (
     build_atomic_claim,
+    build_hypothesis_card,
     build_source_record,
     validate_source_record as validate_m1_source_record,
 )
@@ -174,5 +175,74 @@ def convert_legacy_evidence(
             "A legacy review label is preserved as metadata and is not promoted to verified fact.",
             "The caller-supplied rights decision is recorded, not independently legally verified.",
             "The transcript text hash is not a substitute for the original source-content hash.",
+        ],
+    }
+
+
+def convert_legacy_hypothesis(
+    *,
+    source_registry: dict[str, Any],
+    claim_register: dict[str, Any],
+    hypothesis_claim_id: str,
+    hypothesis_id: str,
+    title: str,
+    falsifiable_statement: str,
+    linked_source_claims: list[dict[str, Any]],
+    predicted_mechanism: str,
+    invalidation_criteria: str,
+) -> dict[str, Any]:
+    """Convert a legacy hypothesis into a distinct, explicitly unverified M1 card.
+
+    Linked claims must already be canonical source-backed AtomicClaims. The
+    hypothesis itself is never emitted as an AtomicClaim or verified StrategySpec rule.
+    """
+    try:
+        registry = validate_source_registry(source_registry)
+        validate_claim_register(claim_register, registry)
+    except (TypeError, ValueError) as exc:
+        raise SourceEvidenceBridgeError(f"legacy provenance validation failed: {exc}") from exc
+
+    claims = {row["claim_id"]: row for row in claim_register["claims"]}
+    legacy = claims.get(hypothesis_claim_id)
+    if legacy is None:
+        raise SourceEvidenceBridgeError("hypothesis_claim_id is not present in claim register")
+    if legacy["classification"] != "hypothesis":
+        raise SourceEvidenceBridgeError("legacy claim classification must be hypothesis")
+    if not isinstance(linked_source_claims, list) or not linked_source_claims:
+        raise SourceEvidenceBridgeError("at least one canonical source-backed AtomicClaim is required")
+    try:
+        for item in linked_source_claims:
+            if not isinstance(item, dict):
+                raise ValueError("linked source claim must be an object")
+            _schema_validate(item, "atomic-claim-v1.schema.json")
+            if item.get("claim_kind") != "source_backed":
+                raise ValueError("hypothesis links may contain only source-backed AtomicClaims")
+        card = build_hypothesis_card(
+            hypothesis_id=hypothesis_id,
+            title=title,
+            falsifiable_statement=falsifiable_statement,
+            linked_claims=linked_source_claims,
+            predicted_mechanism=predicted_mechanism,
+            invalidation_criteria=invalidation_criteria,
+        )
+        _schema_validate(card, "hypothesis-card-v1.schema.json")
+    except (TypeError, ValueError) as exc:
+        raise SourceEvidenceBridgeError(f"canonical HypothesisCard conversion failed: {exc}") from exc
+
+    return {
+        "schema_version": 1,
+        "hypothesis_card": card,
+        "trace": {
+            "legacy_hypothesis_claim_id": hypothesis_claim_id,
+            "legacy_classification": legacy["classification"],
+            "legacy_review_status": legacy["review_status"],
+            "legacy_rationale": legacy["rationale"],
+            "epistemic_status": "hypothesis",
+            "is_verified_rule": False,
+        },
+        "limitations": [
+            "The card remains a hypothesis, not a verified trading rule.",
+            "Linked source-backed claims do not prove the proposed mechanism.",
+            "This conversion does not adjudicate semantic correctness or resolve contradictions.",
         ],
     }
