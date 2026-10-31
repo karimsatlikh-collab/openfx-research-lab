@@ -2,6 +2,7 @@
 import hashlib
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from openfx.canonical_synthetic_adapter import (
@@ -251,6 +252,93 @@ class CanonicalSyntheticAdapterTests(unittest.TestCase):
                     run_id="run-lock-fail",
                 )
             self.assertFalse((Path(tmp) / "artifacts" / "replay_a").exists())
+
+
+    def test_run_binding_rejects_job_identity_evidence_and_each_contract_digest_mismatch(self):
+        job, strategy, data, costs, gate, frozen = documents()
+        from openfx.contract_validation import ContractValidationError, validate_run_against_job
+        valid = {
+            "job_id": job["job_id"],
+            "status": "COMPLETED",
+            "evidence_level": "synthetic",
+            "timestamps": {"created_at_utc": STAMP, "finished_at_utc": STAMP},
+            "inputs": {
+                "implementation_sha256": job["implementation"]["build_sha256"],
+                "strategy_spec_sha256": job["strategy_spec_ref"]["sha256"],
+                "data_profile_sha256": job["data_profile_ref"]["sha256"],
+                "cost_profile_sha256": job["cost_profile_ref"]["sha256"],
+                "gate_config_sha256": job["gate_config_ref"]["sha256"],
+            },
+        }
+        mutations = [
+            ("job_id", lambda row: row.update(job_id="other-job")),
+            ("evidence_level", lambda row: row.update(evidence_level="mock")),
+            ("implementation_sha256", lambda row: row["inputs"].update(implementation_sha256="0" * 64)),
+            ("strategy_spec_sha256", lambda row: row["inputs"].update(strategy_spec_sha256="0" * 64)),
+            ("data_profile_sha256", lambda row: row["inputs"].update(data_profile_sha256="0" * 64)),
+            ("cost_profile_sha256", lambda row: row["inputs"].update(cost_profile_sha256="0" * 64)),
+            ("gate_config_sha256", lambda row: row["inputs"].update(gate_config_sha256="0" * 64)),
+        ]
+        for label, mutate in mutations:
+            with self.subTest(binding=label):
+                candidate = __import__("copy").deepcopy(valid)
+                mutate(candidate)
+                with self.assertRaises(ContractValidationError):
+                    validate_run_against_job(candidate, job)
+
+    def test_run_record_schema_rejects_unsupported_state(self):
+        from openfx.canonical_synthetic_adapter import _validate_schema
+        invalid = {
+            "schema_version": 1, "run_id": "r1", "job_id": "j1",
+            "status": "PENDING", "evidence_level": "synthetic",
+            "timestamps": {"created_at_utc": STAMP},
+            "inputs": {key: "0" * 64 for key in (
+                "job_spec_sha256", "strategy_spec_sha256", "implementation_sha256",
+                "data_profile_sha256", "cost_profile_sha256", "gate_config_sha256"
+            )},
+            "outputs": [], "error": None,
+        }
+        with self.assertRaisesRegex(CanonicalSyntheticAdapterError, "schema validation failed"):
+            _validate_schema(invalid, "run")
+
+    def test_manifest_rejects_extra_output_entry(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            entries = []
+            outputs = []
+            for name in ("a", "b"):
+                path = root / f"{name}.json"
+                path.write_text("{}", encoding="utf-8")
+                digest = hashlib.sha256(path.read_bytes()).hexdigest()
+                entries.append({"name": name, "path": f"{name}.json", "size_bytes": 2, "sha256": digest})
+                outputs.append({"name": name, "sha256": digest})
+            run = {"job_id": "job", "run_id": "run", "outputs": outputs}
+            manifest = {"schema_version": 1, "job_id": "job", "run_id": "run", "entries": entries}
+            _validate_manifest(manifest, run, root)
+            manifest["entries"].append(dict(entries[0], name="extra", path="extra.json"))
+            extra = root / "extra.json"
+            extra.write_text("{}", encoding="utf-8")
+            manifest["entries"][-1]["sha256"] = hashlib.sha256(extra.read_bytes()).hexdigest()
+            with self.assertRaisesRegex(CanonicalSyntheticAdapterError, "count mismatch"):
+                _validate_manifest(manifest, run, root)
+
+    def test_execution_failure_after_registration_is_recorded_as_failed(self):
+        job, strategy, data, costs, gate, frozen = documents()
+        with tempfile.TemporaryDirectory() as tmp:
+            registry_path = Path(tmp) / "registry.jsonl"
+            registry = LocalTrialRegistry(registry_path)
+            with patch("openfx.canonical_synthetic_adapter._execute_once", side_effect=RuntimeError("injected execution failure")):
+                with self.assertRaisesRegex(RuntimeError, "injected execution failure"):
+                    run_canonical_synthetic_job(
+                        job=job, strategy_spec=strategy, data_profile=data,
+                        cost_profile=costs, gate_config=gate, frozen_trial=frozen,
+                        registry=registry, workspace=Path(tmp) / "artifacts",
+                        run_id="run-post-registration-failure",
+                    )
+            rows = [__import__("json").loads(line) for line in registry_path.read_text(encoding="utf-8").splitlines()]
+            self.assertEqual([row["outcome"] for row in rows], ["pending", "failed"])
+            self.assertEqual(registry.verify()["trial_count"], 1)
 
 
 if __name__ == "__main__":
