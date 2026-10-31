@@ -32,6 +32,7 @@ SCHEMA_FILES = {
     "gate": "gate-config-v1.schema.json",
     "job": "job-spec-v1.schema.json",
     "run": "run-record-v1.schema.json",
+    "verdict": "gate-verdict-v1.schema.json",
 }
 
 
@@ -53,6 +54,64 @@ def _sha256_bytes(value: bytes) -> str:
 def _utc_timestamp() -> str:
     """Capture an actual lifecycle boundary at UTC microsecond precision."""
     return datetime.now(timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")
+
+
+def _build_canonical_gate_verdict(
+    *,
+    run_id: str,
+    gate_config: dict[str, Any],
+    evaluation: dict[str, Any],
+    summary: dict[str, Any],
+) -> dict[str, Any]:
+    """Bind the descriptive evaluation to the frozen canonical GateConfig."""
+    thresholds = gate_config["acceptance_thresholds"]
+    checks: list[dict[str, Any]] = []
+    for key, threshold in sorted(thresholds.items()):
+        observed = summary[key.removeprefix("min_")]
+        passed = observed >= threshold
+        checks.append({
+            "check_id": key,
+            "status": "pass" if passed else "fail",
+            "description": f"Observed {key.removeprefix('min_')} compared with frozen {key} threshold.",
+            "observed_value": observed,
+            "threshold": threshold,
+        })
+
+    family_policy = gate_config["trial_family_policy"]
+    trial_count = evaluation["trial_count"]
+    max_trials = family_policy["max_trials"]
+    checks.append({
+        "check_id": "trial_family_budget",
+        "status": "pass" if trial_count <= max_trials else "fail",
+        "description": "Registered trial count compared with the frozen family trial cap.",
+        "observed_value": trial_count,
+        "threshold": max_trials,
+    })
+    checks.append({
+        "check_id": "multiple_testing_correction",
+        "status": "not_run",
+        "description": (
+            f"{gate_config['multiple_testing_method']} is recorded as the pre-registered "
+            "method; this synthetic descriptive gate does not calculate the correction."
+        ),
+        "observed_value": False,
+        "threshold": gate_config["multiple_testing_method"],
+    })
+
+    return {
+        "schema_version": 1,
+        "verdict_id": f"{run_id}-gate-verdict",
+        "run_id": run_id,
+        "decision": evaluation["decision"],
+        "gate_version": gate_config["version"],
+        "gate_config_sha256": canonical_sha256(gate_config),
+        "trial_family_id": family_policy["family_id"],
+        "trial_count_at_decision": trial_count,
+        "checks": checks,
+        "created_at_utc": _utc_timestamp(),
+        "limitations": list(evaluation["limitations"]),
+        "notes": "Synthetic descriptive verdict only; not a market-performance conclusion.",
+    }
 
 
 def _validate_schema(document: dict[str, Any], schema_name: str) -> None:
@@ -209,7 +268,10 @@ def run_canonical_synthetic_job(
             "evidence_level": "synthetic",
             "adapter": "canonical-m1-v1",
         },
-        max_trials=gate_config["trial_family_policy"]["max_trials"],
+        max_trials=min(
+            job["budget"]["max_trials"],
+            gate_config["trial_family_policy"]["max_trials"],
+        ),
         reject_existing_trial=True,
     )
     terminal_recorded = False
@@ -274,6 +336,12 @@ def run_canonical_synthetic_job(
         verdict = evaluate_registered_synthetic_summary(
             a["record"]["result"], gate_config, registry=registry, family_id=family_id,
         )
+        canonical_verdict = _build_canonical_gate_verdict(
+            run_id=run_id, gate_config=gate_config, evaluation=verdict,
+            summary=a["record"]["result"],
+        )
+        _validate_schema(canonical_verdict, "verdict")
+        gate_verdict_digest = _sha256_bytes(_canonical_bytes(canonical_verdict))
         registry.append(
             event_id=f"{trial_id}-canonical-completed",
             family_id=family_id, trial_id=trial_id, outcome="completed",
@@ -282,6 +350,7 @@ def run_canonical_synthetic_job(
                 "run_record_sha256": _sha256_bytes(_canonical_bytes(run_record)),
                 "artifact_manifest_sha256": _sha256_bytes(_canonical_bytes(manifest)),
                 "gate_decision": verdict["decision"],
+                "gate_verdict_sha256": gate_verdict_digest,
                 "evidence_level": "synthetic",
             },
         )
@@ -293,6 +362,7 @@ def run_canonical_synthetic_job(
             "run_record": run_record,
             "artifact_manifest": manifest,
             "gate_verdict": verdict,
+            "canonical_gate_verdict": canonical_verdict,
             "registry": final_registry_verification,
             "replay_hashes_equal": True,
             "evidence_level": "synthetic",
@@ -307,13 +377,14 @@ def run_canonical_synthetic_job(
         }
     except BaseException as exc:
         if not terminal_recorded:
-            terminal_outcome = "interrupted" if isinstance(exc, KeyboardInterrupt) else "failed"
+            terminal_outcome = "interrupted" if not isinstance(exc, Exception) else "failed"
             registry.append(
                 event_id=f"{trial_id}-canonical-{terminal_outcome}",
                 family_id=family_id, trial_id=trial_id, outcome=terminal_outcome,
                 payload={
                     "job_id": job["job_id"], "run_id": run_id,
-                    "error": str(exc)[:500],
+                    "error_type": type(exc).__name__,
+                    "reason": "interrupted" if terminal_outcome == "interrupted" else "execution_error",
                     "finished_at_utc": _utc_timestamp(),
                     "evidence_level": "synthetic",
                 },
