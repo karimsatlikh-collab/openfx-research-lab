@@ -1,5 +1,6 @@
 """Tests for the canonical M1 synthetic adapter; no market claims are made."""
 import hashlib
+import json
 import tempfile
 import time
 import unittest
@@ -10,6 +11,8 @@ from pathlib import Path
 from openfx.canonical_synthetic_adapter import (
     CanonicalSyntheticAdapterError,
     _validate_manifest,
+    _build_implementation_manifest,
+    _verify_implementation_manifest,
     run_canonical_synthetic_job,
 )
 from openfx.source_provenance import (
@@ -159,6 +162,42 @@ def documents():
 
 
 class CanonicalSyntheticAdapterTests(unittest.TestCase):
+    def test_composite_implementation_manifest_covers_execution_closure_and_detects_tampering(self):
+        repository_root = Path(__file__).resolve().parent.parent
+        manifest = _build_implementation_manifest(repository_root)
+        paths = {entry["path"] for entry in manifest["entries"]}
+        required = {
+            "openfx/canonical_synthetic_adapter.py",
+            "openfx/contract_validation.py",
+            "openfx/statistical_gate.py",
+            "openfx/synthetic_e2e.py",
+            "openfx/synthetic_engine.py",
+            "openfx/trial_registry.py",
+            "openfx/source_provenance.py",
+            "schemas/strategy-spec-v1.schema.json",
+            "schemas/data-profile-v1.schema.json",
+            "schemas/cost-profile-v1.schema.json",
+            "schemas/gate-config-v1.schema.json",
+            "schemas/job-spec-v1.schema.json",
+            "schemas/run-record-v1.schema.json",
+            "schemas/gate-verdict-v1.schema.json",
+        }
+        self.assertTrue(required.issubset(paths))
+        self.assertEqual(len(paths), len(manifest["entries"]))
+        self.assertTrue(_verify_implementation_manifest(manifest, repository_root))
+
+        with tempfile.TemporaryDirectory() as tmp:
+            copied_root = Path(tmp)
+            for entry in manifest["entries"]:
+                destination = copied_root / entry["path"]
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_bytes((repository_root / entry["path"]).read_bytes())
+            self.assertTrue(_verify_implementation_manifest(manifest, copied_root))
+            target = copied_root / "openfx" / "synthetic_e2e.py"
+            target.write_bytes(target.read_bytes() + b"\\n# tampered\\n")
+            with self.assertRaisesRegex(CanonicalSyntheticAdapterError, "implementation bundle"):
+                _verify_implementation_manifest(manifest, copied_root)
+
     def test_valid_canonical_job_emits_bound_run_record_and_manifest(self):
         job, strategy, data, costs, gate, frozen = documents()
         with tempfile.TemporaryDirectory() as tmp:
@@ -181,6 +220,26 @@ class CanonicalSyntheticAdapterTests(unittest.TestCase):
             self.assertTrue(result["replay_hashes_equal"])
             self.assertFalse(result["is_market_backtest"])
             self.assertEqual(result["registry"]["trial_count"], 1)
+            implementation = result["implementation_manifest"]
+            self.assertEqual(implementation["path"], "implementation_manifest.json")
+            self.assertEqual(len(implementation["bundle_sha256"]), 64)
+            manifest_path = Path(tmp) / "artifacts" / implementation["path"]
+            self.assertTrue(manifest_path.is_file())
+            manifest_bytes = manifest_path.read_bytes()
+            self.assertEqual(hashlib.sha256(manifest_bytes).hexdigest(), implementation["sha256"])
+            manifest_document = json.loads(manifest_bytes)
+            self.assertEqual(manifest_document["bundle_sha256"], implementation["bundle_sha256"])
+            registry_rows = [
+                json.loads(line) for line in (Path(tmp) / "registry.jsonl").read_text(encoding="utf-8").splitlines()
+            ]
+            self.assertEqual(
+                registry_rows[0]["payload"]["implementation_bundle_sha256"],
+                implementation["bundle_sha256"],
+            )
+            self.assertEqual(
+                registry_rows[-1]["payload"]["implementation_manifest_sha256"],
+                implementation["sha256"],
+            )
 
     def test_run_record_timestamps_capture_ordered_lifecycle_boundaries(self):
         job, strategy, data, costs, gate, frozen = documents()
@@ -388,6 +447,7 @@ class CanonicalSyntheticAdapterTests(unittest.TestCase):
                     )
                 execute.assert_not_called()
             self.assertFalse((Path(tmp) / "retry" / "replay_a").exists())
+            self.assertFalse((Path(tmp) / "retry" / "implementation_manifest.json").exists())
             self.assertEqual(registry.verify()["event_count"], 2)
 
     def test_keyboard_interrupt_is_recorded_as_interrupted(self):
@@ -406,6 +466,97 @@ class CanonicalSyntheticAdapterTests(unittest.TestCase):
             self.assertEqual([row["outcome"] for row in rows], ["pending", "interrupted"])
             self.assertIn("finished_at_utc", rows[-1]["payload"])
             self.assertTrue(registry.verify()["valid"])
+
+
+    def test_registration_uses_tighter_job_and_gate_trial_cap(self):
+        job, strategy, data, costs, gate, frozen = documents()
+        job["budget"]["max_trials"] = 1
+        with tempfile.TemporaryDirectory() as tmp:
+            registry = LocalTrialRegistry(Path(tmp) / "registry.jsonl")
+            original_append = registry.append
+            captured = []
+
+            def capture_append(**kwargs):
+                captured.append(kwargs.get("max_trials"))
+                return original_append(**kwargs)
+
+            with patch.object(registry, "append", side_effect=capture_append):
+                result = run_canonical_synthetic_job(
+                    job=job, strategy_spec=strategy, data_profile=data,
+                    cost_profile=costs, gate_config=gate, frozen_trial=frozen,
+                    registry=registry, workspace=Path(tmp) / "artifacts",
+                    run_id="run-effective-cap",
+                )
+
+            effective_cap = min(
+                job["budget"]["max_trials"],
+                gate["trial_family_policy"]["max_trials"],
+            )
+            self.assertEqual(captured[0], effective_cap)
+            budget_check = next(
+                check for check in result["canonical_gate_verdict"]["checks"]
+                if check["check_id"] == "trial_family_budget"
+            )
+            self.assertEqual(budget_check["threshold"], effective_cap)
+            self.assertEqual(budget_check["status"], "pass")
+
+    def test_canonical_gate_verdict_is_schema_valid_and_registry_bound(self):
+        import json
+        from openfx.contract_validation import canonical_sha256
+
+        job, strategy, data, costs, gate, frozen = documents()
+        with tempfile.TemporaryDirectory() as tmp:
+            registry = LocalTrialRegistry(Path(tmp) / "registry.jsonl")
+            result = run_canonical_synthetic_job(
+                job=job, strategy_spec=strategy, data_profile=data,
+                cost_profile=costs, gate_config=gate, frozen_trial=frozen,
+                registry=registry, workspace=Path(tmp) / "artifacts",
+                run_id="run-canonical-verdict",
+            )
+            verdict = result["canonical_gate_verdict"]
+            from openfx.canonical_synthetic_adapter import _validate_schema
+            _validate_schema(verdict, "verdict")
+
+            self.assertEqual(verdict["run_id"], "run-canonical-verdict")
+            self.assertEqual(verdict["gate_config_sha256"], canonical_sha256(gate))
+            self.assertTrue(verdict["checks"])
+            rows = [json.loads(line) for line in registry.path.read_text(encoding="utf-8").splitlines()]
+            expected_hash = hashlib.sha256(json.dumps(
+                verdict, sort_keys=True, separators=(",", ":"),
+                ensure_ascii=False, allow_nan=False,
+            ).encode("utf-8")).hexdigest()
+            self.assertEqual(rows[-1]["payload"]["gate_verdict_sha256"], expected_hash)
+            self.assertEqual(rows[-1]["payload"]["gate_verdict_path"], "gate_verdict.json")
+            artifact_path = Path(tmp) / "artifacts" / "gate_verdict.json"
+            self.assertEqual(artifact_path.read_bytes(), json.dumps(
+                verdict, sort_keys=True, separators=(",", ":"),
+                ensure_ascii=False, allow_nan=False,
+            ).encode("utf-8"))
+            self.assertEqual(result["gate_verdict_artifact"]["sha256"], expected_hash)
+
+    def test_failure_registry_payload_redacts_exception_message(self):
+        import json
+
+        job, strategy, data, costs, gate, frozen = documents()
+        secret_message = "/private/runner/home/user/token=do-not-log"
+        with tempfile.TemporaryDirectory() as tmp:
+            registry = LocalTrialRegistry(Path(tmp) / "registry.jsonl")
+            with patch(
+                "openfx.canonical_synthetic_adapter._execute_once",
+                side_effect=RuntimeError(secret_message),
+            ):
+                with self.assertRaisesRegex(RuntimeError, "private/runner"):
+                    run_canonical_synthetic_job(
+                        job=job, strategy_spec=strategy, data_profile=data,
+                        cost_profile=costs, gate_config=gate, frozen_trial=frozen,
+                        registry=registry, workspace=Path(tmp) / "artifacts",
+                        run_id="run-redacted-failure",
+                    )
+            rows = [json.loads(line) for line in registry.path.read_text(encoding="utf-8").splitlines()]
+            failure_payload = rows[-1]["payload"]
+            self.assertEqual(failure_payload["error_type"], "RuntimeError")
+            self.assertNotIn("error", failure_payload)
+            self.assertNotIn(secret_message, json.dumps(failure_payload))
 
 
 if __name__ == "__main__":
