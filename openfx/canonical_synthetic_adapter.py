@@ -63,6 +63,7 @@ def _build_canonical_gate_verdict(
     gate_config: dict[str, Any],
     evaluation: dict[str, Any],
     summary: dict[str, Any],
+    effective_max_trials: int,
 ) -> dict[str, Any]:
     """Bind the descriptive evaluation to the frozen canonical GateConfig."""
     thresholds = gate_config["acceptance_thresholds"]
@@ -80,13 +81,12 @@ def _build_canonical_gate_verdict(
 
     family_policy = gate_config["trial_family_policy"]
     trial_count = evaluation["trial_count"]
-    max_trials = family_policy["max_trials"]
     checks.append({
         "check_id": "trial_family_budget",
-        "status": "pass" if trial_count <= max_trials else "fail",
-        "description": "Registered trial count compared with the frozen family trial cap.",
+        "status": "pass" if trial_count <= effective_max_trials else "fail",
+        "description": "Registered trial count compared with the effective JobSpec/GateConfig trial cap.",
         "observed_value": trial_count,
-        "threshold": max_trials,
+        "threshold": effective_max_trials,
     })
     checks.append({
         "check_id": "multiple_testing_correction",
@@ -338,9 +338,13 @@ def run_canonical_synthetic_job(
         verdict = evaluate_registered_synthetic_summary(
             a["record"]["result"], gate_config, registry=registry, family_id=family_id,
         )
+        effective_max_trials = min(
+            job["budget"]["max_trials"],
+            gate_config["trial_family_policy"]["max_trials"],
+        )
         canonical_verdict = _build_canonical_gate_verdict(
             run_id=run_id, gate_config=gate_config, evaluation=verdict,
-            summary=a["record"]["result"],
+            summary=a["record"]["result"], effective_max_trials=effective_max_trials,
         )
         _validate_schema(canonical_verdict, "verdict")
         gate_verdict_bytes = _canonical_bytes(canonical_verdict)
