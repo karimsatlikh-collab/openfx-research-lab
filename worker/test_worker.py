@@ -150,8 +150,24 @@ class WorkerValidationTests(unittest.TestCase):
             self.config,
             control_plane_url="https://user:secret@control-plane-placeholder.invalid",
         )
-        with self.assertRaisesRegex(RuntimeError, "URL policy"):
+        with self.assertRaisesRegex(RuntimeError, "Network polling is disabled"):
             safe_poll(unsafe, "x" * 32)
+
+    def test_network_polling_fails_closed_even_with_allowlisted_https_and_token(self):
+        config = WorkerConfig.from_mapping({
+            "control_plane_url": "https://control.example.test",
+            "poll_interval_seconds": 30,
+            "request_timeout_seconds": 15,
+            "max_jobs_per_poll": 1,
+            "allowed_ea_ids": ["openfx-demo-ea"],
+            "allowed_control_plane_hosts": ["control.example.test"],
+            "max_backtest_days": 365,
+            "max_runtime_seconds": 1800,
+            "local_state_file": "worker_state.json",
+            "execution_enabled": False,
+        })
+        with self.assertRaisesRegex(RuntimeError, "Network polling is disabled"):
+            safe_poll(config, "x" * 40)
 
     def test_state_file_lock_blocks_concurrent_process_and_cleans_up(self):
         with tempfile.TemporaryDirectory() as directory:
