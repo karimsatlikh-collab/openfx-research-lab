@@ -149,6 +149,15 @@ class CanonicalSourceEvidenceBridgeTests(unittest.TestCase):
         with self.assertRaisesRegex(SourceEvidenceBridgeError, "duplicate claim_id"):
             self.convert(registry=registry, register=register)
 
+    def test_missing_legacy_source_digest_fails_closed(self):
+        registry, register = fixtures()
+        registry["sources"][0]["content_sha256"] = None
+        with self.assertRaisesRegex(SourceEvidenceBridgeError, "legacy source content digest is missing"):
+            self.convert(
+                registry=registry, register=register,
+                rights_basis="public_domain",
+                permission_evidence="human-reviewed public-domain reference",
+            )
 
 
     def test_hypothesis_is_preserved_as_unverified_card(self):
