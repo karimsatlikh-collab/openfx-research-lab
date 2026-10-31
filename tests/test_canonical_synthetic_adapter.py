@@ -408,5 +408,29 @@ class CanonicalSyntheticAdapterTests(unittest.TestCase):
             self.assertTrue(registry.verify()["valid"])
 
 
+    def test_registration_uses_tighter_job_or_gate_trial_cap(self):
+        job, strategy, data, costs, gate, frozen = documents()
+        job["budget"]["max_trials"] = 1
+        gate["trial_family_policy"]["max_trials"] = 2
+        # Keep all immutable contract references coherent after changing the cap.
+        from openfx.contract_validation import canonical_sha256
+        job["gate_config_ref"]["sha256"] = canonical_sha256(gate)
+        with tempfile.TemporaryDirectory() as tmp:
+            registry = LocalTrialRegistry(Path(tmp) / "registry.jsonl")
+            original_append = registry.append
+            observed_caps = []
+            def capture_append(**kwargs):
+                observed_caps.append(kwargs.get("max_trials"))
+                return original_append(**kwargs)
+            with patch.object(registry, "append", side_effect=capture_append):
+                run_canonical_synthetic_job(
+                    job=job, strategy_spec=strategy, data_profile=data,
+                    cost_profile=costs, gate_config=gate, frozen_trial=frozen,
+                    registry=registry, workspace=Path(tmp) / "artifacts",
+                    run_id="run-tighter-cap",
+                )
+            self.assertEqual(observed_caps[0], 1)
+
+
 if __name__ == "__main__":
     unittest.main()
