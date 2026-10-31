@@ -447,6 +447,7 @@ class CanonicalSyntheticAdapterTests(unittest.TestCase):
                     )
                 execute.assert_not_called()
             self.assertFalse((Path(tmp) / "retry" / "replay_a").exists())
+            self.assertFalse((Path(tmp) / "retry" / "implementation_manifest.json").exists())
             self.assertEqual(registry.verify()["event_count"], 2)
 
     def test_keyboard_interrupt_is_recorded_as_interrupted(self):
