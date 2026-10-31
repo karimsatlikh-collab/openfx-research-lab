@@ -166,3 +166,25 @@ Until then:
 - [ ] M3 preflight and calibration evidence are complete and independently reviewed before gate use.
 - [ ] CI evidence is tied to exact commit SHA and named test runs.
 - [ ] No market-performance or profitability claim exceeds the evidence.
+
+
+## 9. Independent review update — 2026-10-31
+
+### Exact-head CI evidence rechecked
+
+- PR #63 head `d3da8b7ca027d975d5d02934a82580f5d84c2936`: OpenFX Unit Tests run 811 and Project Tests run 992 both completed successfully.
+- PR #65 head `3d0a02788f1b33f3a6967d15fae0ddbf135de446`: OpenFX Unit Tests run 842 and Project Tests run 1023 both completed successfully.
+- PR #44 head `2211b4d537642dd2b86414860a426403b54cfda9`: OpenFX Unit Tests run 722 and Project Tests run 902 both completed successfully. These are code/contract checks, not the M3 preflight or calibration campaign.
+- PR #66 head `06ea241a8ff9da8bbf7aa208150d60b0a9efcdaf`: OpenFX Unit Tests run 845, Project Tests run 1026, and CodeQL security analysis run 267 all completed successfully. Documentation CI does not validate the correctness or completeness of the workflow design.
+
+### Code-review observation requiring follow-up
+
+A source-level review of PR #63 found that the adapter assigns the same timestamp value to `created_at_utc`, `started_at_utc`, and `finished_at_utc`, after both replay executions have already completed. This makes the RunRecord lifecycle timestamps non-observational and can misrepresent elapsed execution time/order. Before treating RunRecord timing as evidence, capture each timestamp at its actual lifecycle boundary and add a regression test proving the ordering and non-negative duration. The current synthetic result must not be used for runtime benchmarking.
+
+The local JSONL registry remains a declared trust limitation; this review did not establish atomicity under concurrent writers, tamper resistance, or trusted central registration. Those are separate implementation/release blockers, not assumed solved by the passing CI.
+
+PR #65 source-level review confirms conservative classification and explicit rights-evidence inputs in the bridge, but those caller-supplied rights decisions remain assertions and are not independent legal determinations. Transcript quote matching and byte hashes establish structural linkage only, not authenticity of the source or accuracy of speech recognition.
+
+### Current release position
+
+All three relevant PRs (#63, #65, #44) remain Draft/unmerged in the current fetched snapshots. PR #66 remains Draft/unmerged. No PR was merged or approved by this review. M3 benchmark and 40-cell campaign remain unexecuted and blocked pending a selected research host and approved resource budget.
