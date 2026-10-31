@@ -164,7 +164,11 @@ def build_hypothesis_card(
     predicted_mechanism: str,
     invalidation_criteria: str,
 ) -> dict[str, Any]:
-    """Create a testable hypothesis while preserving its distinct epistemic status."""
+    """Create a hypothesis and explicitly mark linked-claim provenance as unverified.
+
+    This function validates claim shape only. It deliberately does not represent
+    caller-supplied claim dictionaries as registry-authenticated provenance.
+    """
     _require(isinstance(hypothesis_id, str) and bool(_ID_RE.fullmatch(hypothesis_id)),
              "invalid hypothesis_id")
     for name, value in (("title", title), ("falsifiable_statement", falsifiable_statement),
@@ -209,8 +213,19 @@ def build_hypothesis_card(
         "invalidation_criteria": invalidation_criteria.strip(),
         "epistemic_status": "hypothesis",
         "is_verified_rule": False,
+        "claim_link_validation": {
+            "shape_valid": True,
+            "provenance_verified": False,
+            "status": "metadata_only_unverified",
+            "reason": (
+                "Caller-supplied claim dictionaries were shape-checked, but no "
+                "authoritative claim registry or signed provenance record was resolved."
+            ),
+        },
         "limitations": [
             "A source-backed claim does not prove that the proposed mechanism is true.",
+            "Caller-supplied claim dictionaries are metadata, not authenticated registry records.",
+            "Source identity, locator, and rights are not independently authenticated by this function.",
             "Reviewer identity, role separation, and approval events are not runtime-enforced.",
         ],
     }
