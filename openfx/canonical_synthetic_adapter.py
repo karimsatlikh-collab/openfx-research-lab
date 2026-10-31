@@ -50,6 +50,11 @@ def _sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
 
+def _utc_timestamp() -> str:
+    """Capture an actual lifecycle boundary at UTC microsecond precision."""
+    return datetime.now(timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")
+
+
 def _validate_schema(document: dict[str, Any], schema_name: str) -> None:
     schema_path = Path(__file__).resolve().parent.parent / "schemas" / SCHEMA_FILES[schema_name]
     try:
@@ -190,6 +195,10 @@ def run_canonical_synthetic_job(
     if (root / "replay_a").exists() or (root / "replay_b").exists():
         raise CanonicalSyntheticAdapterError("workspace already contains replay artifacts")
 
+    # These timestamps are captured at their actual lifecycle boundaries.
+    # created_at marks acceptance of the validated run request immediately
+    # before durable registration; started_at/finished_at bracket both replays.
+    created_at = _utc_timestamp()
     registry.append(
         event_id=f"{trial_id}-canonical-registered",
         family_id=family_id, trial_id=trial_id, outcome="pending",
@@ -204,8 +213,10 @@ def run_canonical_synthetic_job(
     )
     terminal_recorded = False
     try:
+        started_at = _utc_timestamp()
         a = _execute_once(frozen_trial, root / "replay_a")
         b = _execute_once(frozen_trial, root / "replay_b")
+        finished_at = _utc_timestamp()
         if a["artifact_sha256"] != b["artifact_sha256"] or a["record"] != b["record"]:
             raise CanonicalSyntheticAdapterError("deterministic replay artifacts differ")
 
@@ -215,7 +226,6 @@ def run_canonical_synthetic_job(
             {"name": "replay_b/run_record.json", "sha256": b["artifact_sha256"],
              "media_type": "application/json"},
         ]
-        now = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
         run_record = {
             "schema_version": 1,
             "run_id": run_id,
@@ -223,9 +233,9 @@ def run_canonical_synthetic_job(
             "status": "COMPLETED",
             "evidence_level": "synthetic",
             "timestamps": {
-                "created_at_utc": now,
-                "started_at_utc": now,
-                "finished_at_utc": now,
+                "created_at_utc": created_at,
+                "started_at_utc": started_at,
+                "finished_at_utc": finished_at,
             },
             "inputs": {
                 "job_spec_sha256": canonical_sha256(job),
