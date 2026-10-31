@@ -159,7 +159,11 @@ class CanonicalSourceEvidenceBridgeTests(unittest.TestCase):
             "rationale": "Proposed explanation.", "evidence": [],
             "contradiction_group": None,
         })
-        source_result = self.convert(registry=registry, register=register)
+        source_result = self.convert(
+            registry=registry, register=register,
+            rights_basis="public_domain",
+            permission_evidence="human-reviewed public-domain reference",
+        )
         result = convert_legacy_hypothesis(
             source_registry=registry, claim_register=register,
             hypothesis_claim_id="hypothesis-001", hypothesis_id="hyp-001",
