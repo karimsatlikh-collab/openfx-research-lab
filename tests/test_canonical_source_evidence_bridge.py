@@ -60,6 +60,9 @@ class CanonicalSourceEvidenceBridgeTests(unittest.TestCase):
         self.assertEqual(result["atomic_claim"]["provenance_state"], "code_reviewed_only")
         self.assertEqual(result["trace"]["timestamp_locator"], "https://example.com/video/1#t=10.000,12.500")
         self.assertEqual(result["atomic_claim"]["source_ref"]["exact_locator"], result["trace"]["timestamp_locator"])
+        self.assertEqual(result["trace"]["quote"], "The confirmed pivot is 1.5 ATR")
+        self.assertEqual(result["trace"]["segment_start_seconds"], 10.0)
+        self.assertEqual(result["trace"]["segment_end_seconds"], 12.5)
 
     def test_ambiguous_or_reviewed_permitted_rights_fail_closed(self):
         registry, register = fixtures()
