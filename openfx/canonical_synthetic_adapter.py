@@ -209,7 +209,7 @@ def run_canonical_synthetic_job(
             "evidence_level": "synthetic",
             "adapter": "canonical-m1-v1",
         },
-        max_trials=gate_config["trial_family_policy"]["max_trials"],
+        max_trials=min(job["budget"]["max_trials"], gate_config["trial_family_policy"]["max_trials"]),
         reject_existing_trial=True,
     )
     terminal_recorded = False
