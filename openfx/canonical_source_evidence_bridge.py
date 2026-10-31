@@ -109,20 +109,15 @@ def convert_legacy_evidence(
         raise SourceEvidenceBridgeError("evidence quote does not exactly match transcript segment")
 
     if rights_basis is None:
-        if source["license_status"] == "public_domain" and source.get("license_reference"):
-            resolved_rights = "public_domain"
-            resolved_permission = source["license_reference"]
-        else:
-            raise SourceEvidenceBridgeError(
-                "legacy rights status is not safely mappable; provide an explicit M1 rights decision"
-            )
-    else:
-        if rights_basis not in _RIGHTS:
-            raise SourceEvidenceBridgeError("unsupported explicit M1 rights_basis")
-        resolved_rights = rights_basis
-        resolved_permission = permission_evidence
-        if not isinstance(resolved_permission, str) or not resolved_permission.strip():
-            raise SourceEvidenceBridgeError("explicit M1 rights decision requires permission_evidence")
+        raise SourceEvidenceBridgeError(
+            "explicit M1 rights decision is required; legacy license_status is not sufficient"
+        )
+    if rights_basis not in _RIGHTS:
+        raise SourceEvidenceBridgeError("unsupported explicit M1 rights_basis")
+    resolved_rights = rights_basis
+    resolved_permission = permission_evidence
+    if not isinstance(resolved_permission, str) or not resolved_permission.strip():
+        raise SourceEvidenceBridgeError("explicit M1 rights decision requires permission_evidence")
 
     locator = _timestamp_locator(source["url"], segment)
     try:
