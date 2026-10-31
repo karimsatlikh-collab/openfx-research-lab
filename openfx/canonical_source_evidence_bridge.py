@@ -146,7 +146,7 @@ def convert_legacy_evidence(
             exact_locator=locator,
             statement=claim["claim_text"],
             # Legacy human_verified/source_confirmed labels are not promoted.
-            provenance_state="code_reviewed_only",
+            provenance_state="observed",
         )
     except (TypeError, ValueError) as exc:
         raise SourceEvidenceBridgeError(f"canonical M1 conversion failed: {exc}") from exc
