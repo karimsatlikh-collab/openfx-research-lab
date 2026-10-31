@@ -6,6 +6,7 @@ from worker.openfx_worker import (
     JobValidationError,
     WorkerConfig,
     process_job,
+    safe_poll,
     validate_job,
 )
 
@@ -47,6 +48,22 @@ class WorkerValidationTests(unittest.TestCase):
 
     def test_accepts_valid_job(self):
         self.assertEqual(validate_job(make_job(), self.config)["symbol"], "EURUSD")
+
+    def test_network_polling_fails_closed_without_signed_authorization(self):
+        # Even a plausible HTTPS endpoint and bearer token cannot authorize polling.
+        config = WorkerConfig.from_mapping({
+            "control_plane_url": "https://control.example.test",
+            "poll_interval_seconds": 30,
+            "request_timeout_seconds": 15,
+            "max_jobs_per_poll": 1,
+            "allowed_ea_ids": ["openfx-demo-ea"],
+            "max_backtest_days": 365,
+            "max_runtime_seconds": 1800,
+            "local_state_file": "worker_state.json",
+            "execution_enabled": False,
+        })
+        with self.assertRaisesRegex(RuntimeError, "Network polling is disabled"):
+            safe_poll(config, "x" * 40)
 
     def test_rejects_unknown_fields_and_commands(self):
         with self.assertRaises(JobValidationError):
