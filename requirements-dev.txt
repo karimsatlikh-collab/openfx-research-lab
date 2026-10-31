@@ -1,2 +1,5 @@
 # Development/test dependencies for contract validation.
 jsonschema>=4.22,<5
+# Pinned test-only cryptographic/JCS conformance candidates; not runtime dependencies.
+cryptography==50.0.2
+rfc8785==0.1.4
