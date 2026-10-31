@@ -57,7 +57,7 @@ class CanonicalSourceEvidenceBridgeTests(unittest.TestCase):
     def test_converts_public_domain_claim_and_preserves_timestamp(self):
         result = self.convert()
         self.assertEqual(result["source_record"]["rights_basis"], "public_domain")
-        self.assertEqual(result["atomic_claim"]["provenance_state"], "code_reviewed_only")
+        self.assertEqual(result["atomic_claim"]["provenance_state"], "observed")
         self.assertEqual(result["trace"]["timestamp_locator"], "https://example.com/video/1#t=10.000,12.500")
         self.assertEqual(result["atomic_claim"]["source_ref"]["exact_locator"], result["trace"]["timestamp_locator"])
         self.assertEqual(result["trace"]["quote"], "The confirmed pivot is 1.5 ATR")
@@ -71,7 +71,7 @@ class CanonicalSourceEvidenceBridgeTests(unittest.TestCase):
             self.convert(registry=registry, register=register)
 
     def test_explicit_permission_requires_structured_human_approval(self):
-        with self.assertRaisesRegex(SourceEvidenceBridgeError, "human_approval"):
+        with self.assertRaisesRegex(SourceEvidenceBridgeError, "human approval evidence"):
             self.convert(
                 rights_basis="explicit_permission",
                 permission_evidence="permission email reference",
