@@ -134,7 +134,8 @@ class LocalTrialRegistry:
 
     def append(self, *, event_id: str, family_id: str, trial_id: str,
                outcome: str, payload: dict[str, Any] | None = None,
-               max_trials: int | None = None) -> dict[str, Any]:
+               max_trials: int | None = None,
+               reject_existing_trial: bool = False) -> dict[str, Any]:
         """Atomically append an event and optionally enforce a family's trial budget.
 
         A new trial consumes budget on its first event, regardless of outcome.
@@ -163,6 +164,9 @@ class LocalTrialRegistry:
                 time.sleep(0.025)
         try:
             rows = self._read_and_verify()
+            same_trial = [x for x in rows if x["trial_id"] == trial_id]
+            if reject_existing_trial and same_trial:
+                raise TrialRegistryError("trial_id has already been registered; retries require a new trial identity")
             for old in rows:
                 if old["event_id"] == event_id:
                     comparable = {k: old[k] for k in ("event_id", "family_id", "trial_id", "outcome", "payload")}
@@ -171,7 +175,6 @@ class LocalTrialRegistry:
                     if comparable != desired:
                         raise TrialRegistryError("idempotency key reused with different event content")
                     return old
-            same_trial = [x for x in rows if x["trial_id"] == trial_id]
             if same_trial and any(x["family_id"] != family_id for x in same_trial):
                 raise TrialRegistryError("trial_id cannot be reused across trial families")
             family_rows = [x for x in rows if x["family_id"] == family_id]
