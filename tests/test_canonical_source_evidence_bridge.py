@@ -121,7 +121,11 @@ class CanonicalSourceEvidenceBridgeTests(unittest.TestCase):
         registry, register = fixtures()
         registry["transcript_segments"][0]["start_seconds"] = 11.0
         # Valid timestamp changes are preserved, not silently rounded to a different cue.
-        result = self.convert(registry=registry, register=register)
+        result = self.convert(
+            registry=registry, register=register,
+            rights_basis="public_domain",
+            permission_evidence="human-reviewed public-domain reference",
+        )
         self.assertEqual(result["trace"]["timestamp_locator"], "https://example.com/video/1#t=11.000,12.500")
 
     def test_quote_mismatch_fails_before_conversion(self):
