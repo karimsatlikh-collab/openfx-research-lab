@@ -178,7 +178,11 @@ class CanonicalSourceEvidenceBridgeTests(unittest.TestCase):
 
     def test_hypothesis_conversion_rejects_source_claim(self):
         registry, register = fixtures()
-        source_result = self.convert(registry=registry, register=register)
+        source_result = self.convert(
+            registry=registry, register=register,
+            rights_basis="public_domain",
+            permission_evidence="human-reviewed public-domain reference",
+        )
         with self.assertRaisesRegex(SourceEvidenceBridgeError, "classification must be hypothesis"):
             convert_legacy_hypothesis(
                 source_registry=registry, claim_register=register,
