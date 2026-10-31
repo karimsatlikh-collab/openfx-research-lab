@@ -55,7 +55,10 @@ class CanonicalSourceEvidenceBridgeTests(unittest.TestCase):
         )
 
     def test_converts_public_domain_claim_and_preserves_timestamp(self):
-        result = self.convert()
+        result = self.convert(
+            rights_basis="public_domain",
+            permission_evidence="human-reviewed public-domain reference",
+        )
         self.assertEqual(result["source_record"]["rights_basis"], "public_domain")
         self.assertEqual(result["atomic_claim"]["provenance_state"], "observed")
         self.assertEqual(result["trace"]["timestamp_locator"], "https://example.com/video/1#t=10.000,12.500")
@@ -64,10 +67,14 @@ class CanonicalSourceEvidenceBridgeTests(unittest.TestCase):
         self.assertEqual(result["trace"]["segment_start_seconds"], 10.0)
         self.assertEqual(result["trace"]["segment_end_seconds"], 12.5)
 
+    def test_legacy_public_domain_label_is_not_automatically_promoted(self):
+        with self.assertRaisesRegex(SourceEvidenceBridgeError, "explicit M1 rights decision"):
+            self.convert()
+
     def test_ambiguous_or_reviewed_permitted_rights_fail_closed(self):
         registry, register = fixtures()
         registry["sources"][0]["license_status"] = "reviewed_permitted"
-        with self.assertRaisesRegex(SourceEvidenceBridgeError, "not safely mappable"):
+        with self.assertRaisesRegex(SourceEvidenceBridgeError, "explicit M1 rights decision"):
             self.convert(registry=registry, register=register)
 
     def test_explicit_permission_requires_structured_human_approval(self):
