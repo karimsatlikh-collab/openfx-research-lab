@@ -13,9 +13,6 @@ import os
 import re
 import sys
 import time
-import urllib.error
-import urllib.parse
-import urllib.request
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -190,52 +187,14 @@ def record_event(state: dict[str, Any], job_id: str, status: str, detail: str) -
 
 
 def safe_poll(config: WorkerConfig, token: str) -> list[dict[str, Any]]:
-    """Poll a future control plane; never follow redirects or call non-HTTPS URLs."""
-    # Fail closed: the current worker has no signed AuthorizationRecord verifier,
+    """Fail closed until signed authorization and canonical contract checks exist."""
+    # The current prototype has no signed AuthorizationRecord verifier,
     # canonical JobSpec/RunRecord binding, or trusted nonce-consuming registrar.
     # A bearer token and caller-controlled `approved` flag are not authorization.
     raise RuntimeError(
         "Network polling is disabled until signed authorization and canonical "
         "research-contract verification are implemented and independently tested."
     )
-    parsed = urllib.parse.urlparse(config.control_plane_url)
-    if parsed.hostname is None or parsed.hostname.endswith(".invalid") or "PLACEHOLDER" in config.control_plane_url:
-        raise RuntimeError("Control-plane URL is a placeholder; network polling is disabled.")
-    if not token or len(token) < 24:
-        raise RuntimeError("OPENFX_WORKER_TOKEN is missing or too short.")
-    request = urllib.request.Request(
-        config.control_plane_url.rstrip("/") + "/v1/worker/jobs",
-        headers={"Authorization": "Bearer " + token, "Accept": "application/json"},
-        method="GET",
-    )
-    opener = urllib.request.build_opener(_NoRedirectHandler)
-    try:
-        with opener.open(request, timeout=config.request_timeout_seconds) as response:
-            if response.status != 200:
-                raise RuntimeError(f"Control plane returned HTTP {response.status}.")
-            if response.headers.get_content_type() != "application/json":
-                raise RuntimeError("Control plane response is not JSON.")
-            body = response.read(1_000_001)
-    except urllib.error.HTTPError as exc:
-        raise RuntimeError(f"Control plane returned HTTP {exc.code}.") from None
-    except urllib.error.URLError:
-        raise RuntimeError("Control plane connection failed.") from None
-    if len(body) > 1_000_000:
-        raise RuntimeError("Control plane response exceeds the 1 MB limit.")
-    try:
-        data = json.loads(body.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError):
-        raise RuntimeError("Control plane returned invalid JSON.") from None
-    if not isinstance(data, dict) or set(data) != {"jobs"} or not isinstance(data["jobs"], list):
-        raise RuntimeError("Control plane response has an invalid schema.")
-    if len(data["jobs"]) > config.max_jobs_per_poll:
-        raise RuntimeError("Control plane returned too many jobs.")
-    return data["jobs"]
-
-
-class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        return None
 
 
 def process_job(job_data: Any, config: WorkerConfig, state: dict[str, Any]) -> str:
