@@ -135,7 +135,7 @@ def convert_legacy_evidence(
             exact_locator=locator,
             capture_method=f"{source['access_method']}:{segment['extraction_method']}",
             content=source_content,
-            provenance_state="code_reviewed_only",
+            provenance_state="observed",
             human_approval=human_approval,
         )
         validate_m1_source_record(canonical_source, source_content)
@@ -171,10 +171,11 @@ def convert_legacy_evidence(
             "source_content_sha256": actual_source_hash,
             "legacy_classification": claim["classification"],
             "legacy_review_status": claim["review_status"],
-            "canonical_provenance_state": "code_reviewed_only",
+            "canonical_provenance_state": "observed",
         },
         "limitations": [
             "Conversion validates traceability and structure, not source authenticity or factual truth.",
+            "The observed label means only that the transcript text was observed; it does not authenticate the original speech or verify the statement.",
             "A legacy review label is preserved as metadata and is not promoted to verified fact.",
             "The caller-supplied rights decision is recorded, not independently legally verified.",
             "The transcript text hash is not a substitute for the original source-content hash.",
