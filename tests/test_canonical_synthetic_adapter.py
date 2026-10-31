@@ -1,5 +1,6 @@
 """Tests for the canonical M1 synthetic adapter; no market claims are made."""
 import hashlib
+import json
 import tempfile
 import time
 import unittest
@@ -222,7 +223,23 @@ class CanonicalSyntheticAdapterTests(unittest.TestCase):
             implementation = result["implementation_manifest"]
             self.assertEqual(implementation["path"], "implementation_manifest.json")
             self.assertEqual(len(implementation["bundle_sha256"]), 64)
-            self.assertTrue((Path(tmp) / "artifacts" / implementation["path"]).is_file())
+            manifest_path = Path(tmp) / "artifacts" / implementation["path"]
+            self.assertTrue(manifest_path.is_file())
+            manifest_bytes = manifest_path.read_bytes()
+            self.assertEqual(hashlib.sha256(manifest_bytes).hexdigest(), implementation["sha256"])
+            manifest_document = json.loads(manifest_bytes)
+            self.assertEqual(manifest_document["bundle_sha256"], implementation["bundle_sha256"])
+            registry_rows = [
+                json.loads(line) for line in (Path(tmp) / "registry.jsonl").read_text(encoding="utf-8").splitlines()
+            ]
+            self.assertEqual(
+                registry_rows[0]["payload"]["implementation_bundle_sha256"],
+                implementation["bundle_sha256"],
+            )
+            self.assertEqual(
+                registry_rows[-1]["payload"]["implementation_manifest_sha256"],
+                implementation["sha256"],
+            )
 
     def test_run_record_timestamps_capture_ordered_lifecycle_boundaries(self):
         job, strategy, data, costs, gate, frozen = documents()
