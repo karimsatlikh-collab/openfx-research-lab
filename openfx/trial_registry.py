@@ -72,7 +72,7 @@ class LocalTrialRegistry:
                 )
             except (json.JSONDecodeError, TrialRegistryError) as exc:
                 raise TrialRegistryError(
-                    f"invalid or ambiguous JSON at ledger line {line_number}: {exc}"
+                    f"invalid JSON or ambiguous JSON at ledger line {line_number}: {exc}"
                 ) from exc
             if not isinstance(row, dict):
                 raise TrialRegistryError(f"event must be an object at ledger line {line_number}")
