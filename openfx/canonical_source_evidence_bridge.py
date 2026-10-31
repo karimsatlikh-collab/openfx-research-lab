@@ -88,7 +88,11 @@ def convert_legacy_evidence(
 
     actual_source_hash = hashlib.sha256(source_content).hexdigest()
     recorded_source_hash = source.get("content_sha256")
-    if recorded_source_hash is not None and recorded_source_hash.lower() != actual_source_hash:
+    if not isinstance(recorded_source_hash, str) or not recorded_source_hash.strip():
+        raise SourceEvidenceBridgeError(
+            "legacy source content digest is missing; verified continuity cannot be established"
+        )
+    if recorded_source_hash.lower() != actual_source_hash:
         raise SourceEvidenceBridgeError("source content hash does not match legacy source record")
 
     legacy_claims = {row["claim_id"]: row for row in claim_register["claims"]}
