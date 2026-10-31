@@ -459,6 +459,13 @@ class CanonicalSyntheticAdapterTests(unittest.TestCase):
                 ensure_ascii=False, allow_nan=False,
             ).encode("utf-8")).hexdigest()
             self.assertEqual(rows[-1]["payload"]["gate_verdict_sha256"], expected_hash)
+            self.assertEqual(rows[-1]["payload"]["gate_verdict_path"], "gate_verdict.json")
+            artifact_path = Path(tmp) / "artifacts" / "gate_verdict.json"
+            self.assertEqual(artifact_path.read_bytes(), json.dumps(
+                verdict, sort_keys=True, separators=(",", ":"),
+                ensure_ascii=False, allow_nan=False,
+            ).encode("utf-8"))
+            self.assertEqual(result["gate_verdict_artifact"]["sha256"], expected_hash)
 
     def test_failure_registry_payload_redacts_exception_message(self):
         import json
