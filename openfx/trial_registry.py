@@ -26,6 +26,21 @@ def _event_hash(event_without_hash: dict[str, Any]) -> str:
     return hashlib.sha256(canonical_json(event_without_hash)).hexdigest()
 
 
+def _reject_duplicate_json_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """Reject ambiguous JSON objects instead of silently keeping the last key."""
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise TrialRegistryError(f"duplicate JSON object key: {key}")
+        result[key] = value
+    return result
+
+
+def _reject_json_constant(value: str) -> None:
+    """Reject JavaScript-style NaN/Infinity tokens accepted by json.loads by default."""
+    raise TrialRegistryError(f"non-standard JSON numeric constant: {value}")
+
+
 class TrialRegistryError(ValueError):
     pass
 
@@ -50,9 +65,15 @@ class LocalTrialRegistry:
             if not line.strip():
                 raise TrialRegistryError(f"blank line at ledger line {line_number}")
             try:
-                row = json.loads(line)
-            except json.JSONDecodeError as exc:
-                raise TrialRegistryError(f"invalid JSON at ledger line {line_number}") from exc
+                row = json.loads(
+                    line,
+                    object_pairs_hook=_reject_duplicate_json_keys,
+                    parse_constant=_reject_json_constant,
+                )
+            except (json.JSONDecodeError, TrialRegistryError) as exc:
+                raise TrialRegistryError(
+                    f"invalid JSON or ambiguous JSON at ledger line {line_number}: {exc}"
+                ) from exc
             if not isinstance(row, dict):
                 raise TrialRegistryError(f"event must be an object at ledger line {line_number}")
             expected_event_keys = {

@@ -167,5 +167,22 @@ class SyntheticEndToEndTests(unittest.TestCase):
             self.assertEqual(registry.verify()["event_count"], 0)
 
 
+
+    def test_registry_rejects_duplicate_json_object_keys(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "registry.jsonl"
+            path.write_text('{"schema_version":1,"schema_version":1}\\n', encoding="utf-8")
+            registry = LocalTrialRegistry(path)
+            with self.assertRaisesRegex(TrialRegistryError, "duplicate JSON object key"):
+                registry.verify()
+
+    def test_registry_rejects_nonstandard_json_numeric_constants(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "registry.jsonl"
+            path.write_text('{"payload":{"value":NaN}}\\n', encoding="utf-8")
+            registry = LocalTrialRegistry(path)
+            with self.assertRaisesRegex(TrialRegistryError, "non-standard JSON numeric constant"):
+                registry.verify()
+
 if __name__ == "__main__":
     unittest.main()
