@@ -145,6 +145,24 @@ EXAMPLES = {
         ],
         "created_at_utc": NOW,
     },
+
+    "authorization-record-v1.schema.json": {
+        "schema_version": 1,
+        "payload": {
+            "authorization_id": "auth-00000001",
+            "issuer_id": "openfx-owner-approval",
+            "key_id": "owner-ed25519-2026-01",
+            "audience": "openfx-worker",
+            "job_id": "job-1",
+            "job_sha256": HASH,
+            "action": "execute_job",
+            "requested_engine": "synthetic",
+            "issued_at_utc": NOW,
+            "expires_at_utc": "2026-01-01T00:05:00Z",
+            "nonce": "A" * 43,
+        },
+        "signature": {"algorithm": "Ed25519", "value": "A" * 86},
+    },
 }
 
 
