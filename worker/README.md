@@ -5,7 +5,7 @@
 This worker is intended to run on a private Windows VPS after the owner purchases and secures it. It is deliberately deny-by-default.
 
 ## Security model
-- Polls a configured HTTPS control-plane endpoint; it does not open an inbound listener.
+- Network polling is disabled until signed authorization and canonical research-contract verification are implemented; it does not open an inbound listener.
 - Reads the bearer token from the `OPENFX_WORKER_TOKEN` environment variable, never from source code.
 - Accepts only a narrow JSON job schema and an explicit allow-list of EA identifiers.
 - Rejects arbitrary commands, URLs, file paths, executables, and unknown fields.
@@ -16,7 +16,7 @@ This worker is intended to run on a private Windows VPS after the owner purchase
 - The MT5 adapter is intentionally not implemented; a job is not run until that adapter and a private control plane have been built and independently tested.
 
 ## Current limitations
-The prototype validates and records jobs only. It cannot run Strategy Tester, download EAs, report back to a server, or claim a backtest has happened. Do not deploy it as a Windows service yet.
+The prototype validates and records jobs only. **Network polling is explicitly disabled** until the worker verifies a signed, expiring AuthorizationRecord bound to canonical JobSpec v1, canonical RunRecord v1, and the artifact manifest, with trusted nonce consumption and replay rejection. The current approved boolean is caller-controlled and is not proof of authorization. The worker cannot run Strategy Tester, download EAs, report back to a server, or claim a backtest has happened. Do not deploy it as a Windows service yet.
 
 ## Local validation
 Requires Python 3.11+.
