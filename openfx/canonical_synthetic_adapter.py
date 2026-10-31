@@ -36,6 +36,29 @@ SCHEMA_FILES = {
     "verdict": "gate-verdict-v1.schema.json",
 }
 
+# First-party execution closure and contract inputs for the synthetic adapter.
+# Keep this explicit and review it whenever imports or runtime schemas change.
+IMPLEMENTATION_BUNDLE_FILES = (
+    "openfx/__init__.py",
+    "openfx/canonical_synthetic_adapter.py",
+    "openfx/contract_validation.py",
+    "openfx/statistical_gate.py",
+    "openfx/synthetic_e2e.py",
+    "openfx/synthetic_engine.py",
+    "openfx/trial_registry.py",
+    "openfx/source_provenance.py",
+    "schemas/strategy-spec-v1.schema.json",
+    "schemas/data-profile-v1.schema.json",
+    "schemas/cost-profile-v1.schema.json",
+    "schemas/gate-config-v1.schema.json",
+    "schemas/job-spec-v1.schema.json",
+    "schemas/run-record-v1.schema.json",
+    "schemas/gate-verdict-v1.schema.json",
+    "requirements.txt",
+    "requirements-dev.txt",
+)
+IMPLEMENTATION_BUNDLE_ALGORITHM = "sha256-canonical-json-v1"
+
 
 class CanonicalSyntheticAdapterError(ValueError):
     """Canonical contract, execution, or artifact validation failed."""
@@ -50,6 +73,58 @@ def _canonical_bytes(value: Any) -> bytes:
 
 def _sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
+
+
+def _build_implementation_manifest(repository_root: str | Path) -> dict[str, Any]:
+    """Hash the declared first-party execution closure and schemas deterministically."""
+    root = Path(repository_root).resolve(strict=True)
+    entries: list[dict[str, Any]] = []
+    for relative_name in sorted(IMPLEMENTATION_BUNDLE_FILES):
+        relative = Path(relative_name)
+        if relative.is_absolute() or any(part in {"", ".", ".."} for part in relative.parts):
+            raise CanonicalSyntheticAdapterError("unsafe implementation bundle path")
+        path = root / relative
+        cursor = root
+        for part in relative.parts:
+            cursor = cursor / part
+            if cursor.is_symlink():
+                raise CanonicalSyntheticAdapterError(
+                    f"implementation bundle contains symlink: {relative_name}"
+                )
+        if not path.is_file():
+            raise CanonicalSyntheticAdapterError(
+                f"implementation bundle file is missing: {relative_name}"
+            )
+        resolved = path.resolve(strict=True)
+        if root not in resolved.parents:
+            raise CanonicalSyntheticAdapterError(
+                f"implementation bundle path escapes repository: {relative_name}"
+            )
+        raw = path.read_bytes()
+        entries.append({
+            "path": relative.as_posix(),
+            "size_bytes": len(raw),
+            "sha256": _sha256_bytes(raw),
+        })
+
+    core = {
+        "schema_version": 1,
+        "digest_algorithm": IMPLEMENTATION_BUNDLE_ALGORITHM,
+        "entries": entries,
+    }
+    return {**core, "bundle_sha256": _sha256_bytes(_canonical_bytes(core))}
+
+
+def _verify_implementation_manifest(
+    manifest: dict[str, Any], repository_root: str | Path
+) -> bool:
+    """Fail closed unless the declared bundle still matches the live repository bytes."""
+    expected = _build_implementation_manifest(repository_root)
+    if not isinstance(manifest, dict) or _canonical_bytes(manifest) != _canonical_bytes(expected):
+        raise CanonicalSyntheticAdapterError(
+            "implementation bundle digest or file inventory mismatch"
+        )
+    return True
 
 
 def _utc_timestamp() -> str:
@@ -252,9 +327,25 @@ def run_canonical_synthetic_job(
     root = Path(workspace).resolve()
     root.mkdir(parents=True, exist_ok=True)
     # Do not overwrite an earlier run's artifacts.
-    reserved_paths = (root / "replay_a", root / "replay_b", root / "gate_verdict.json")
+    reserved_paths = (
+        root / "replay_a", root / "replay_b", root / "gate_verdict.json",
+        root / "implementation_manifest.json",
+    )
     if any(path.exists() or path.is_symlink() for path in reserved_paths):
         raise CanonicalSyntheticAdapterError("workspace already contains reserved run artifacts")
+
+    repository_root = Path(__file__).resolve().parent.parent
+    implementation_manifest = _build_implementation_manifest(repository_root)
+    implementation_manifest_bytes = _canonical_bytes(implementation_manifest)
+    implementation_manifest_sha256 = _sha256_bytes(implementation_manifest_bytes)
+    implementation_manifest_path = root / "implementation_manifest.json"
+    with implementation_manifest_path.open("xb") as stream:
+        stream.write(implementation_manifest_bytes)
+        stream.flush()
+        os.fsync(stream.fileno())
+    if implementation_manifest_path.read_bytes() != implementation_manifest_bytes:
+        raise CanonicalSyntheticAdapterError("implementation manifest artifact bytes mismatch")
+    _verify_implementation_manifest(implementation_manifest, repository_root)
 
     # These timestamps are captured at their actual lifecycle boundaries.
     # created_at marks acceptance of the validated run request immediately
@@ -269,6 +360,9 @@ def run_canonical_synthetic_job(
             "job_spec_sha256": canonical_sha256(job),
             "evidence_level": "synthetic",
             "adapter": "canonical-m1-v1",
+            "implementation_bundle_sha256": implementation_manifest["bundle_sha256"],
+            "implementation_manifest_path": "implementation_manifest.json",
+            "implementation_manifest_sha256": implementation_manifest_sha256,
         },
         max_trials=min(
             job["budget"]["max_trials"],
@@ -358,6 +452,9 @@ def run_canonical_synthetic_job(
             raise CanonicalSyntheticAdapterError("canonical GateVerdict artifact is not a regular file")
         if _sha256_bytes(gate_verdict_path.read_bytes()) != gate_verdict_digest:
             raise CanonicalSyntheticAdapterError("canonical GateVerdict artifact hash mismatch")
+        _verify_implementation_manifest(implementation_manifest, repository_root)
+        if _sha256_bytes(implementation_manifest_path.read_bytes()) != implementation_manifest_sha256:
+            raise CanonicalSyntheticAdapterError("implementation manifest artifact hash mismatch")
         registry.append(
             event_id=f"{trial_id}-canonical-completed",
             family_id=family_id, trial_id=trial_id, outcome="completed",
@@ -369,6 +466,9 @@ def run_canonical_synthetic_job(
                 "gate_verdict_path": "gate_verdict.json",
                 "gate_verdict_size_bytes": len(gate_verdict_bytes),
                 "gate_verdict_sha256": gate_verdict_digest,
+                "implementation_bundle_sha256": implementation_manifest["bundle_sha256"],
+                "implementation_manifest_path": "implementation_manifest.json",
+                "implementation_manifest_sha256": implementation_manifest_sha256,
                 "evidence_level": "synthetic",
             },
         )
@@ -386,6 +486,13 @@ def run_canonical_synthetic_job(
                 "size_bytes": len(gate_verdict_bytes),
                 "sha256": gate_verdict_digest,
             },
+            "implementation_manifest": {
+                "path": "implementation_manifest.json",
+                "size_bytes": len(implementation_manifest_bytes),
+                "sha256": implementation_manifest_sha256,
+                "bundle_sha256": implementation_manifest["bundle_sha256"],
+                "entry_count": len(implementation_manifest["entries"]),
+            },
             "registry": final_registry_verification,
             "replay_hashes_equal": True,
             "evidence_level": "synthetic",
@@ -396,6 +503,7 @@ def run_canonical_synthetic_job(
                 "The local JSONL registry is not a trusted central registrar or tamper-proof store.",
                 "The descriptive synthetic gate does not calculate DSR, PBO, or family-wise error correction.",
                 "RunRecord and artifact manifest integrity do not attest that a trusted external executor ran.",
+                "The implementation bundle covers declared first-party modules, schemas, and dependency declarations; it does not attest the Python interpreter, OS image, or installed dependency bytes.",
             ],
         }
     except BaseException as exc:
