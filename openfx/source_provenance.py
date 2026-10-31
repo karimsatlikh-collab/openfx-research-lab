@@ -171,16 +171,21 @@ def _canonical_json_bytes(value: Any) -> bytes:
 
 
 def _store_immutable(path: Path, payload: bytes) -> None:
-    """Create a content-addressed file once; never silently overwrite it."""
-    path.parent.mkdir(parents=True, exist_ok=True)
+    """Create a private content-addressed file once; never silently overwrite it."""
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
     try:
-        with path.open("xb") as stream:
-            stream.write(payload)
-            stream.flush()
-            os.fsync(stream.fileno())
+        descriptor = os.open(path, flags, 0o600)
     except FileExistsError:
         if path.is_symlink() or path.read_bytes() != payload:
             raise ProvenanceError("content-addressed registry collision or tampering")
+    else:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
 
 
 def register_claim_record(
