@@ -339,12 +339,6 @@ def run_canonical_synthetic_job(
     implementation_manifest_bytes = _canonical_bytes(implementation_manifest)
     implementation_manifest_sha256 = _sha256_bytes(implementation_manifest_bytes)
     implementation_manifest_path = root / "implementation_manifest.json"
-    with implementation_manifest_path.open("xb") as stream:
-        stream.write(implementation_manifest_bytes)
-        stream.flush()
-        os.fsync(stream.fileno())
-    if implementation_manifest_path.read_bytes() != implementation_manifest_bytes:
-        raise CanonicalSyntheticAdapterError("implementation manifest artifact bytes mismatch")
     _verify_implementation_manifest(implementation_manifest, repository_root)
 
     # These timestamps are captured at their actual lifecycle boundaries.
@@ -376,6 +370,15 @@ def run_canonical_synthetic_job(
         registration_verification = registry.verify()
         if not registration_verification.get("valid"):
             raise CanonicalSyntheticAdapterError("trial registry verification failed after registration")
+        # Persist only after admission succeeds: rejected duplicate/over-budget
+        # requests must not leave reserved artifacts that block a legitimate retry.
+        with implementation_manifest_path.open("xb") as stream:
+            stream.write(implementation_manifest_bytes)
+            stream.flush()
+            os.fsync(stream.fileno())
+        if implementation_manifest_path.read_bytes() != implementation_manifest_bytes:
+            raise CanonicalSyntheticAdapterError("implementation manifest artifact bytes mismatch")
+        _verify_implementation_manifest(implementation_manifest, repository_root)
         started_at = _utc_timestamp()
         a = _execute_once(frozen_trial, root / "replay_a")
         b = _execute_once(frozen_trial, root / "replay_b")
