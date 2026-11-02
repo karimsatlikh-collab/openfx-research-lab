@@ -6,7 +6,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
+import stat
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -143,12 +146,33 @@ def save_manifest(manifest: dict[str, Any], path: str | Path) -> None:
     validate_manifest(manifest)
     destination = Path(path)
     destination.parent.mkdir(parents=True, exist_ok=True)
-    temporary = destination.with_suffix(destination.suffix + ".tmp")
-    temporary.write_text(
-        json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
+    # Use a unique file in the destination directory: a predictable shared
+    # ".tmp" path can be pre-created as a symlink and races with concurrent writers.
+    fd, temporary_name = tempfile.mkstemp(
+        prefix=f".{destination.name}.", suffix=".tmp", dir=destination.parent
     )
-    temporary.replace(destination)
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as stream:
+            stream.write(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, destination)
+        # Best-effort directory durability; some platforms/filesystems do not
+        # support opening or fsyncing directory descriptors.
+        try:
+            directory_fd = os.open(destination.parent, os.O_RDONLY)
+            try:
+                os.fsync(directory_fd)
+            finally:
+                os.close(directory_fd)
+        except OSError:
+            pass
+    finally:
+        try:
+            temporary.unlink()
+        except FileNotFoundError:
+            pass
 
 
 def load_manifest(path: str | Path) -> dict[str, Any]:
@@ -171,10 +195,30 @@ def artifact_record(path: str | Path, root: str | Path) -> dict[str, Any]:
         relative_path = artifact_path.relative_to(root_path)
     except ValueError as exc:
         raise ValueError("artifact must be inside the configured root") from exc
-    if not artifact_path.is_file():
-        raise ValueError("artifact must be an existing regular file")
-    return {
-        "path": relative_path.as_posix(),
-        "size_bytes": artifact_path.stat().st_size,
-        "sha256": sha256_file(artifact_path),
-    }
+    # Refuse a symlink at the final path component and hash from one open
+    # descriptor so the size and digest describe the same opened file.
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(artifact_path, flags)
+    except OSError as exc:
+        raise ValueError("artifact must be an existing non-symlink regular file") from exc
+    try:
+        before = os.fstat(descriptor)
+        if not stat.S_ISREG(before.st_mode):
+            raise ValueError("artifact must be an existing regular file")
+        digest = hashlib.sha256()
+        with os.fdopen(descriptor, "rb", closefd=False) as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(chunk)
+        after = os.fstat(descriptor)
+        if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns) != (
+            after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns
+        ):
+            raise ValueError("artifact changed while it was being hashed")
+        return {
+            "path": relative_path.as_posix(),
+            "size_bytes": after.st_size,
+            "sha256": digest.hexdigest(),
+        }
+    finally:
+        os.close(descriptor)

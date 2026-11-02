@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/karimsatlikh-collab/openfx-research-lab/blob/main/schemas/trial-registry-entry-v1.schema.json",
+  "title": "OpenFX Trial Registry Entry v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "trial_id",
+    "family_id",
+    "job_id",
+    "run_id",
+    "trial_index",
+    "registered_at_utc",
+    "outcome"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "trial_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "family_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "job_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "run_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "trial_index": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "registered_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "outcome": {
+      "enum": [
+        "pending",
+        "completed",
+        "failed",
+        "timeout",
+        "interrupted",
+        "rejected",
+        "cancelled"
+      ]
+    },
+    "parameter_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "gate_verdict": {
+      "enum": [
+        "pass",
+        "fail",
+        "not_run",
+        "inconclusive"
+      ]
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

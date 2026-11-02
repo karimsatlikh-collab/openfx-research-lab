@@ -44,6 +44,15 @@ class ExperimentTests(unittest.TestCase):
             loaded = load_manifest(path)
             self.assertEqual(loaded["experiment_id"], "test-001")
 
+    def test_manifest_save_uses_unique_temporary_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "experiment.json"
+            old_temp = path.with_suffix(path.suffix + ".tmp")
+            old_temp.write_text("sentinel", encoding="utf-8")
+            save_manifest(sample(), path)
+            self.assertEqual(old_temp.read_text(encoding="utf-8"), "sentinel")
+            self.assertEqual(load_manifest(path)["experiment_id"], "test-001")
+
     def test_mock_worker_lifecycle_is_not_a_backtest(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "experiment.json"

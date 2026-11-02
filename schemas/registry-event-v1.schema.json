@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenFX RegistryEvent v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "sequence",
+    "family_sequence",
+    "trial_index",
+    "event_id",
+    "family_id",
+    "trial_id",
+    "outcome",
+    "payload",
+    "previous_event_sha256",
+    "event_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "family_sequence": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "trial_index": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "event_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "family_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "trial_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "outcome": {
+      "enum": [
+        "pending",
+        "completed",
+        "failed",
+        "timeout",
+        "interrupted",
+        "rejected",
+        "cancelled"
+      ]
+    },
+    "payload": {
+      "type": "object"
+    },
+    "previous_event_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "event_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

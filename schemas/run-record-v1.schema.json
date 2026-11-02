@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/karimsatlikh-collab/openfx-research-lab/blob/main/schemas/run-record-v1.schema.json",
+  "title": "OpenFX RunRecord v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "job_id",
+    "status",
+    "evidence_level",
+    "timestamps",
+    "inputs",
+    "outputs",
+    "error"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "job_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": [
+        "QUEUED",
+        "VALIDATED",
+        "APPROVED",
+        "RUNNING",
+        "VERIFYING",
+        "COMPLETED",
+        "FAILED",
+        "TIMEOUT",
+        "INTERRUPTED",
+        "REJECTED",
+        "CANCELLED"
+      ]
+    },
+    "evidence_level": {
+      "enum": [
+        "mock",
+        "synthetic",
+        "mt5-demo"
+      ]
+    },
+    "timestamps": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "created_at_utc"
+      ],
+      "properties": {
+        "created_at_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "started_at_utc": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "finished_at_utc": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        }
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "job_spec_sha256",
+        "strategy_spec_sha256",
+        "implementation_sha256",
+        "data_profile_sha256",
+        "cost_profile_sha256",
+        "gate_config_sha256"
+      ],
+      "properties": {
+        "job_spec_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "strategy_spec_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "implementation_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "data_profile_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "cost_profile_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "gate_config_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "outputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "sha256"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "media_type": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "error": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 4000
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{64}$"
+    }
+  }
+}
